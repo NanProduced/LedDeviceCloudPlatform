@@ -1,0 +1,4 @@
+custom:
+  security:
+    jwt-alias: demo-jwt
+    jwt-key: Nan12091209
