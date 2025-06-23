@@ -12,6 +12,7 @@ import org.springframework.stereotype.Service;
 
 import java.io.Serializable;
 import java.security.InvalidParameterException;
+import java.util.Optional;
 
 @Service
 @RequiredArgsConstructor
@@ -30,7 +31,10 @@ public class UserServiceImpl implements UserDetailsService, Serializable {
             throw new InvalidParameterException(String.format("Invalid input: [%s]", input));
         }
 
-        final User user = userRepository.findUserByUsernameAndSuffix(str[0], Long.parseLong(str[1]));
+        final Optional<User> userOptional = userRepository.findUserByUsernameAndSuffix(str[0], Long.parseLong(str[1]));
+        User user = userOptional.orElseThrow(() ->
+                new UsernameNotFoundException("User not found with username: " + str[0] + " and suffix: " + str[1])
+        );
         UserPrincipal userPrincipal = new UserPrincipal(user);
         if (!userPrincipal.isEnabled()) throw new DisabledException(String.format("User has been baned: [%s].", userPrincipal.getUsername()));
 

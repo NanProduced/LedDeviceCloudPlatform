@@ -35,7 +35,7 @@ public class AuthorizationServerConfig {
     @Value("${custom.security.jwt-key}")
     private String keyStorePwd;
 
-    @Value("${custom:security.jwt-alias}")
+    @Value("${custom.security.jwt-alias}")
     private String keyAlias;
 
     @Bean

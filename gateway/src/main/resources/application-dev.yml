@@ -1,0 +1,60 @@
+server:
+  port: 8082
+spring:
+  application:
+    name: gateway-server
+  cloud:
+    nacos:
+      discovery:
+        server-addr: 192.168.1.11:8849
+        service: gateway-server
+        namespace: af799ff4-9847-4218-ad0d-e117c7f6f0e6
+        group: DEFAULT_GROUP
+        register-enabled: true
+        # 类似长连接监听服务端信息变化的功能
+        watch:
+          enabled: true
+        heart-beat-interval: 5000
+        heart-beat-timeout: 15000
+  datasource:
+    username: root
+    password: mK7nLtTZwNxGpaZCUbMCabeIBCfbcAYM
+    url: jdbc:mysql://192.168.1.12:3307/cloud?zeroDateTimeBehavior=convertToNull&characterEncoding=utf-8&allowPublicKeyRetrieval=true
+  data:
+    redis:
+      host: 192.168.1.12
+      port: 6379
+      password: 99b0d786b7d9620e7c0885e3d9fa7e6ed4bd109a8a9a3456289b63d61b375680
+      timeout: 3000
+      lettuce:
+        pool:
+          max-active: 50
+          max-idle: 48
+          min-idle: 0
+          max-wait: 5s
+  security:
+    oauth2:
+      resourceserver:
+        jwt:
+          jwk-set-uri: http://auth-server/rsa/publicKey
+
+casbin:
+  model: classpath:casbin/model.conf
+  watcher-type: redis
+  watcher-lettuce-redis-type: standalone
+  store-type: jdbc
+  initialize-schema: create
+  table-name: rbac_casbin_rules
+  policy-topic: RBAC_CASBIN_POLICY_TOPIC
+
+logging:
+  level:
+    org.springframework.security: DEBUG
+    org.springframework.security.oauth2: DEBUG
+
+customer:
+  security:
+    ignore:
+      urls:
+        - "/login"
+        - "/oauth/**"

@@ -30,6 +30,7 @@
         <lombok.version>1.18.38</lombok.version>
         <org.mapstruct.version>1.6.3</org.mapstruct.version>
         <lombok-mapstruct-binding.version>0.2.0</lombok-mapstruct-binding.version>
+        <casbin-starter-version>1.9.0</casbin-starter-version>
     </properties>
 
     <dependencyManagement>
@@ -67,8 +68,18 @@
             </dependency>
             <dependency>
                 <groupId>org.projectlombok</groupId>
+                <artifactId>lombok-mapstruct-binding</artifactId>
+                <version>${lombok-mapstruct-binding.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>org.projectlombok</groupId>
                 <artifactId>lombok</artifactId>
                 <version>${lombok.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>org.casbin</groupId>
+                <artifactId>casbin-spring-boot-starter</artifactId>
+                <version>${casbin-starter-version}</version>
             </dependency>
         </dependencies>
     </dependencyManagement>
@@ -111,5 +122,23 @@
             </plugins>
         </pluginManagement>
     </build>
+
+    <profiles>
+        <profile>
+            <id>prod</id>
+            <properties>
+                <profileActive>prod</profileActive>
+            </properties>
+        </profile>
+        <profile>
+            <id>dev</id>
+            <properties>
+                <profileActive>dev</profileActive>
+            </properties>
+            <activation>
+                <activeByDefault>true</activeByDefault>
+            </activation>
+        </profile>
+    </profiles>
 
 </project>

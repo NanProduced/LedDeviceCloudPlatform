@@ -1,3 +1,35 @@
+server:
+  port: 8081
+spring:
+  application:
+    name: auth-server
+  cloud:
+    nacos:
+      discovery:
+        server-addr: 192.168.1.11:8849
+        service: auth-server
+        namespace: af799ff4-9847-4218-ad0d-e117c7f6f0e6
+        group: DEFAULT_GROUP
+        register-enabled: true
+        # 类似长连接监听服务端信息变化的功能
+        watch:
+          enabled: true
+        heart-beat-interval: 5000
+        heart-beat-timeout: 15000
+  datasource:
+    username: root
+    password: mK7nLtTZwNxGpaZCUbMCabeIBCfbcAYM
+    url: jdbc:mysql://192.168.1.12:3307/cloud?zeroDateTimeBehavior=convertToNull&characterEncoding=utf-8&allowPublicKeyRetrieval=true
+
+mybatis-plus:
+  # xml文件位置
+  mapper-locations: classpath:org.nan.auth.mapper/*.xml
+
+logging:
+  level:
+    org.springframework.security: DEBUG
+    org.springframework.security.oauth2: DEBUG
+
 custom:
   security:
     jwt-alias: demo-jwt
