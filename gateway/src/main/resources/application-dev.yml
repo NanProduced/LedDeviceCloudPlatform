@@ -16,6 +16,19 @@ spring:
           enabled: true
         heart-beat-interval: 5000
         heart-beat-timeout: 15000
+    gateway:
+      httpclient:
+        connect-timeout: 1000
+        response-timeout: 30s
+      routes:
+        - id: auth-server
+          uri: lb://auth-server
+          predicates:
+            - Path=/oauth/**
+        - id: core-service
+          uri: lb://core-service
+          predicates:
+            - Path=/api/**
   datasource:
     username: root
     password: mK7nLtTZwNxGpaZCUbMCabeIBCfbcAYM
@@ -24,6 +37,7 @@ spring:
     redis:
       host: 192.168.1.12
       port: 6379
+      database: 8
       password: 99b0d786b7d9620e7c0885e3d9fa7e6ed4bd109a8a9a3456289b63d61b375680
       timeout: 3000
       lettuce:

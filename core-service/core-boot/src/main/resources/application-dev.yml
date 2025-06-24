@@ -1,0 +1,55 @@
+server:
+  port: 8083
+spring:
+  application:
+    name: core-sevice
+  cloud:
+    nacos:
+      discovery:
+        server-addr: 192.168.1.11:8849
+        service: auth-server
+        namespace: af799ff4-9847-4218-ad0d-e117c7f6f0e6
+        group: DEFAULT_GROUP
+        register-enabled: true
+        # 类似长连接监听服务端信息变化的功能
+        watch:
+          enabled: true
+        heart-beat-interval: 5000
+        heart-beat-timeout: 15000
+  datasource:
+    username: root
+    password: mK7nLtTZwNxGpaZCUbMCabeIBCfbcAYM
+    url: jdbc:mysql://192.168.1.12:3307/cloud?zeroDateTimeBehavior=convertToNull&characterEncoding=utf-8&allowPublicKeyRetrieval=true
+  data:
+    redis:
+      host: 192.168.1.12
+      port: 6379
+      database: 8
+      password: 99b0d786b7d9620e7c0885e3d9fa7e6ed4bd109a8a9a3456289b63d61b375680
+      timeout: 3000
+      lettuce:
+        pool:
+          max-active: 50
+          max-idle: 48
+          min-idle: 0
+          max-wait: 5s
+    mongodb:
+      host: 192.168.1.12
+      port: 27017
+      database: two
+      username: admin
+      password: colorlight
+      authentication-database: admin
+      auto-index-creation: true
+
+management:
+  tracing:
+    enabled: true
+    sampling:
+      probability: 1.0
+
+  # Zipkin Reporter 的专属配置
+  zipkin:
+    tracing:
+      # 默认 auto-config 会把 span 发到这个端点
+      endpoint: http://localhost:9411/api/v2/spans

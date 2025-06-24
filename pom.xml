@@ -11,6 +11,7 @@
         <module>gateway</module>
         <module>auth-server</module>
         <module>core-service</module>
+        <module>common</module>
     </modules>
     <packaging>pom</packaging>
 
