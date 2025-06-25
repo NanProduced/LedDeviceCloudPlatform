@@ -1,7 +1,7 @@
 package org.nan.cloud.core.controller;
 
 import lombok.RequiredArgsConstructor;
-import org.nan.cloud.core.api.DTO.RoleApi;
+import org.nan.cloud.core.api.RoleApi;
 import org.nan.cloud.core.api.DTO.req.CreateRoleRequest;
 import org.nan.cloud.core.facade.RoleFacade;
 import org.springframework.web.bind.annotation.RestController;

@@ -12,7 +12,6 @@
     <artifactId>core-service</artifactId>
     <packaging>pom</packaging>
     <modules>
-        <module>core-common</module>
         <module>core-application</module>
         <module>core-api</module>
         <module>core-infrastructure</module>

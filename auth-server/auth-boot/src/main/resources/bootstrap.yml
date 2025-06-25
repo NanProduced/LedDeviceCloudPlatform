@@ -4,15 +4,23 @@ spring:
   cloud:
     nacos:
       discovery:
-        server-addr: 192.168.1.11:8849
-        namespace: af799ff4-9847-4218-ad0d-e117c7f6f0e6
+        server-addr: 192.168.1.185:8848
+        service: auth-server
+        namespace: 1e90921e-70cf-4745-87ed-dd165319ff3a
         group: DEFAULT_GROUP
+        username: Nan
+        password: Nan12091209
+        access-key: nan_nacos
+        secret-key: nanproduced
         fail-fast: false
       config:
-        server-addr: 192.168.1.11:8849
-        namespace: af799ff4-9847-4218-ad0d-e117c7f6f0e6
-        file-extension: yml
+        server-addr: 192.168.1.185:8848
+        namespace: 1e90921e-70cf-4745-87ed-dd165319ff3a
         group: DEFAULT_GROUP
+        username: Nan
+        password: Nan12091209
+        access-key: nan_nacos
+        secret-key: nanproduced
         timeout: 5000
         # 长轮训超时时间
         config-long-poll-timeout: 1000

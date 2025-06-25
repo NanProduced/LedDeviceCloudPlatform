@@ -85,17 +85,22 @@ public class AuthorizationServerConfig {
 
     }
 
-    // Jwt编码器
     @Bean
-    public JwtEncoder jwtEncoder() {
+    public KeyPair jwtKeyPair() {
         KeyStoreKeyFactory keyFactory = new KeyStoreKeyFactory(
                 new ClassPathResource("demo-jwt.jks"), keyStorePwd.toCharArray());
-        KeyPair keyPair = keyFactory.getKeyPair(keyAlias, keyStorePwd.toCharArray());
+        return keyFactory.getKeyPair(keyAlias, keyStorePwd.toCharArray());
+    }
+
+    // Jwt编码器
+    @Bean
+    public JwtEncoder jwtEncoder(KeyPair keyPair) {
         JWK jwk = new RSAKey.Builder((RSAPublicKey) keyPair.getPublic())
                 .privateKey(keyPair.getPrivate())
                 .keyID(UUID.randomUUID().toString())
                 .build();
-        JWKSource<SecurityContext> jwkSource = ((jwkSelector, securityContext) -> jwkSelector.select(new JWKSet(jwk)));
+        JWKSource<SecurityContext> jwkSource = (jwkSelector, securityContext) ->
+                jwkSelector.select(new JWKSet(jwk));
         return new NimbusJwtEncoder(jwkSource);
     }
 }
