@@ -4,6 +4,6 @@ import org.mybatis.spring.annotation.MapperScan;
 import org.springframework.context.annotation.Configuration;
 
 @Configuration
-@MapperScan("org.nan.core.infrastructure.repository.mysql.mapper")
+@MapperScan("org.nan.cloud.core.infrastructure.repository.mysql.mapper")
 public class MyBatisConfig {
 }

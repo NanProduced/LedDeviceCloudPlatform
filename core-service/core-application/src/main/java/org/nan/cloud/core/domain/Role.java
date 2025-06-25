@@ -1,8 +1,12 @@
 package org.nan.cloud.core.domain;
 
+import lombok.Builder;
 import lombok.Data;
 
+import java.time.LocalDateTime;
+
 @Data
+@Builder
 public class Role {
 
     private Long rid;
@@ -16,4 +20,8 @@ public class Role {
      * 1: customer
      */
     private Integer type;
+
+    private Long creatorId;
+
+    private LocalDateTime createTime;
 }

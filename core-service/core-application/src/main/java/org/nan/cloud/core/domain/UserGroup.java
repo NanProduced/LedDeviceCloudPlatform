@@ -1,13 +1,15 @@
 package org.nan.cloud.core.domain;
 
+import lombok.Builder;
 import lombok.Data;
 
 import java.time.LocalDateTime;
 
 @Data
+@Builder
 public class UserGroup {
 
-    private Long uGid;
+    private Long ugid;
 
     private String name;
 
@@ -20,12 +22,12 @@ public class UserGroup {
     private String description;
 
     /**
-     * 0：rog root
+     * 0：org root
      * 1: normal
      */
     private Integer type;
 
-    private Long creator;
+    private Long creatorId;
 
     private LocalDateTime createTime;
 }

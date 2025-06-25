@@ -47,4 +47,7 @@ public class UserDO {
 
     @TableField("creator_id")
     private Long creatorId;
+
+    @TableField("update_time")
+    private LocalDateTime updateTime;
 }

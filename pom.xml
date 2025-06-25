@@ -12,6 +12,7 @@
         <module>auth-server</module>
         <module>core-service</module>
         <module>common</module>
+        <module>common-basic</module>
     </modules>
     <packaging>pom</packaging>
 

@@ -53,3 +53,7 @@ management:
     tracing:
       # 默认 auto-config 会把 span 发到这个端点
       endpoint: http://localhost:9411/api/v2/spans
+
+mybatis-plus:
+  # xml文件位置
+  mapper-locations: classpath:org.nan.cloud.core.mapper/*.xml

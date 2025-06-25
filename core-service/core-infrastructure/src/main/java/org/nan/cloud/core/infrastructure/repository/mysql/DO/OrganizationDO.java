@@ -27,8 +27,14 @@ public class OrganizationDO {
     @TableField("root_u_group")
     private Long rootUgid;
 
+    @TableField("suffix")
+    private Integer suffix;
+
     @TableField("create_time")
     private LocalDateTime createTime;
+
+    @TableField("update_time")
+    private LocalDateTime updateTime;
 
     @TableField("creator_id")
     private Long creatorId;

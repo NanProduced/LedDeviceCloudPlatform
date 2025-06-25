@@ -23,7 +23,7 @@ spring:
 
 mybatis-plus:
   # xml文件位置
-  mapper-locations: classpath:org.nan.auth.mapper/*.xml
+  mapper-locations: classpath:org.nan.cloud.auth.mapper/*.xml
 
 logging:
   level:

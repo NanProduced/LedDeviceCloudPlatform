@@ -13,7 +13,9 @@ public class User {
 
     private String username;
 
-    private Long uGid;
+    private String password;
+
+    private Long ugid;
 
     private Long oid;
 
@@ -22,11 +24,21 @@ public class User {
     private String email;
 
     /**
+     * 0：enabled
+     * 1：block
+     */
+    private Integer status;
+
+    /**
      * 0：system
      * 1：org manager
      * 2：normal
      */
     private Integer type;
 
+    private Integer suffix;
+
+    private Long creatorId;
+    private LocalDateTime updateTime;
     private LocalDateTime createTime;
 }

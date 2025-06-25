@@ -6,5 +6,9 @@ public interface OrgRepository {
 
     Organization createOrganization(Organization organization);
 
+    boolean updateOrganization(Organization organization);
+
+    boolean updateOrganizationRootGroup(Long oid, Long rootUgid, Long rootTgid);
+
 
 }

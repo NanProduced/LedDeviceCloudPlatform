@@ -15,11 +15,15 @@ public class Organization {
 
     private String remark;
 
-    private Long rootUGid;
+    private Long rootUgid;
 
-    private Long rootTGid;
+    private Long rootTgid;
 
     private Long creatorId;
 
+    private Integer suffix;
+
     private LocalDateTime createTime;
+
+    private LocalDateTime updateTime;
 }
