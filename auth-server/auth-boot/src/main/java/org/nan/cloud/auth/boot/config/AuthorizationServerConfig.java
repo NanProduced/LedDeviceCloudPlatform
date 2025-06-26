@@ -9,10 +9,12 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.core.io.ClassPathResource;
+import org.springframework.security.config.Customizer;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configurers.AbstractHttpConfigurer;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.oauth2.core.AuthorizationGrantType;
+import org.springframework.security.oauth2.core.ClientAuthenticationMethod;
 import org.springframework.security.oauth2.jwt.JwtEncoder;
 import org.springframework.security.oauth2.jwt.NimbusJwtEncoder;
 import org.springframework.security.oauth2.server.authorization.client.InMemoryRegisteredClientRepository;
@@ -23,6 +25,7 @@ import org.springframework.security.oauth2.server.authorization.settings.TokenSe
 import org.springframework.security.rsa.crypto.KeyStoreKeyFactory;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.LoginUrlAuthenticationEntryPoint;
+import org.springframework.security.web.util.matcher.AntPathRequestMatcher;
 
 import java.security.KeyPair;
 import java.security.interfaces.RSAPublicKey;
@@ -44,44 +47,46 @@ public class AuthorizationServerConfig {
         // 开启默认OAuth2端点 (/oauth2/authorize /token /jwks)
         OAuth2AuthorizationServerConfiguration.applyDefaultSecurity(http);
         // 自定义登录入口（未登录跳转 /login）
-        http.exceptionHandling(e -> e.authenticationEntryPoint(new LoginUrlAuthenticationEntryPoint("/login")));
-        http.csrf(AbstractHttpConfigurer::disable);
+        http
+                .exceptionHandling(e -> e.authenticationEntryPoint(
+                        new LoginUrlAuthenticationEntryPoint("/login")))
+                .csrf(csrf -> csrf.ignoringRequestMatchers(
+                        new AntPathRequestMatcher("/oauth2/token")))
+                .formLogin(Customizer.withDefaults());
         return http.build();
     }
 
     @Bean
     public InMemoryRegisteredClientRepository registeredClientRepository(PasswordEncoder passwordEncoder) {
-
-        RegisteredClient frontEnd = RegisteredClient.withId(UUID.randomUUID().toString())
-                .clientId("front_end_client")
-                .clientSecret(passwordEncoder.encode("Nan12091209"))
-                .scope("terminal").scope("group").scope("user")
-                .authorizationGrantType(AuthorizationGrantType.PASSWORD)
-                .authorizationGrantType(AuthorizationGrantType.REFRESH_TOKEN)
-                .tokenSettings(TokenSettings.builder()
-                        .accessTokenTimeToLive(Duration.ofHours(1))
-                        .refreshTokenTimeToLive(Duration.ofHours(1))
-                        .build())
-                .clientSettings(ClientSettings.builder().build())
-                .build();
-
-        RegisteredClient codeClient = RegisteredClient.withId(UUID.randomUUID().toString())
-                .clientId("client_grant")
-                .clientSecret(passwordEncoder.encode("Nan12091209"))
-                .scope("terminal").scope("group").scope("user")
+        RegisteredClient confidentialClient = RegisteredClient.withId(UUID.randomUUID().toString())
+                .clientId("confidential-service")
+                .clientSecret(passwordEncoder.encode("nanproduced"))
+                .clientAuthenticationMethod(ClientAuthenticationMethod.CLIENT_SECRET_BASIC)
                 .authorizationGrantType(AuthorizationGrantType.AUTHORIZATION_CODE)
                 .authorizationGrantType(AuthorizationGrantType.REFRESH_TOKEN)
-                .redirectUri("https://www.baidu.com")
-                .tokenSettings(TokenSettings.builder()
-                        .accessTokenTimeToLive(Duration.ofHours(1))
-                        .refreshTokenTimeToLive(Duration.ofHours(1))
-                        .build())
+                .redirectUri("http://192.168.1.222:8082/login/oauth2/code/confidential-service")
+                .scope("read").scope("write")
                 .clientSettings(ClientSettings.builder()
                         .requireAuthorizationConsent(true)
                         .build())
+                .tokenSettings(TokenSettings.builder()
+                        .accessTokenTimeToLive(Duration.ofMinutes(30))
+                        .refreshTokenTimeToLive(Duration.ofHours(12))
+                        .build())
                 .build();
 
-        return new InMemoryRegisteredClientRepository(frontEnd, codeClient);
+        RegisteredClient publicClient = RegisteredClient.withId(UUID.randomUUID().toString())
+                .clientId("public-spa")
+                .clientAuthenticationMethod(ClientAuthenticationMethod.NONE)
+                .authorizationGrantType(AuthorizationGrantType.AUTHORIZATION_CODE)
+                .redirectUri("http://192.168.1.185:8083/spa/callback")
+                .scope("read")
+                .clientSettings(ClientSettings.builder()
+                        .requireProofKey(true)
+                        .build())
+                .build();
+
+        return new InMemoryRegisteredClientRepository(confidentialClient, publicClient);
 
     }
 

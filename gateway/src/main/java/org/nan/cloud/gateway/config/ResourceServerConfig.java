@@ -37,17 +37,17 @@ public class ResourceServerConfig {
     @RefreshScope
     public SecurityWebFilterChain securityWebFilterChain(ServerHttpSecurity http) {
         http
+            .authorizeExchange(exchange -> exchange
+                    .pathMatchers(ignoreUrlsConfig.getUrls().toArray(String[]::new)).permitAll()
+                    .anyExchange().access(casbinAuthorizationManager))
             .oauth2ResourceServer(oauth2 -> oauth2
                     .authenticationEntryPoint(authenticationEntryPoint)
                     .jwt(jwt -> jwt.jwtAuthenticationConverter(jwtAuthenticationConverter())))
-            .authorizeExchange(ex -> ex
-                    .pathMatchers(ignoreUrlsConfig.getUrls().toArray(String[]::new)).permitAll()
-                    .anyExchange().access(casbinAuthorizationManager))
             .exceptionHandling(e -> e
                     .accessDeniedHandler(accessDeniedHandler)
                     .authenticationEntryPoint(authenticationEntryPoint))
-                .csrf(ServerHttpSecurity.CsrfSpec::disable)
-                .addFilterAfter(removeJwtFilter, SecurityWebFiltersOrder.AUTHENTICATION);
+            .csrf(ServerHttpSecurity.CsrfSpec::disable)
+            .addFilterAfter(removeJwtFilter, SecurityWebFiltersOrder.AUTHENTICATION);
         return http.build();
     }
 
