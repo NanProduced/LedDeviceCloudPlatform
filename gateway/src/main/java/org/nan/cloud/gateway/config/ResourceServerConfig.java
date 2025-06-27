@@ -38,6 +38,8 @@ public class ResourceServerConfig {
     @RefreshScope
     public SecurityWebFilterChain securityWebFilterChain(ServerHttpSecurity http) {
         http
+            .oauth2Client(Customizer.withDefaults()) // Enable OAuth2 client functionality
+            .oauth2Login(Customizer.withDefaults())
             .authorizeExchange(exchange -> exchange
                     .pathMatchers(ignoreUrlsConfig.getUrls().toArray(String[]::new)).permitAll()
                     .anyExchange().access(casbinAuthorizationManager))
@@ -47,7 +49,6 @@ public class ResourceServerConfig {
             .exceptionHandling(e -> e
                     .accessDeniedHandler(accessDeniedHandler)
                     .authenticationEntryPoint(authenticationEntryPoint))
-            .oauth2Client(Customizer.withDefaults()) // Enable OAuth2 client functionality
             .csrf(ServerHttpSecurity.CsrfSpec::disable)
             .addFilterAfter(removeJwtFilter, SecurityWebFiltersOrder.AUTHENTICATION);
         return http.build();
