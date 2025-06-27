@@ -11,7 +11,6 @@ import org.springframework.context.annotation.Configuration;
 import org.springframework.core.io.ClassPathResource;
 import org.springframework.security.config.Customizer;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
-import org.springframework.security.config.annotation.web.configurers.AbstractHttpConfigurer;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.oauth2.core.AuthorizationGrantType;
 import org.springframework.security.oauth2.core.ClientAuthenticationMethod;
@@ -43,7 +42,6 @@ public class AuthorizationServerConfig {
 
     @Bean
     public SecurityFilterChain authServerSecurityFilterChain(HttpSecurity http) throws Exception {
-
         // 开启默认OAuth2端点 (/oauth2/authorize /token /jwks)
         OAuth2AuthorizationServerConfiguration.applyDefaultSecurity(http);
         // 自定义登录入口（未登录跳转 /login）
@@ -51,8 +49,11 @@ public class AuthorizationServerConfig {
                 .exceptionHandling(e -> e.authenticationEntryPoint(
                         new LoginUrlAuthenticationEntryPoint("/login")))
                 .csrf(csrf -> csrf.ignoringRequestMatchers(
-                        new AntPathRequestMatcher("/oauth2/token")))
+                        new AntPathRequestMatcher("/oauth2/token"),
+                        new AntPathRequestMatcher("/login")))
+                // Don't apply default formLogin to avoid conflict with the one in SecurityConfig
                 .formLogin(Customizer.withDefaults());
+        
         return http.build();
     }
 

@@ -21,8 +21,11 @@ public class SecurityConfig {
                 .authorizeHttpRequests(auth -> auth
                         .requestMatchers(EndpointRequest.toAnyEndpoint()).permitAll()
                         .requestMatchers("/rsa/publicKey").permitAll()
+                        .requestMatchers("/login", "/error").permitAll()
                         .anyRequest().authenticated())
-                .formLogin(form -> form.loginPage("/login")
+                .formLogin(form -> form
+                        .loginPage("/login")
+                        .loginProcessingUrl("/login")
                         .permitAll());
 
         return http.build();
