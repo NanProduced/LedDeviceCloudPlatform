@@ -5,9 +5,16 @@ import com.nimbusds.jose.jwk.JWKSet;
 import com.nimbusds.jose.jwk.RSAKey;
 import com.nimbusds.jose.jwk.source.JWKSource;
 import com.nimbusds.jose.proc.SecurityContext;
+import lombok.RequiredArgsConstructor;
+import org.nan.cloud.auth.boot.oidc.*;
+import org.nan.cloud.auth.boot.utils.Jwks;
+import org.nan.cloud.auth.boot.utils.ObjectPostProcessorUtils;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.boot.context.properties.EnableConfigurationProperties;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.core.Ordered;
+import org.springframework.core.annotation.Order;
 import org.springframework.core.io.ClassPathResource;
 import org.springframework.security.config.Customizer;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
@@ -18,57 +25,77 @@ import org.springframework.security.oauth2.jwt.JwtEncoder;
 import org.springframework.security.oauth2.jwt.NimbusJwtEncoder;
 import org.springframework.security.oauth2.server.authorization.client.InMemoryRegisteredClientRepository;
 import org.springframework.security.oauth2.server.authorization.client.RegisteredClient;
-import org.springframework.security.oauth2.server.authorization.config.annotation.web.configuration.OAuth2AuthorizationServerConfiguration;
+import org.springframework.security.oauth2.server.authorization.config.annotation.web.configurers.OAuth2AuthorizationServerConfigurer;
+import org.springframework.security.oauth2.server.authorization.oidc.web.OidcProviderConfigurationEndpointFilter;
+import org.springframework.security.oauth2.server.authorization.settings.AuthorizationServerSettings;
 import org.springframework.security.oauth2.server.authorization.settings.ClientSettings;
 import org.springframework.security.oauth2.server.authorization.settings.TokenSettings;
+import org.springframework.security.oauth2.server.authorization.token.JwtEncodingContext;
+import org.springframework.security.oauth2.server.authorization.token.OAuth2TokenCustomizer;
 import org.springframework.security.rsa.crypto.KeyStoreKeyFactory;
 import org.springframework.security.web.SecurityFilterChain;
-import org.springframework.security.web.authentication.LoginUrlAuthenticationEntryPoint;
-import org.springframework.security.web.util.matcher.AntPathRequestMatcher;
+import org.springframework.web.filter.OncePerRequestFilter;
 
+import java.io.IOException;
 import java.security.KeyPair;
+import java.security.NoSuchAlgorithmException;
 import java.security.interfaces.RSAPublicKey;
+import java.security.spec.InvalidKeySpecException;
 import java.time.Duration;
 import java.util.UUID;
 
+import static org.springframework.security.oauth2.server.authorization.config.annotation.web.configuration.OAuth2AuthorizationServerConfiguration.applyDefaultSecurity;
+
 @Configuration
+@RequiredArgsConstructor
+@EnableConfigurationProperties(OAuth2ServerProps.class)
 public class AuthorizationServerConfig {
 
-    @Value("${custom.security.jwt-key}")
-    private String keyStorePwd;
+    private final OAuth2ServerProps oAuth2ServerProps;
 
-    @Value("${custom.security.jwt-alias}")
-    private String keyAlias;
+    private final OidcUserInfoMapperStrategy oidcUserInfoMapperStrategy;
+
+    private final AbstractOidcTokenCustomer oidcTokenCustomerImpl;
 
     @Bean
+    @Order(Ordered.HIGHEST_PRECEDENCE)
     public SecurityFilterChain authServerSecurityFilterChain(HttpSecurity http) throws Exception {
-        // 开启默认OAuth2端点 (/oauth2/authorize /token /jwks)
-        OAuth2AuthorizationServerConfiguration.applyDefaultSecurity(http);
-        // 自定义登录入口（未登录跳转 /login）
+
+        // 注册所有 Authorization Server 的端点安全拦截规则
+        applyDefaultSecurity(http);
+        // 开启 formLogin，让 /oauth2/authorize 未登录时重定向到 /login
         http
-                .exceptionHandling(e -> e.authenticationEntryPoint(
-                        new LoginUrlAuthenticationEntryPoint("/login")))
-                .csrf(csrf -> csrf.ignoringRequestMatchers(
-                        new AntPathRequestMatcher("/oauth2/token"),
-                        new AntPathRequestMatcher("/login")))
-                // Don't apply default formLogin to avoid conflict with the one in SecurityConfig
-                .formLogin(Customizer.withDefaults());
-        
-        return http.build();
+            .oauth2ResourceServer(oauth2 -> oauth2
+                    .jwt(Customizer.withDefaults())
+            )
+            .getConfigurer(OAuth2AuthorizationServerConfigurer.class)
+            .oidc(oidc -> oidc
+                    .userInfoEndpoint(userInfo -> userInfo
+                            .userInfoMapper(new DefaultOidcUserInfoMapper(oidcUserInfoMapperStrategy)))
+            )
+            .withObjectPostProcessor(ObjectPostProcessorUtils.objectPostReturnNewObj(
+                    OncePerRequestFilter.class,
+                    OidcProviderConfigurationEndpointFilter.class,
+                    new OidcCustomProviderConfigurationEndpointFilter(authorizationServerSettings())
+            ));
+        return http
+            .formLogin(form -> form
+                .loginPage("/login")).build();
+
     }
 
     @Bean
     public InMemoryRegisteredClientRepository registeredClientRepository(PasswordEncoder passwordEncoder) {
         RegisteredClient confidentialClient = RegisteredClient.withId(UUID.randomUUID().toString())
-                .clientId("confidential-service")
+                .clientId("gateway-server-client")
                 .clientSecret(passwordEncoder.encode("nanproduced"))
                 .clientAuthenticationMethod(ClientAuthenticationMethod.CLIENT_SECRET_BASIC)
                 .authorizationGrantType(AuthorizationGrantType.AUTHORIZATION_CODE)
                 .authorizationGrantType(AuthorizationGrantType.REFRESH_TOKEN)
-                .redirectUri("http://192.168.1.222:8082/login/oauth2/code/confidential-service")
-                .scope("read").scope("write")
+                .redirectUri("http://192.168.1.222:8082/login/oauth2/code/gateway-server")
+                .scope("openid")
                 .clientSettings(ClientSettings.builder()
-                        .requireAuthorizationConsent(true)
+                        .requireAuthorizationConsent(false)
                         .build())
                 .tokenSettings(TokenSettings.builder()
                         .accessTokenTimeToLive(Duration.ofMinutes(30))
@@ -92,21 +119,40 @@ public class AuthorizationServerConfig {
     }
 
     @Bean
-    public KeyPair jwtKeyPair() {
-        KeyStoreKeyFactory keyFactory = new KeyStoreKeyFactory(
-                new ClassPathResource("demo-jwt.jks"), keyStorePwd.toCharArray());
-        return keyFactory.getKeyPair(keyAlias, keyStorePwd.toCharArray());
+    public OAuth2TokenCustomizer<JwtEncodingContext> jwtCustomer() {
+        return new DefaultOidcTokenCustomer(this.oidcTokenCustomerImpl);
     }
 
-    // Jwt编码器
+    /**
+     * 自定义JWK秘钥对
+     */
     @Bean
-    public JwtEncoder jwtEncoder(KeyPair keyPair) {
-        JWK jwk = new RSAKey.Builder((RSAPublicKey) keyPair.getPublic())
-                .privateKey(keyPair.getPrivate())
-                .keyID(UUID.randomUUID().toString())
-                .build();
-        JWKSource<SecurityContext> jwkSource = (jwkSelector, securityContext) ->
-                jwkSelector.select(new JWKSet(jwk));
+    public JWKSource<SecurityContext> jwkSource() throws NoSuchAlgorithmException, IOException, InvalidKeySpecException {
+        RSAKey rsaKey = Jwks.convertRsaKey(oAuth2ServerProps);
+        JWKSet jwkSet = new JWKSet(rsaKey);
+        return (jwkSelector, securityContext) -> jwkSelector.select(jwkSet);
+    }
+
+    /**
+     * 自定义JwtEncoder（兼容原逻辑），解决当前配置类中无法获取JwtEncoder问题
+     * @param jwkSource 自定义JWK秘钥对
+     */
+    @Bean
+    public JwtEncoder jwtEncoder(JWKSource<SecurityContext> jwkSource) {
         return new NimbusJwtEncoder(jwkSource);
+    }
+
+
+    // todo:其他配置 (logout)
+    public AuthorizationServerSettings authorizationServerSettings() {
+        return AuthorizationServerSettings.builder()
+                .issuer(oAuth2ServerProps.getIssuer())
+                .authorizationEndpoint(oAuth2ServerProps.getAuthorizationEndpoint())
+                .tokenEndpoint(oAuth2ServerProps.getTokenEndpoint())
+                .jwkSetEndpoint(oAuth2ServerProps.getJwkSetEndpoint())
+                .oidcUserInfoEndpoint(oAuth2ServerProps.getOidcUserInfoEndpoint())
+                .tokenIntrospectionEndpoint(oAuth2ServerProps.getTokenIntrospectionEndpoint())
+                .tokenRevocationEndpoint(oAuth2ServerProps.getTokenRevocationEndpoint())
+                .build();
     }
 }

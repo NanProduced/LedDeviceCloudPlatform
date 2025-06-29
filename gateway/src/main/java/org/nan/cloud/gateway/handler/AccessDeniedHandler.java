@@ -16,7 +16,7 @@ import reactor.core.publisher.Mono;
 import java.nio.charset.StandardCharsets;
 
 /**
- * 自定义返回结果（没有权限访问）
+ * 自定义登录认证入口点，处理权限不足响应
  */
 @Component
 public class AccessDeniedHandler implements ServerAccessDeniedHandler {

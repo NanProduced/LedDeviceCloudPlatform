@@ -1,0 +1,51 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8" />
+    <title>首页</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 40px; }
+        .info { margin-top: 20px; }
+        .info dt { font-weight: bold; }
+        .info dd { margin: 0 0 10px 20px; }
+        .login-prompt { margin-top: 40px; }
+        .login-prompt a {
+            display: inline-block;
+            padding: 10px 20px;
+            background: #007bff;
+            color: white;
+            text-decoration: none;
+            border-radius: 4px;
+        }
+    </style>
+</head>
+<body>
+<h1>Home Page</h1>
+
+<!-- 已登录：有 idToken 属性时显示用户信息和 token -->
+<div th:if="${uid}">
+    <dl class="info">
+        <dt>用户 ID (uid):</dt>
+        <dd th:text="${uid}">[uid]</dd>
+
+        <dt>组织 ID (oid):</dt>
+        <dd th:text="${oid}">[oid]</dd>
+
+        <dt>用户组 ID (ugid):</dt>
+        <dd th:text="${ugid}">[ugid]</dd>
+
+        <dt>ID Token:</dt>
+        <dd style="word-break:break-all;" th:text="${idToken}">[id_token]</dd>
+
+        <dt>Access Token:</dt>
+        <dd style="word-break:break-all;" th:text="${accessToken}">[access_token]</dd>
+    </dl>
+</div>
+
+<!-- 未登录：没有 idToken 属性 -->
+<div class="login-prompt" th:unless="${uid}">
+    <p>未登录</p>
+    <a th:href="@{/login}">前往登录</a>
+</div>
+</body>
+</html>

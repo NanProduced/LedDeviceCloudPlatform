@@ -1,16 +1,28 @@
 package org.nan.cloud.auth.infrastructure.security;
 
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
+import com.fasterxml.jackson.annotation.JsonTypeInfo;
 import lombok.AllArgsConstructor;
 import lombok.Data;
+import lombok.NoArgsConstructor;
+import lombok.RequiredArgsConstructor;
 import org.nan.cloud.auth.application.model.User;
 import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.core.userdetails.UserDetails;
 
+import java.io.Serial;
+import java.io.Serializable;
 import java.util.Collection;
 
 @Data
 @AllArgsConstructor
-public class UserPrincipal implements UserDetails {
+@NoArgsConstructor
+@JsonTypeInfo(use = JsonTypeInfo.Id.CLASS)
+@JsonIgnoreProperties({"accountNonExpired", "accountNonLocked", "credentialsNonExpired", "enabled"})
+public class UserPrincipal implements UserDetails, Serializable {
+
+    @Serial
+    private static final long serialVersionUID = -1225166325595693256L;
 
     private Long uid;
 

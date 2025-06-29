@@ -1,0 +1,42 @@
+package org.nan.cloud.gateway.controller;
+
+import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
+import org.springframework.security.core.context.ReactiveSecurityContextHolder;
+import org.springframework.security.core.context.SecurityContext;
+import org.springframework.security.oauth2.client.OAuth2AuthorizedClient;
+import org.springframework.security.oauth2.client.ReactiveOAuth2AuthorizedClientService;
+import org.springframework.security.oauth2.client.annotation.RegisteredOAuth2AuthorizedClient;
+import org.springframework.security.oauth2.client.authentication.OAuth2AuthenticationToken;
+import org.springframework.security.oauth2.core.oidc.user.OidcUser;
+import org.springframework.stereotype.Controller;
+import org.springframework.ui.Model;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.reactive.result.view.Rendering;
+import org.springframework.web.server.ServerWebExchange;
+import reactor.core.publisher.Mono;
+
+import java.util.Map;
+
+@Slf4j
+@Controller
+@RequiredArgsConstructor
+public class HomeController {
+
+    @GetMapping("/")
+    public Mono<String> home(
+            Model model,
+            @RegisteredOAuth2AuthorizedClient("gateway-server") OAuth2AuthorizedClient client,
+            @AuthenticationPrincipal OidcUser user
+    ) {
+        // 已拿到 client 和 user
+        model.addAttribute("uid",       user.getIdToken().getClaim("uid"));
+        model.addAttribute("oid",       user.getIdToken().getClaim("oid"));
+        model.addAttribute("ugid",      user.getIdToken().getClaim("ugid"));
+        model.addAttribute("idToken",   user.getIdToken().getTokenValue());
+        model.addAttribute("accessToken", client.getAccessToken().getTokenValue());
+        return Mono.just("home");
+    }
+
+}
