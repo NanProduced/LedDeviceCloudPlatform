@@ -2,50 +2,279 @@
 <html xmlns:th="http://www.thymeleaf.org">
 <head>
     <meta charset="UTF-8" />
-    <title>首页</title>
+    <title th:text="${uid} ? '用户首页' : '欢迎页'"></title>
+    <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
+    <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Roboto+Mono&display=swap" rel="stylesheet">
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'><rect x='0' y='0' width='16' height='16' fill='%233498db'/><text x='50%' y='60%' dominant-baseline='middle' text-anchor='middle' font-family='Arial, sans-serif' font-size='12' fill='white'>A</text></svg>" type="image/svg+xml">
+    <link rel="icon" type="image/png" href="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAYAAAAf8/9hAAAAAXNSR0IArs4c6QAAAXRJREFUOE+dkzFpQUEQRb+3q91N7yUfUa8+A+i1W2021W2o9lZ702uTTe8m1d1r+eD93r/3Z+9JvP1n/tJv/99n/7X3/t/+/v8B9Q/Q/z70JgH4fQn4fgn4fwn8vgn8PgkMBejE+r6X2b6XzF/0D4m+o9E3NP1/E4gX5+U2v4M+u3sO+g/y/0KAAngT+P0B/R/A/wH+P4B/gYAB+E8C+H8C/h+B/wH+BwAE4D8M/H8B/w/g/wDAAPx/AfgPgP8H8P8AgAD8jwD8PwH/D+B/AAAB+A/D/x/4fwDAAPx/AfgPgP8H8P8AgAD8jwD8P4D/B/B/AIAAfhPgn8/T6w+D//8N/F9BbwLwM/L8H/h/Bvj/AwCCB2tO8D+3e4/mF/pPjR+rM37X3vP/r/8BAP/4+e1qH/V/z71H/Q/6/+7X/78w/wAAAABJRU5ErkJggg==">
     <style>
-        body { font-family: Arial, sans-serif; margin: 40px; }
-        .info { margin-top: 20px; }
-        .info dt { font-weight: bold; }
-        .info dd { margin: 0 0 10px 20px; }
-        .login-prompt { margin-top: 40px; }
+        :root {
+            --primary-color: #4A90E2;
+            --secondary-color: #5C7DAF;
+            --background-color: #EBF2F7;
+            --card-background: #FFFFFF;
+            --text-color-dark: #333333;
+            --text-color-light: #666666;
+            --border-color: #DDDDDD;
+            --accent-color: #007bff;
+            --hover-color: #0056b3;
+            --copy-button-bg: #6c757d; /* Grey for copy button */
+            --copy-button-hover: #5a6268;
+            --success-color: #28a745;
+        }
+
+        body {
+            font-family: 'Roboto', sans-serif;
+            margin: 0;
+            padding: 40px 20px; /* Add horizontal padding for smaller screens */
+            background: linear-gradient(135deg, var(--background-color) 0%, #DCE8F3 100%);
+            color: var(--text-color-dark);
+            display: flex;
+            flex-direction: column;
+            align-items: center; /* Center content horizontally */
+            min-height: 100vh; /* Ensure body takes full viewport height */
+            box-sizing: border-box; /* Include padding in element's total width and height */
+        }
+
+        .container {
+            width: 100%;
+            max-width: 800px; /* Max width for content to prevent stretching on large screens */
+            background-color: var(--card-background);
+            border-radius: 12px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
+            padding: 40px;
+            text-align: center;
+            animation: fadeIn 0.8s ease-out;
+            margin-bottom: 20px; /* Space between container and any potential future elements */
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(-20px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        h1 {
+            font-size: 2.5em;
+            color: var(--primary-color);
+            margin-bottom: 30px;
+            font-weight: 700;
+            letter-spacing: 1px;
+        }
+
+        /* Styling for logged-in user info */
+        .info-section {
+            text-align: left;
+            margin-top: 30px;
+        }
+
+        .info-item {
+            display: flex; /* Use flexbox to align dd and button */
+            align-items: center; /* Vertically center items */
+            gap: 10px; /* Space between dd and button */
+            margin-bottom: 10px;
+        }
+
+        .info-section dt {
+            font-weight: 700;
+            color: var(--primary-color);
+            margin-top: 15px;
+            font-size: 1.1em;
+            border-bottom: 1px solid var(--border-color);
+            padding-bottom: 5px;
+            margin-bottom: 8px; /* Reduce margin for dt */
+        }
+
+        .info-section dd {
+            flex-grow: 1; /* Allow dd to take available space */
+            margin: 0; /* Remove default margin */
+            padding: 8px 15px;
+            background-color: #F8F9FA;
+            border-radius: 6px;
+            word-break: break-all; /* Ensure long tokens wrap */
+            font-family: 'Roboto Mono', monospace; /* Monospace for tokens */
+            font-size: 0.95em;
+            color: var(--text-color-dark);
+            box-shadow: inset 0 1px 3px rgba(0,0,0,0.05);
+            line-height: 1.4;
+            min-height: 38px; /* Ensure consistent height even for short content */
+            display: flex; /* For vertical centering of text within dd */
+            align-items: center;
+        }
+
+        /* Specific styling for the token fields */
+        .info-section dd[data-token-type="idToken"],
+        .info-section dd[data-token-type="accessToken"] {
+            font-size: 0.85em; /* Slightly smaller for long tokens */
+            max-height: 150px; /* Limit height for tokens */
+            overflow-y: auto; /* Add scroll for overflow tokens */
+            resize: vertical; /* Allow manual resizing */
+            background-color: #F0F4F7; /* Slightly different background for tokens */
+            border: 1px solid #E0E7EB;
+        }
+
+        .copy-button {
+            padding: 8px 15px;
+            background-color: var(--copy-button-bg);
+            color: white;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 0.9em;
+            font-weight: 500;
+            transition: background-color 0.2s ease, transform 0.1s ease;
+            white-space: nowrap; /* Prevent button text from wrapping */
+            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+        }
+
+        .copy-button:hover {
+            background-color: var(--copy-button-hover);
+            transform: translateY(-1px);
+        }
+
+        .copy-button:active {
+            transform: translateY(0);
+        }
+
+        .copy-button.copied {
+            background-color: var(--success-color);
+            cursor: default;
+        }
+
+        /* Styling for the login prompt */
+        .login-prompt {
+            margin-top: 40px;
+            font-size: 1.1em;
+            color: var(--text-color-light);
+        }
+
+        .login-prompt p {
+            margin-bottom: 25px;
+        }
+
         .login-prompt a {
             display: inline-block;
-            padding: 10px 20px;
-            background: #007bff;
+            padding: 12px 30px;
+            background: var(--accent-color);
             color: white;
             text-decoration: none;
-            border-radius: 4px;
+            border-radius: 8px;
+            font-weight: 700;
+            font-size: 1.05em;
+            transition: background 0.3s ease, transform 0.2s ease, box-shadow 0.3s ease;
+            box-shadow: 0 4px 10px rgba(0, 123, 255, 0.2);
+        }
+
+        .login-prompt a:hover {
+            background: var(--hover-color);
+            transform: translateY(-2px);
+            box-shadow: 0 6px 15px rgba(0, 123, 255, 0.3);
+        }
+
+        .login-prompt a:active {
+            transform: translateY(0);
+            box-shadow: 0 2px 5px rgba(0, 123, 255, 0.1);
         }
     </style>
 </head>
 <body>
-<h1>Home Page</h1>
+<div class="container">
+    <h1 th:text="${uid} ? '欢迎您，用户' : '欢迎来到系统'"></h1>
 
-<!-- 已登录：有 idToken 属性时显示用户信息和 token -->
-<div th:if="${uid}">
-    <dl class="info">
-        <dt>用户 ID (uid):</dt>
-        <dd th:text="${uid}">[uid]</dd>
+    <div th:if="${uid}" class="info-section">
+        <dl>
+            <dt>用户 ID (UID):</dt>
+            <dd th:text="${uid}">[uid]</dd>
 
-        <dt>组织 ID (oid):</dt>
-        <dd th:text="${oid}">[oid]</dd>
+            <dt>组织 ID (OID):</dt>
+            <dd th:text="${oid}">[oid]</dd>
 
-        <dt>用户组 ID (ugid):</dt>
-        <dd th:text="${ugid}">[ugid]</dd>
+            <dt>用户组 ID (UGID):</dt>
+            <dd th:text="${ugid}">[ugid]</dd>
 
-        <dt>ID Token:</dt>
-        <dd style="word-break:break-all;" th:text="${idToken}">[id_token]</dd>
+            <dt>ID Token:</dt>
+            <div class="info-item">
+                <dd data-token-type="idToken" th:text="${idToken}">[id_token]</dd>
+                <button class="copy-button" data-target="idToken">复制</button>
+            </div>
 
-        <dt>Access Token:</dt>
-        <dd style="word-break:break-all;" th:text="${accessToken}">[access_token]</dd>
-    </dl>
+            <dt>Access Token:</dt>
+            <div class="info-item">
+                <dd data-token-type="accessToken" th:text="${accessToken}">[access_token]</dd>
+                <button class="copy-button" data-target="accessToken">复制</button>
+            </div>
+        </dl>
+    </div>
+
+    <div class="login-prompt" th:unless="${uid}">
+        <p>您尚未登录。</p>
+        <a th:href="@{/login}">立即登录</a>
+    </div>
 </div>
 
-<!-- 未登录：没有 idToken 属性 -->
-<div class="login-prompt" th:unless="${uid}">
-    <p>未登录</p>
-    <a th:href="@{/login}">前往登录</a>
-</div>
+<script>
+    document.addEventListener('DOMContentLoaded', () => {
+        const copyButtons = document.querySelectorAll('.copy-button');
+
+        copyButtons.forEach(button => {
+            button.addEventListener('click', async (event) => {
+                const targetType = event.target.dataset.target;
+                const tokenElement = document.querySelector(`dd[data-token-type="${targetType}"]`);
+                const tokenValue = tokenElement ? tokenElement.textContent : '';
+
+                if (tokenValue) {
+                    try {
+                        // Use navigator.clipboard.writeText for modern browsers (HTTPS required)
+                        await navigator.clipboard.writeText(tokenValue);
+
+                        // Provide feedback to the user
+                        const originalText = button.textContent;
+                        button.textContent = '已复制！';
+                        button.classList.add('copied');
+
+                        setTimeout(() => {
+                            button.textContent = originalText;
+                            button.classList.remove('copied');
+                        }, 2000); // Revert text and color after 2 seconds
+
+                    } catch (err) {
+                        console.error('复制失败:', err);
+                        // Fallback for older browsers or non-HTTPS (less reliable)
+                        fallbackCopyTextToClipboard(tokenValue);
+                        const originalText = button.textContent;
+                        button.textContent = '复制失败';
+                        setTimeout(() => {
+                            button.textContent = originalText;
+                        }, 2000);
+                    }
+                }
+            });
+        });
+
+        // Fallback function for copying text (less recommended due to UX)
+        function fallbackCopyTextToClipboard(text) {
+            const textArea = document.createElement("textarea");
+            textArea.value = text;
+            // Avoid scrolling to bottom
+            textArea.style.top = "0";
+            textArea.style.left = "0";
+            textArea.style.position = "fixed";
+
+            document.body.appendChild(textArea);
+            textArea.focus();
+            textArea.select();
+
+            try {
+                const successful = document.execCommand('copy');
+                const msg = successful ? 'successful' : 'unsuccessful';
+                console.log('Fallback copying text command was ' + msg);
+            } catch (err) {
+                console.error('Fallback: Oops, unable to copy', err);
+            }
+
+            document.body.removeChild(textArea);
+        }
+    });
+</script>
 </body>
 </html>

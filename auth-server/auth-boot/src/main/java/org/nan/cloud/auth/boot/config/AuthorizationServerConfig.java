@@ -10,12 +10,14 @@ import org.nan.cloud.auth.boot.oidc.*;
 import org.nan.cloud.auth.boot.utils.Jwks;
 import org.nan.cloud.auth.boot.utils.ObjectPostProcessorUtils;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnMissingBean;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.core.Ordered;
 import org.springframework.core.annotation.Order;
 import org.springframework.core.io.ClassPathResource;
+import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.security.config.Customizer;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.crypto.password.PasswordEncoder;
@@ -23,8 +25,14 @@ import org.springframework.security.oauth2.core.AuthorizationGrantType;
 import org.springframework.security.oauth2.core.ClientAuthenticationMethod;
 import org.springframework.security.oauth2.jwt.JwtEncoder;
 import org.springframework.security.oauth2.jwt.NimbusJwtEncoder;
+import org.springframework.security.oauth2.server.authorization.JdbcOAuth2AuthorizationConsentService;
+import org.springframework.security.oauth2.server.authorization.JdbcOAuth2AuthorizationService;
+import org.springframework.security.oauth2.server.authorization.OAuth2AuthorizationConsentService;
+import org.springframework.security.oauth2.server.authorization.OAuth2AuthorizationService;
 import org.springframework.security.oauth2.server.authorization.client.InMemoryRegisteredClientRepository;
+import org.springframework.security.oauth2.server.authorization.client.JdbcRegisteredClientRepository;
 import org.springframework.security.oauth2.server.authorization.client.RegisteredClient;
+import org.springframework.security.oauth2.server.authorization.client.RegisteredClientRepository;
 import org.springframework.security.oauth2.server.authorization.config.annotation.web.configurers.OAuth2AuthorizationServerConfigurer;
 import org.springframework.security.oauth2.server.authorization.oidc.web.OidcProviderConfigurationEndpointFilter;
 import org.springframework.security.oauth2.server.authorization.settings.AuthorizationServerSettings;
@@ -65,6 +73,7 @@ public class AuthorizationServerConfig {
         applyDefaultSecurity(http);
         // 开启 formLogin，让 /oauth2/authorize 未登录时重定向到 /login
         http
+            // 支持OIDC的/userinfo
             .oauth2ResourceServer(oauth2 -> oauth2
                     .jwt(Customizer.withDefaults())
             )
@@ -84,9 +93,51 @@ public class AuthorizationServerConfig {
 
     }
 
+//    @Bean
+//    public InMemoryRegisteredClientRepository registeredClientRepository(PasswordEncoder passwordEncoder) {
+//        RegisteredClient confidentialClient = RegisteredClient.withId(UUID.randomUUID().toString())
+//                .clientId("gateway-server-client")
+//                .clientSecret(passwordEncoder.encode("nanproduced"))
+//                .clientAuthenticationMethod(ClientAuthenticationMethod.CLIENT_SECRET_BASIC)
+//                .authorizationGrantType(AuthorizationGrantType.AUTHORIZATION_CODE)
+//                .authorizationGrantType(AuthorizationGrantType.REFRESH_TOKEN)
+//                .redirectUri("http://192.168.1.222:8082/login/oauth2/code/gateway-server")
+//                .scope("openid")
+//                .clientSettings(ClientSettings.builder()
+//                        .requireAuthorizationConsent(false)
+//                        .build())
+//                .tokenSettings(TokenSettings.builder()
+//                        .accessTokenTimeToLive(Duration.ofMinutes(30))
+//                        .refreshTokenTimeToLive(Duration.ofHours(12))
+//                        .build())
+//                .build();
+//
+//        RegisteredClient publicClient = RegisteredClient.withId(UUID.randomUUID().toString())
+//                .clientId("public-spa")
+//                .clientAuthenticationMethod(ClientAuthenticationMethod.NONE)
+//                .authorizationGrantType(AuthorizationGrantType.AUTHORIZATION_CODE)
+//                .redirectUri("http://192.168.1.185:8083/spa/callback")
+//                .scope("read")
+//                .clientSettings(ClientSettings.builder()
+//                        .requireProofKey(true)
+//                        .build())
+//                .build();
+//
+//        return new InMemoryRegisteredClientRepository(confidentialClient, publicClient);
+//
+//    }
+
     @Bean
-    public InMemoryRegisteredClientRepository registeredClientRepository(PasswordEncoder passwordEncoder) {
-        RegisteredClient confidentialClient = RegisteredClient.withId(UUID.randomUUID().toString())
+    public RegisteredClientRepository registeredClientRepository(JdbcTemplate jdbcTemplate, PasswordEncoder passwordEncoder) {
+        JdbcRegisteredClientRepository jdbcRegisteredClientRepository = new JdbcRegisteredClientRepository(jdbcTemplate);
+        if (null == jdbcRegisteredClientRepository.findByClientId("gateway-server-client")) {
+            jdbcRegisteredClientRepository.save(createDefaultGatewayClient(passwordEncoder));
+        }
+        return jdbcRegisteredClientRepository;
+    }
+
+    private RegisteredClient createDefaultGatewayClient(PasswordEncoder passwordEncoder) {
+        return RegisteredClient.withId(UUID.randomUUID().toString())
                 .clientId("gateway-server-client")
                 .clientSecret(passwordEncoder.encode("nanproduced"))
                 .clientAuthenticationMethod(ClientAuthenticationMethod.CLIENT_SECRET_BASIC)
@@ -94,28 +145,24 @@ public class AuthorizationServerConfig {
                 .authorizationGrantType(AuthorizationGrantType.REFRESH_TOKEN)
                 .redirectUri("http://192.168.1.222:8082/login/oauth2/code/gateway-server")
                 .scope("openid")
-                .clientSettings(ClientSettings.builder()
-                        .requireAuthorizationConsent(false)
-                        .build())
+                .clientSettings(ClientSettings.builder().requireAuthorizationConsent(false).build())
                 .tokenSettings(TokenSettings.builder()
                         .accessTokenTimeToLive(Duration.ofMinutes(30))
                         .refreshTokenTimeToLive(Duration.ofHours(12))
                         .build())
                 .build();
+    }
 
-        RegisteredClient publicClient = RegisteredClient.withId(UUID.randomUUID().toString())
-                .clientId("public-spa")
-                .clientAuthenticationMethod(ClientAuthenticationMethod.NONE)
-                .authorizationGrantType(AuthorizationGrantType.AUTHORIZATION_CODE)
-                .redirectUri("http://192.168.1.185:8083/spa/callback")
-                .scope("read")
-                .clientSettings(ClientSettings.builder()
-                        .requireProofKey(true)
-                        .build())
-                .build();
+    /** 授权信息持久化 */
+    @Bean
+    public OAuth2AuthorizationService authorizationService(JdbcTemplate jdbcTemplate, RegisteredClientRepository repo) {
+        return new JdbcOAuth2AuthorizationService(jdbcTemplate, repo);
+    }
 
-        return new InMemoryRegisteredClientRepository(confidentialClient, publicClient);
-
+    /** 授权同意持久化 */
+    @Bean
+    public OAuth2AuthorizationConsentService authorizationConsentService(JdbcTemplate jdbcTemplate, RegisteredClientRepository registeredClientRepository) {
+        return new JdbcOAuth2AuthorizationConsentService(jdbcTemplate, registeredClientRepository);
     }
 
     @Bean

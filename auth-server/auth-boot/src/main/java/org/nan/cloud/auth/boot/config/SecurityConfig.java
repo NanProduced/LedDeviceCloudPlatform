@@ -31,7 +31,11 @@ public class SecurityConfig {
                     .ignoringRequestMatchers(AUTH_WHITELIST))
                 .formLogin(form -> form
                         .loginPage("/login")
-                        .loginProcessingUrl("/login"));
+                        .defaultSuccessUrl("/", false)
+                        .loginProcessingUrl("/login"))
+                .logout(logout -> logout
+                        .logoutUrl("/logout")
+                );
 
         return http.build();
     }
