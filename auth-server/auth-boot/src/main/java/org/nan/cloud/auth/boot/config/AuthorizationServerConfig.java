@@ -81,6 +81,7 @@ public class AuthorizationServerConfig {
             .oidc(oidc -> oidc
                     .userInfoEndpoint(userInfo -> userInfo
                             .userInfoMapper(new DefaultOidcUserInfoMapper(oidcUserInfoMapperStrategy)))
+                    .logoutEndpoint(Customizer.withDefaults())
             )
             .withObjectPostProcessor(ObjectPostProcessorUtils.objectPostReturnNewObj(
                     OncePerRequestFilter.class,
@@ -92,40 +93,6 @@ public class AuthorizationServerConfig {
                 .loginPage("/login")).build();
 
     }
-
-//    @Bean
-//    public InMemoryRegisteredClientRepository registeredClientRepository(PasswordEncoder passwordEncoder) {
-//        RegisteredClient confidentialClient = RegisteredClient.withId(UUID.randomUUID().toString())
-//                .clientId("gateway-server-client")
-//                .clientSecret(passwordEncoder.encode("nanproduced"))
-//                .clientAuthenticationMethod(ClientAuthenticationMethod.CLIENT_SECRET_BASIC)
-//                .authorizationGrantType(AuthorizationGrantType.AUTHORIZATION_CODE)
-//                .authorizationGrantType(AuthorizationGrantType.REFRESH_TOKEN)
-//                .redirectUri("http://192.168.1.222:8082/login/oauth2/code/gateway-server")
-//                .scope("openid")
-//                .clientSettings(ClientSettings.builder()
-//                        .requireAuthorizationConsent(false)
-//                        .build())
-//                .tokenSettings(TokenSettings.builder()
-//                        .accessTokenTimeToLive(Duration.ofMinutes(30))
-//                        .refreshTokenTimeToLive(Duration.ofHours(12))
-//                        .build())
-//                .build();
-//
-//        RegisteredClient publicClient = RegisteredClient.withId(UUID.randomUUID().toString())
-//                .clientId("public-spa")
-//                .clientAuthenticationMethod(ClientAuthenticationMethod.NONE)
-//                .authorizationGrantType(AuthorizationGrantType.AUTHORIZATION_CODE)
-//                .redirectUri("http://192.168.1.185:8083/spa/callback")
-//                .scope("read")
-//                .clientSettings(ClientSettings.builder()
-//                        .requireProofKey(true)
-//                        .build())
-//                .build();
-//
-//        return new InMemoryRegisteredClientRepository(confidentialClient, publicClient);
-//
-//    }
 
     @Bean
     public RegisteredClientRepository registeredClientRepository(JdbcTemplate jdbcTemplate, PasswordEncoder passwordEncoder) {
@@ -144,8 +111,11 @@ public class AuthorizationServerConfig {
                 .authorizationGrantType(AuthorizationGrantType.AUTHORIZATION_CODE)
                 .authorizationGrantType(AuthorizationGrantType.REFRESH_TOKEN)
                 .redirectUri("http://192.168.1.222:8082/login/oauth2/code/gateway-server")
+                .postLogoutRedirectUri("http://192.168.1.222:8082/logout_status")
                 .scope("openid")
-                .clientSettings(ClientSettings.builder().requireAuthorizationConsent(false).build())
+                .clientSettings(ClientSettings.builder()
+                        .requireAuthorizationConsent(false)
+                        .build())
                 .tokenSettings(TokenSettings.builder()
                         .accessTokenTimeToLive(Duration.ofMinutes(30))
                         .refreshTokenTimeToLive(Duration.ofHours(12))
@@ -200,6 +170,7 @@ public class AuthorizationServerConfig {
                 .oidcUserInfoEndpoint(oAuth2ServerProps.getOidcUserInfoEndpoint())
                 .tokenIntrospectionEndpoint(oAuth2ServerProps.getTokenIntrospectionEndpoint())
                 .tokenRevocationEndpoint(oAuth2ServerProps.getTokenRevocationEndpoint())
+                .oidcLogoutEndpoint(oAuth2ServerProps.getOidcEndSessionEndpoint())
                 .build();
     }
 }

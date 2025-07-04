@@ -62,6 +62,19 @@ public class OAuth2ServerProps {
      * OAuth2 吊销令牌接口URI
      */
     private String tokenRevocationEndpoint = "/oauth2/revoke";
+
+    /**
+     * 登出URL
+     */
+    private String oidcEndSessionEndpoint = "/connect/logout";
+    /**
+     * 默认登出重定向页面
+     */
+    private String logOutDefaultRedirectUrl = "/logout_status";
+    /**
+     * 是否开启SLO
+     */
+    private Boolean enableOidcSLO = true;
     /**
      * 认证服务JWT解密RSA公钥
      */

@@ -15,16 +15,21 @@ import org.springframework.security.config.Customizer;
 import org.springframework.security.config.annotation.web.reactive.EnableWebFluxSecurity;
 import org.springframework.security.config.web.server.SecurityWebFiltersOrder;
 import org.springframework.security.config.web.server.ServerHttpSecurity;
+import org.springframework.security.oauth2.client.oidc.web.logout.OidcClientInitiatedLogoutSuccessHandler;
+import org.springframework.security.oauth2.client.oidc.web.server.logout.OidcClientInitiatedServerLogoutSuccessHandler;
 import org.springframework.security.oauth2.client.registration.ReactiveClientRegistrationRepository;
 import org.springframework.security.oauth2.client.web.server.ServerOAuth2AuthorizedClientRepository;
 import org.springframework.security.oauth2.client.web.server.WebSessionServerOAuth2AuthorizedClientRepository;
 import org.springframework.security.web.server.SecurityWebFilterChain;
 import org.springframework.security.web.server.authentication.ServerAuthenticationEntryPointFailureHandler;
+import org.springframework.security.web.server.authentication.logout.ServerLogoutSuccessHandler;
 import org.springframework.security.web.server.context.ServerSecurityContextRepository;
 import org.springframework.security.web.server.context.WebSessionServerSecurityContextRepository;
 import org.springframework.security.web.server.util.matcher.NegatedServerWebExchangeMatcher;
 import org.springframework.security.web.server.util.matcher.ServerWebExchangeMatcher;
 import org.springframework.security.web.server.util.matcher.ServerWebExchangeMatchers;
+
+import java.net.URI;
 
 @Configuration
 @RequiredArgsConstructor
@@ -41,6 +46,7 @@ public class OAuth2GatewayServerConfig {
 
     // todo: 注意修改重定向端点
     private final static String auth_url = "/oauth2/authorization/gateway-server";
+    private final static String postLogoutRedirectUri = "{baseUrl}/logout_status";
 
     private final static ServerWebExchangeMatcher oauth2AuthMatchers = ServerWebExchangeMatchers
             .pathMatchers(
@@ -54,8 +60,8 @@ public class OAuth2GatewayServerConfig {
     public SecurityWebFilterChain oauth2AuthChain(ServerHttpSecurity http,
                                                          AuthenticationEntryPoint authenticationEntryPoint,
                                                          SaveRequestServerOauth2AuthorizationRequestResolver saveRequestServerOauth2AuthorizationRequestResolver,
-                                                         ServerSecurityContextRepository securityContextRepository
-                                                         ) {
+                                                         ServerSecurityContextRepository securityContextRepository,
+                                                         OidcClientInitiatedServerLogoutSuccessHandler oidcClientInitiatedServerLogoutSuccessHandler) {
         http
             .securityMatcher(oauth2AuthMatchers)
             //禁用CSRF token，否则post请求会被拦截返回403
@@ -73,6 +79,9 @@ public class OAuth2GatewayServerConfig {
                     // 提取redirect_uri保存到session
                     .authorizationRequestResolver(saveRequestServerOauth2AuthorizationRequestResolver)
             )
+            .logout(logout -> logout
+                    .logoutUrl("/logout")
+                    .logoutSuccessHandler(oidcClientInitiatedServerLogoutSuccessHandler))
             .oauth2Client(Customizer.withDefaults());
         return http.build();
     }
@@ -122,6 +131,16 @@ public class OAuth2GatewayServerConfig {
     @Primary
     public SaveRequestServerOauth2AuthorizationRequestResolver saveRequestServerOauth2AuthorizationRequestResolver(ReactiveClientRegistrationRepository clientRegistrationRepository) {
         return new SaveRequestServerOauth2AuthorizationRequestResolver(clientRegistrationRepository);
+    }
+
+    @Bean
+    public OidcClientInitiatedServerLogoutSuccessHandler OidcClientInitiatedServerLogoutSuccessHandler(ReactiveClientRegistrationRepository registrationRepository) {
+        OidcClientInitiatedServerLogoutSuccessHandler handler = new OidcClientInitiatedServerLogoutSuccessHandler(registrationRepository);
+        handler.setPostLogoutRedirectUri(postLogoutRedirectUri);
+        //若当前SCG Client Session已过期，则无法获取OidcUser信息（id_token），
+        //则默认跳转到登出结果页（避免默认重定向到/login?logout）
+        handler.setLogoutSuccessUrl(URI.create("http://192.168.1.222:8082/logout_status"));
+        return handler;
     }
 
 
