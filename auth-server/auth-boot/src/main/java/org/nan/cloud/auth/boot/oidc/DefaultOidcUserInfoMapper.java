@@ -1,5 +1,6 @@
 package org.nan.cloud.auth.boot.oidc;
 
+import org.nan.cloud.auth.boot.oidc.strategy.OidcUserInfoMapperStrategy;
 import org.springframework.security.oauth2.core.OAuth2AccessToken;
 import org.springframework.security.oauth2.core.oidc.OidcIdToken;
 import org.springframework.security.oauth2.core.oidc.OidcScopes;

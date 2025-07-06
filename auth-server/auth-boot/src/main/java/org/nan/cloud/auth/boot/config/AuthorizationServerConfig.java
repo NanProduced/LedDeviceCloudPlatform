@@ -1,22 +1,22 @@
 package org.nan.cloud.auth.boot.config;
 
-import com.nimbusds.jose.jwk.JWK;
 import com.nimbusds.jose.jwk.JWKSet;
 import com.nimbusds.jose.jwk.RSAKey;
 import com.nimbusds.jose.jwk.source.JWKSource;
 import com.nimbusds.jose.proc.SecurityContext;
 import lombok.RequiredArgsConstructor;
+import org.nan.cloud.auth.boot.oauth.JdbcOidcAuthorizationService;
+import org.nan.cloud.auth.boot.oauth.OidcAuthorizationService;
 import org.nan.cloud.auth.boot.oidc.*;
+import org.nan.cloud.auth.boot.oidc.template.AbstractOidcTokenCustomer;
+import org.nan.cloud.auth.boot.oidc.strategy.OidcUserInfoMapperStrategy;
 import org.nan.cloud.auth.boot.utils.Jwks;
 import org.nan.cloud.auth.boot.utils.ObjectPostProcessorUtils;
-import org.springframework.beans.factory.annotation.Value;
-import org.springframework.boot.autoconfigure.condition.ConditionalOnMissingBean;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.core.Ordered;
 import org.springframework.core.annotation.Order;
-import org.springframework.core.io.ClassPathResource;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.security.config.Customizer;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
@@ -29,7 +29,6 @@ import org.springframework.security.oauth2.server.authorization.JdbcOAuth2Author
 import org.springframework.security.oauth2.server.authorization.JdbcOAuth2AuthorizationService;
 import org.springframework.security.oauth2.server.authorization.OAuth2AuthorizationConsentService;
 import org.springframework.security.oauth2.server.authorization.OAuth2AuthorizationService;
-import org.springframework.security.oauth2.server.authorization.client.InMemoryRegisteredClientRepository;
 import org.springframework.security.oauth2.server.authorization.client.JdbcRegisteredClientRepository;
 import org.springframework.security.oauth2.server.authorization.client.RegisteredClient;
 import org.springframework.security.oauth2.server.authorization.client.RegisteredClientRepository;
@@ -40,14 +39,11 @@ import org.springframework.security.oauth2.server.authorization.settings.ClientS
 import org.springframework.security.oauth2.server.authorization.settings.TokenSettings;
 import org.springframework.security.oauth2.server.authorization.token.JwtEncodingContext;
 import org.springframework.security.oauth2.server.authorization.token.OAuth2TokenCustomizer;
-import org.springframework.security.rsa.crypto.KeyStoreKeyFactory;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.web.filter.OncePerRequestFilter;
 
 import java.io.IOException;
-import java.security.KeyPair;
 import java.security.NoSuchAlgorithmException;
-import java.security.interfaces.RSAPublicKey;
 import java.security.spec.InvalidKeySpecException;
 import java.time.Duration;
 import java.util.UUID;
@@ -115,6 +111,11 @@ public class AuthorizationServerConfig {
                 .scope("openid")
                 .clientSettings(ClientSettings.builder()
                         .requireAuthorizationConsent(false)
+                        // ➜ ① 反向通道（Back-Channel）接收端点
+                        .setting("settings.client.backchannel-logout-uri",
+                                "http://192.168.1.222:8082/connect/back-channel/logout")
+                        // ➜ ② 是否要求 RP 按 session 维度登出（可选，默认为 false）
+                        .setting("settings.client.backchannel-logout-session-required", Boolean.TRUE)
                         .build())
                 .tokenSettings(TokenSettings.builder()
                         .accessTokenTimeToLive(Duration.ofMinutes(30))
@@ -125,8 +126,8 @@ public class AuthorizationServerConfig {
 
     /** 授权信息持久化 */
     @Bean
-    public OAuth2AuthorizationService authorizationService(JdbcTemplate jdbcTemplate, RegisteredClientRepository repo) {
-        return new JdbcOAuth2AuthorizationService(jdbcTemplate, repo);
+    public OidcAuthorizationService authorizationService(JdbcTemplate jdbcTemplate, RegisteredClientRepository repo) {
+        return new JdbcOidcAuthorizationService(jdbcTemplate, repo);
     }
 
     /** 授权同意持久化 */

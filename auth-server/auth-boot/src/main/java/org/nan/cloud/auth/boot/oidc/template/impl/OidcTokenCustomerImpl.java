@@ -1,6 +1,6 @@
-package org.nan.cloud.auth.boot.oidc.strategy;
+package org.nan.cloud.auth.boot.oidc.template.impl;
 
-import org.nan.cloud.auth.boot.oidc.AbstractOidcTokenCustomer;
+import org.nan.cloud.auth.boot.oidc.template.AbstractOidcTokenCustomer;
 import org.springframework.security.oauth2.server.authorization.token.JwtEncodingContext;
 import org.springframework.stereotype.Component;
 

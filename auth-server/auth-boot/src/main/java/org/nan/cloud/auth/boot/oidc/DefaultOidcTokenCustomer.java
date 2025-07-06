@@ -1,6 +1,7 @@
 package org.nan.cloud.auth.boot.oidc;
 
 import org.nan.cloud.auth.boot.config.OAuth2Constants;
+import org.nan.cloud.auth.boot.oidc.template.AbstractOidcTokenCustomer;
 import org.nan.cloud.auth.infrastructure.security.UserPrincipal;
 import org.springframework.security.authentication.AuthenticationServiceException;
 import org.springframework.security.core.Authentication;

@@ -1,7 +1,7 @@
-package org.nan.cloud.auth.boot.oidc.strategy;
+package org.nan.cloud.auth.boot.oidc.strategy.impl;
 
 import lombok.extern.slf4j.Slf4j;
-import org.nan.cloud.auth.boot.oidc.OidcUserInfoMapperStrategy;
+import org.nan.cloud.auth.boot.oidc.strategy.OidcUserInfoMapperStrategy;
 import org.springframework.security.oauth2.core.OAuth2AccessToken;
 import org.springframework.security.oauth2.core.oidc.OidcIdToken;
 import org.springframework.security.oauth2.server.authorization.OAuth2Authorization;

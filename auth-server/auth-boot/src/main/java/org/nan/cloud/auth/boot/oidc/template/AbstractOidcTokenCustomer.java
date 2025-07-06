@@ -1,4 +1,4 @@
-package org.nan.cloud.auth.boot.oidc;
+package org.nan.cloud.auth.boot.oidc.template;
 
 import org.springframework.security.oauth2.server.authorization.token.JwtEncodingContext;
 
