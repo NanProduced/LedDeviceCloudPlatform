@@ -1,11 +1,11 @@
 package org.nan.cloud.auth.boot.config;
 
 import org.nan.cloud.auth.boot.oauth.OidcAuthorizationService;
-import org.nan.cloud.auth.boot.oidc.OidcLogoutSuccessHandler;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnMissingBean;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.http.HttpMethod;
 import org.springframework.security.authentication.DefaultAuthenticationEventPublisher;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configurers.AbstractHttpConfigurer;
@@ -15,6 +15,8 @@ import org.springframework.security.oauth2.server.authorization.client.Registere
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.savedrequest.HttpSessionRequestCache;
 import org.springframework.security.web.savedrequest.RequestCache;
+import org.springframework.security.web.server.util.matcher.ServerWebExchangeMatchers;
+import org.springframework.security.web.util.matcher.AntPathRequestMatcher;
 
 @Configuration
 public class SecurityConfig {
@@ -22,7 +24,7 @@ public class SecurityConfig {
     private static final String[] AUTH_WHITELIST = {"/css/**", "/js/**", "/webjars/**", "/img/**", "/favicon.ico"};
 
     @Bean
-    public SecurityFilterChain webFilterChain(HttpSecurity http, RegisteredClientRepository registeredClientRepository, OidcAuthorizationService oidcAuthorizationService, OAuth2ServerProps oAuth2ServerProps) throws Exception {
+    public SecurityFilterChain webFilterChain(HttpSecurity http) throws Exception {
         http
                 .authorizeHttpRequests(auth -> auth
                         .requestMatchers("/rsa/publicKey").permitAll()
@@ -35,11 +37,7 @@ public class SecurityConfig {
                 .formLogin(form -> form
                         .loginPage("/login")
                         .defaultSuccessUrl("/", false)
-                        .loginProcessingUrl("/login"))
-                .logout(logout -> logout
-                        .logoutUrl("/connect/logout")
-                        .logoutSuccessHandler(new OidcLogoutSuccessHandler(registeredClientRepository, oidcAuthorizationService, oAuth2ServerProps))
-                );
+                        .loginProcessingUrl("/login"));
 
         return http.build();
     }

@@ -11,6 +11,7 @@ import org.springframework.context.annotation.Configuration;
 import org.springframework.context.annotation.Primary;
 import org.springframework.core.Ordered;
 import org.springframework.core.annotation.Order;
+import org.springframework.http.HttpMethod;
 import org.springframework.security.config.Customizer;
 import org.springframework.security.config.annotation.web.reactive.EnableWebFluxSecurity;
 import org.springframework.security.config.web.server.SecurityWebFiltersOrder;
@@ -51,9 +52,10 @@ public class OAuth2GatewayServerConfig {
     private final static ServerWebExchangeMatcher oauth2AuthMatchers = ServerWebExchangeMatchers
             .pathMatchers(
                     "/oauth2/authorization/**",
-                    "/login/oauth2/code/**");
+                    "/login/oauth2/code/**",
+                    "/logout");
 
-    private static final String[] AUTH_WHITELIST = {"/", "/css/**", "/js/**", "/webjars/**", "/img/**", "/favicon.ico"};
+    private static final String[] AUTH_WHITELIST = {"/", "/logout", "/css/**", "/js/**", "/webjars/**", "/img/**", "/favicon.ico"};
 
     @Bean
     @Order(Ordered.HIGHEST_PRECEDENCE)
@@ -81,6 +83,9 @@ public class OAuth2GatewayServerConfig {
             )
             .logout(logout -> logout
                     .logoutUrl("/logout")
+                    //默认只能接收POST /logout
+                    //此处修改为接收GET /logout
+                    .requiresLogout(ServerWebExchangeMatchers.pathMatchers(HttpMethod.GET, "/logout"))
                     .logoutSuccessHandler(oidcClientInitiatedServerLogoutSuccessHandler))
             .oidcLogout(logout -> logout.backChannel(Customizer.withDefaults()))
             .oauth2Client(Customizer.withDefaults());
@@ -100,6 +105,7 @@ public class OAuth2GatewayServerConfig {
             )
             .authorizeExchange(e -> e
                     .pathMatchers(AUTH_WHITELIST).authenticated()
+                    .pathMatchers("/logout_status").permitAll()
                     // 过滤白名单
                     .pathMatchers(ignoreUrlsConfig.getUrls().toArray(String[]::new)).permitAll()
                     // Casbin RBAC 接口权限校验

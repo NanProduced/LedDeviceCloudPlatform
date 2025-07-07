@@ -11,6 +11,8 @@ import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.GetMapping;
 import reactor.core.publisher.Mono;
 
+import java.util.Objects;
+
 @Slf4j
 @Controller
 @RequiredArgsConstructor
@@ -23,11 +25,13 @@ public class HomeController {
             @AuthenticationPrincipal OidcUser user
     ) {
         // 已拿到 client 和 user
+        model.addAttribute("username",  user.getName());
         model.addAttribute("uid",       user.getIdToken().getClaim("uid"));
         model.addAttribute("oid",       user.getIdToken().getClaim("oid"));
         model.addAttribute("ugid",      user.getIdToken().getClaim("ugid"));
         model.addAttribute("idToken",   user.getIdToken().getTokenValue());
         model.addAttribute("accessToken", client.getAccessToken().getTokenValue());
+        model.addAttribute("refreshToken", Objects.requireNonNullElse(client.getRefreshToken().getTokenValue(), "未签发Refresh_Token"));
         return Mono.just("home");
     }
 

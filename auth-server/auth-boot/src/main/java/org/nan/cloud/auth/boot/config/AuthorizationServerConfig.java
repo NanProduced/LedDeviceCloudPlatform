@@ -63,7 +63,10 @@ public class AuthorizationServerConfig {
 
     @Bean
     @Order(Ordered.HIGHEST_PRECEDENCE)
-    public SecurityFilterChain authServerSecurityFilterChain(HttpSecurity http) throws Exception {
+    public SecurityFilterChain authServerSecurityFilterChain(HttpSecurity http,
+                                                             RegisteredClientRepository registeredClientRepository,
+                                                             OidcAuthorizationService oidcAuthorizationService,
+                                                             OAuth2ServerProps oAuth2ServerProps) throws Exception {
 
         // 注册所有 Authorization Server 的端点安全拦截规则
         applyDefaultSecurity(http);
@@ -77,7 +80,8 @@ public class AuthorizationServerConfig {
             .oidc(oidc -> oidc
                     .userInfoEndpoint(userInfo -> userInfo
                             .userInfoMapper(new DefaultOidcUserInfoMapper(oidcUserInfoMapperStrategy)))
-                    .logoutEndpoint(Customizer.withDefaults())
+                    .logoutEndpoint(logout -> logout
+                            .logoutResponseHandler(new BackChannelLogoutHandler(registeredClientRepository, oidcAuthorizationService, oAuth2ServerProps)))
             )
             .withObjectPostProcessor(ObjectPostProcessorUtils.objectPostReturnNewObj(
                     OncePerRequestFilter.class,
@@ -161,7 +165,6 @@ public class AuthorizationServerConfig {
     }
 
 
-    // todo:其他配置 (logout)
     public AuthorizationServerSettings authorizationServerSettings() {
         return AuthorizationServerSettings.builder()
                 .issuer(oAuth2ServerProps.getIssuer())

@@ -3,7 +3,8 @@ package org.nan.cloud.auth.boot.oidc.enums;
 public enum LoginStateEnum {
 
     LOGIN(1, "已登录"),
-    LOGOUT(2, "已登出");
+    LOGOUT(2, "已登出"),
+    EXPIRED(3, "已过期");
 
     /**
      * 登录状态

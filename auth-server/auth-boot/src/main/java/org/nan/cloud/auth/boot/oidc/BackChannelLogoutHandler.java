@@ -13,8 +13,10 @@ import com.nimbusds.openid.connect.sdk.BackChannelLogoutRequest;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
+import lombok.RequiredArgsConstructor;
 import lombok.SneakyThrows;
 import lombok.extern.slf4j.Slf4j;
+import lombok.val;
 import org.nan.cloud.auth.boot.config.OAuth2Constants;
 import org.nan.cloud.auth.boot.config.OAuth2ServerProps;
 import org.nan.cloud.auth.boot.oauth.OidcAuthorizationService;
@@ -29,8 +31,9 @@ import org.springframework.security.oauth2.server.authorization.OAuth2Authorizat
 import org.springframework.security.oauth2.server.authorization.OAuth2AuthorizationCode;
 import org.springframework.security.oauth2.server.authorization.client.RegisteredClient;
 import org.springframework.security.oauth2.server.authorization.client.RegisteredClientRepository;
-import org.springframework.security.web.authentication.logout.LogoutSuccessHandler;
-import org.springframework.util.CollectionUtils;
+import org.springframework.security.oauth2.server.authorization.oidc.authentication.OidcLogoutAuthenticationToken;
+import org.springframework.security.web.authentication.AuthenticationSuccessHandler;
+import org.springframework.security.web.authentication.logout.SecurityContextLogoutHandler;
 import org.springframework.util.StringUtils;
 
 import java.io.IOException;
@@ -39,7 +42,7 @@ import java.util.*;
 import java.util.stream.Collectors;
 
 @Slf4j
-public class OidcLogoutSuccessHandler implements LogoutSuccessHandler {
+public class BackChannelLogoutHandler implements AuthenticationSuccessHandler {
 
     private RegisteredClientRepository registeredClientRepository;
 
@@ -52,7 +55,7 @@ public class OidcLogoutSuccessHandler implements LogoutSuccessHandler {
     private JWSSigner jwsSigner;
 
     @SneakyThrows
-    public OidcLogoutSuccessHandler(RegisteredClientRepository registeredClientRepository,
+    public BackChannelLogoutHandler(RegisteredClientRepository registeredClientRepository,
                                     OidcAuthorizationService oidcAuthorizationService,
                                     OAuth2ServerProps oAuth2ServerProps) {
         this.registeredClientRepository = registeredClientRepository;
@@ -64,35 +67,21 @@ public class OidcLogoutSuccessHandler implements LogoutSuccessHandler {
     }
 
     @Override
-    public void onLogoutSuccess(HttpServletRequest request, HttpServletResponse response, Authentication authentication) throws IOException, ServletException {
-        if (this.oAuth2ServerProps.getEnableOidcSLO()) {
-            oidcSloProcess(request, response, authentication);
+    public void onAuthenticationSuccess(HttpServletRequest request, HttpServletResponse response, Authentication authentication) throws IOException, ServletException {
+
+        // 是否开启SLO
+        if (!oAuth2ServerProps.getEnableOidcSLO()) {
+            log.debug("Custom-Debug-log===>user: {} log out, OIDC SLO not enable", authentication.getName());
             return;
         }
-        postLogoutRedirectUriDirectly(request, response);
-    }
 
-    private void postLogoutRedirectUriDirectly(HttpServletRequest request, HttpServletResponse response) throws IOException{
-        redirectPostLogoutRedirectUri(request, response, null);
-    }
+        // OP 本地 Session 立即失效
+        new SecurityContextLogoutHandler().logout(request, response, authentication);
 
-    /**
-     * OIDC SLO单点登出
-     * @param request
-     * @param response
-     * @param authentication
-     * @throws IOException
-     */
-    private void oidcSloProcess(HttpServletRequest request, HttpServletResponse response, Authentication authentication) throws IOException {
-        String idTokenHint = request.getParameter("id_token_hint");
-        if (!StringUtils.hasText(idTokenHint)) {
-            log.error("id_token_hint should not empty for OIDC end_session_point");
-            response.setStatus(HttpStatus.BAD_REQUEST.value());
-            response.getWriter().flush();
-            return;
-        }
-        // 根据idToken查询当前RP认证信息（查询并验证idToken）
-        OAuth2Authorization curOAuth2Authorization = oidcAuthorizationService.findByIdToken(idTokenHint);
+        // 已经验证通过的注销AuthorizationToken
+        OidcLogoutAuthenticationToken logoutAuthenticationToken = (OidcLogoutAuthenticationToken) authentication;
+        String sessionId = logoutAuthenticationToken.getSessionId();
+        OAuth2Authorization curOAuth2Authorization = oidcAuthorizationService.findByIdToken(logoutAuthenticationToken.getIdTokenHint());
         if (null == curOAuth2Authorization) {
             log.error("Can not find OAuth2Authentication for idToken!");
             response.setStatus(HttpStatus.BAD_REQUEST.value());
@@ -100,59 +89,40 @@ public class OidcLogoutSuccessHandler implements LogoutSuccessHandler {
             return;
         }
         // 查询当前RP的Client注册信息
-        RegisteredClient curRegisteredClient = registeredClientRepository.findById(curOAuth2Authorization.getRegisteredClientId());
-        String curLoginSessionId = curOAuth2Authorization.getAttribute(OAuth2Constants.AUTHORIZATION_ATTRS.SESSION_ID);
-
-        // 属于同一session的其他RP对应的认证信息OAuth2Authorization
-        List<OAuth2Authorization> curSessionOAuth2Authorizations = oidcAuthorizationService.findBySessionId(curLoginSessionId);
-        Map<String, OAuth2Authorization> regClientId2AuthInfoMap = new HashMap<>(curSessionOAuth2Authorizations.size());
-        // 若OAuth2Client重复登录，则存在同一RegisteredClientIdRegisteredClientId对应多个OAuth2Authorization
-        curSessionOAuth2Authorizations.forEach(auth -> regClientId2AuthInfoMap.put(auth.getRegisteredClientId(), auth));
+        RegisteredClient curClient = registeredClientRepository.findById(curOAuth2Authorization.getRegisteredClientId());
+        // 找出当前所有同一sessionId的登录记录
+        List<OAuth2Authorization> allAuth = oidcAuthorizationService.findBySessionId(sessionId);
+        Map<String, OAuth2Authorization> regClientMap = new HashMap<>(allAuth.size());
+        allAuth.forEach(auth -> regClientMap.put(auth.getRegisteredClientId(), auth));
 
         // 依次更新登出状态
-        curSessionOAuth2Authorizations.forEach(oAuth2Authorization -> {
+        allAuth.forEach(auth -> {
             // 更新用户登录状态
-            oAuth2Authorization = OAuth2Authorization.from(oAuth2Authorization)
+            auth = OAuth2Authorization.from(auth)
                     .attribute(OAuth2Constants.AUTHORIZATION_ATTRS.LOGIN_STATE, LoginStateEnum.LOGOUT.getCode())
                     .build();
             // 更新token无效状态
-            oAuth2Authorization = invalidate(oAuth2Authorization, oAuth2Authorization.getRefreshToken().getToken());
-            oidcAuthorizationService.save(oAuth2Authorization);
-        });
-
-        // 其他RP对应的已登录的RegisteredClientId
-        Collection<String> otherRegisteredClientIds = curSessionOAuth2Authorizations.stream()
-                .filter(regClient -> !curOAuth2Authorization.getRegisteredClientId().equals(regClient.getRegisteredClientId()))
-                .map(OAuth2Authorization::getRegisteredClientId)
-                .collect(Collectors.toSet());
-        if (CollectionUtils.isEmpty(otherRegisteredClientIds)) {
-            log.debug("Custom-Debug-log===> No other exist login RP for the same session id and redirect to post_logout_redirect_uri");
-            redirectPostLogoutRedirectUri(request, response, curRegisteredClient);
-            return;
-        }
-
-        // 查询clientRegistrationId对应的ClientRegistration信息
-        List<RegisteredClient> registeredClients = otherRegisteredClientIds.stream()
-                .map(registeredClientRepository::findById)
-                .filter(Objects::nonNull)
-                .toList();
-
-        // back channel 处理（front channel暂时不实现）
-        registeredClients.stream()
-                .filter(registeredClient -> null != registeredClient.getClientSettings() && null != registeredClient.getClientSettings().getSetting(OAuth2Constants.CLIENT_SETTINGS.BACKCHANNEL_REQUIRE)
-                    && registeredClient.getClientSettings().getSetting(OAuth2Constants.CLIENT_SETTINGS.BACKCHANNEL_REQUIRE).equals(Boolean.TRUE))
-                .forEach(registeredClient -> {
+            auth = invalidate(auth, auth.getRefreshToken().getToken());
+            oidcAuthorizationService.save(auth);
+            // back channel 处理（front channel暂时不实现）
+            if (!curOAuth2Authorization.getRegisteredClientId().equals(auth.getRegisteredClientId())) {
+                RegisteredClient registeredClient = registeredClientRepository.findById(auth.getRegisteredClientId());
+                if (null != registeredClient.getClientSettings() && null != registeredClient.getClientSettings().getSetting(OAuth2Constants.CLIENT_SETTINGS.BACKCHANNEL_REQUIRE)
+                        && registeredClient.getClientSettings().getSetting(OAuth2Constants.CLIENT_SETTINGS.BACKCHANNEL_REQUIRE).equals(Boolean.TRUE)) {
                     if (null == registeredClient.getClientSettings().getSetting(OAuth2Constants.CLIENT_SETTINGS.BACKCHANNEL_LOGOUT_URI)) {
                         log.error("Custom-Debug-log===>No back channel logout uri setting for clientId:{}", registeredClient.getId());
                     }
                     String backchannelLogoutUri = registeredClient.getClientSettings().getSetting(OAuth2Constants.CLIENT_SETTINGS.BACKCHANNEL_LOGOUT_URI);
                     // 生成logout_token
-                    JWT logoutToken = generateLogoutToken(registeredClient, regClientId2AuthInfoMap.get(registeredClient.getId()));
+                    JWT logoutToken = generateLogoutToken(registeredClient, regClientMap.get(registeredClient.getId()));
                     sendBackchannelLogoutRequest(backchannelLogoutUri, logoutToken);
-                });
+                }
+            }
+        });
 
         // 重定向回SLO调用RP的登出回调页面
-        redirectPostLogoutRedirectUri(request, response, curRegisteredClient);
+        redirectPostLogoutRedirectUri(request, response, curClient);
+
     }
 
     private void redirectPostLogoutRedirectUri(HttpServletRequest request, HttpServletResponse response, RegisteredClient registeredClient) throws IOException {
@@ -160,7 +130,6 @@ public class OidcLogoutSuccessHandler implements LogoutSuccessHandler {
     }
 
     private final String STATE_PARAMETER_FORMAT = "%s?state=%s";
-
 
     private String determinePostLogoutRedirectUri(HttpServletRequest request, RegisteredClient registeredClient) {
         String postLogoutRedirectUri = request.getParameter(OAuth2Constants.OIDC_PARAMETERS.POST_LOGOUT_REDIRECT_URI);
@@ -171,10 +140,47 @@ public class OidcLogoutSuccessHandler implements LogoutSuccessHandler {
                 && registeredClient.getPostLogoutRedirectUris().contains(postLogoutRedirectUri)) {
             // 合法，重定向
             return StringUtils.hasText(state) ? String.format(STATE_PARAMETER_FORMAT, postLogoutRedirectUri, state) :
-                        postLogoutRedirectUri;
+                    postLogoutRedirectUri;
         } else {
             // 不合法或没传，使用默认值或返回错误
             return oAuth2ServerProps.getLogOutDefaultRedirectUrl();
+        }
+    }
+
+    @SneakyThrows
+    private JWT generateLogoutToken(RegisteredClient registeredClient, OAuth2Authorization oAuth2Authorization) {
+        JWTClaimsSet claimsSet = new JWTClaimsSet.Builder()
+                .issuer(oAuth2ServerProps.getIssuer())
+                .subject(oAuth2Authorization.getPrincipalName())
+                .audience(registeredClient.getClientId())
+                .issueTime(new Date())
+                .expirationTime(new Date(System.currentTimeMillis() + registeredClient.getTokenSettings().getAccessTokenTimeToLive().toMillis()))
+                //.jwtID()
+                .claim(OAuth2Constants.CLAIMS.SID, oAuth2Authorization.getAttribute(OAuth2Constants.AUTHORIZATION_ATTRS.SESSION_ID))
+                .claim(OAuth2Constants.CLAIMS.EVENTS, OAuth2Constants.CLAIMS.EVENTS_VALUE)
+                .build();
+
+        SignedJWT signedJWT = new SignedJWT(
+                new JWSHeader.Builder(JWSAlgorithm.RS256).keyID(rsaKey.getKeyID()).build(),
+                claimsSet);
+
+        // Compute the RSA signature
+        signedJWT.sign(jwsSigner);
+        return signedJWT;
+    }
+
+    private void sendBackchannelLogoutRequest(String backChannelLogoutUri, JWT logoutToken) {
+        try {
+            URI backchannelLogoutEndpointForRP = new URI(backChannelLogoutUri);
+            BackChannelLogoutRequest backchannelLogoutRequest = new BackChannelLogoutRequest(backchannelLogoutEndpointForRP, logoutToken);
+            HTTPResponse httpResponse = backchannelLogoutRequest.toHTTPRequest().send();
+            if (httpResponse.indicatesSuccess()) {
+                log.debug("Custom-Debug-log===>send backchannel logout uri {} success with status_code {}", backChannelLogoutUri, httpResponse.getStatusCode());
+            } else {
+                log.debug("Custom-Debug-log===>send backchannel logout uri {} failed with status_code {}", backChannelLogoutUri, httpResponse.getStatusCode());
+            }
+        } catch (Throwable e) {
+            log.error("Custom-Debug-log===>send backchannel logout uri: {} error", backChannelLogoutUri, e);
         }
     }
 
@@ -211,42 +217,5 @@ public class OidcLogoutSuccessHandler implements LogoutSuccessHandler {
         // @formatter:on
 
         return authorizationBuilder.build();
-    }
-
-    @SneakyThrows
-    private JWT generateLogoutToken(RegisteredClient registeredClient, OAuth2Authorization oAuth2Authorization) {
-        JWTClaimsSet claimsSet = new JWTClaimsSet.Builder()
-                .issuer(oAuth2ServerProps.getIssuer())
-                .subject(oAuth2Authorization.getPrincipalName())
-                .audience(registeredClient.getClientId())
-                .issueTime(new Date())
-                .expirationTime(new Date(System.currentTimeMillis() + registeredClient.getTokenSettings().getAccessTokenTimeToLive().toMillis()))
-                //.jwtID()
-                .claim(OAuth2Constants.CLAIMS.SID, oAuth2Authorization.getAttribute(OAuth2Constants.AUTHORIZATION_ATTRS.SESSION_ID))
-                .claim(OAuth2Constants.CLAIMS.EVENTS, OAuth2Constants.CLAIMS.EVENTS_VALUE)
-                .build();
-
-        SignedJWT signedJWT = new SignedJWT(
-                new JWSHeader.Builder(JWSAlgorithm.RS256).keyID(rsaKey.getKeyID()).build(),
-                claimsSet);
-
-        // Compute the RSA signature
-        signedJWT.sign(jwsSigner);
-        return signedJWT;
-    }
-
-    private void sendBackchannelLogoutRequest(String backChannelLogoutUri, JWT logoutToken) {
-        try {
-            URI backchannelLogoutEndpointForRP = new URI(backChannelLogoutUri);
-            BackChannelLogoutRequest backchannelLogoutRequest = new BackChannelLogoutRequest(backchannelLogoutEndpointForRP, logoutToken);
-            HTTPResponse httpResponse = backchannelLogoutRequest.toHTTPRequest().send();
-            if (httpResponse.indicatesSuccess()) {
-                log.debug("Custom-Debug-log===>send bacokchannel logout uri {} success with status_code {}", backChannelLogoutUri, httpResponse.getStatusCode());
-            } else {
-                log.debug("Custom-Debug-log===>send bacokchannel logout uri {} failed with status_code {}", backChannelLogoutUri, httpResponse.getStatusCode());
-            }
-        } catch (Throwable e) {
-            log.error("Custom-Debug-log===>send backchannel logout uri: {} error", backChannelLogoutUri, e);
-        }
     }
 }

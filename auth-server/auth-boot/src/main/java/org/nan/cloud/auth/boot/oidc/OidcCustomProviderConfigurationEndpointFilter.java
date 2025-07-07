@@ -70,7 +70,7 @@ public final class OidcCustomProviderConfigurationEndpointFilter extends OncePer
                 .subjectType("public")
                 .idTokenSigningAlgorithm(SignatureAlgorithm.RS256.getName())
                 .scope(OidcScopes.OPENID)
-                .endSessionEndpoint(asUrl(issuer, settings.getOidcUserInfoEndpoint()))
+                .endSessionEndpoint(asUrl(issuer, settings.getOidcLogoutEndpoint()))
                 .build();
         ServletServerHttpResponse httpResponse = new ServletServerHttpResponse(response);
         odcProviderConfigurationHttpMessageConverter.write(providerConfiguration, MediaType.APPLICATION_JSON, httpResponse);
