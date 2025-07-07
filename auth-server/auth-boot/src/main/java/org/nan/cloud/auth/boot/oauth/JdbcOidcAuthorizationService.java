@@ -3,11 +3,14 @@ package org.nan.cloud.auth.boot.oauth;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.Module;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import org.nan.cloud.auth.boot.config.OAuth2Constants;
+import org.nan.cloud.auth.boot.oidc.enums.LoginStateEnum;
 import org.springframework.dao.DataRetrievalFailureException;
 import org.springframework.jdbc.core.*;
 import org.springframework.jdbc.support.lob.DefaultLobHandler;
 import org.springframework.jdbc.support.lob.LobCreator;
 import org.springframework.jdbc.support.lob.LobHandler;
+import org.springframework.security.core.parameters.P;
 import org.springframework.security.jackson2.SecurityJackson2Modules;
 import org.springframework.security.oauth2.core.*;
 import org.springframework.security.oauth2.core.endpoint.OAuth2ParameterNames;
@@ -23,6 +26,7 @@ import org.springframework.security.oauth2.server.authorization.jackson2.OAuth2A
 import org.springframework.util.Assert;
 import org.springframework.util.CollectionUtils;
 import org.springframework.util.StringUtils;
+import org.springframework.web.context.request.RequestContextHolder;
 
 import java.nio.charset.StandardCharsets;
 import java.sql.*;
@@ -625,6 +629,36 @@ public class JdbcOidcAuthorizationService implements OidcAuthorizationService{
             parameters.add(new SqlParameterValue(Types.VARCHAR, authorization.getId()));
             parameters.add(new SqlParameterValue(Types.VARCHAR, authorization.getRegisteredClientId()));
             parameters.add(new SqlParameterValue(Types.VARCHAR, authorization.getPrincipalName()));
+
+            /* ============================= Custom start==================================*/
+
+            // 添加 session_id
+            String authAttrSessionId = authorization.getAttribute(OAuth2Constants.AUTHORIZATION_ATTRS.SESSION_ID);
+            if (null == authAttrSessionId) {
+                String sessionId = RequestContextHolder.getRequestAttributes().getSessionId();
+                parameters.add(new SqlParameterValue(Types.VARCHAR, sessionId));
+                // 将sessionId添加到attribute
+                authorization = OAuth2Authorization.from(authorization)
+                        .attribute(OAuth2Constants.AUTHORIZATION_ATTRS.SESSION_ID, sessionId)
+                        .build();
+            } else {
+                parameters.add(new SqlParameterValue(Types.VARCHAR, authAttrSessionId));
+            }
+
+            // 设置用户登录状态
+            Integer authAttrLoginState = authorization.getAttribute(OAuth2Constants.AUTHORIZATION_ATTRS.LOGIN_STATE);
+            if (null == authAttrLoginState) {
+                // 添加 login_state
+                parameters.add(new SqlParameterValue(Types.INTEGER, LoginStateEnum.LOGIN.getCode()));
+                authorization = OAuth2Authorization.from(authorization)
+                        .attribute(OAuth2Constants.AUTHORIZATION_ATTRS.LOGIN_STATE, LoginStateEnum.LOGIN.getCode())
+                        .build();
+            } else {
+                parameters.add(new SqlParameterValue(Types.INTEGER, authAttrLoginState));
+            }
+
+            /* ============================= Custom finish==================================*/
+
             parameters.add(new SqlParameterValue(Types.VARCHAR, authorization.getAuthorizationGrantType().getValue()));
 
             String authorizedScopes = null;

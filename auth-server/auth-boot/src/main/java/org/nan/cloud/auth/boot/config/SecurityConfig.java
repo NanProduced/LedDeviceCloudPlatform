@@ -1,5 +1,7 @@
 package org.nan.cloud.auth.boot.config;
 
+import org.nan.cloud.auth.boot.oauth.OidcAuthorizationService;
+import org.nan.cloud.auth.boot.oidc.OidcLogoutSuccessHandler;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnMissingBean;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.context.annotation.Bean;
@@ -9,6 +11,7 @@ import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configurers.AbstractHttpConfigurer;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
+import org.springframework.security.oauth2.server.authorization.client.RegisteredClientRepository;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.savedrequest.HttpSessionRequestCache;
 import org.springframework.security.web.savedrequest.RequestCache;
@@ -19,7 +22,7 @@ public class SecurityConfig {
     private static final String[] AUTH_WHITELIST = {"/css/**", "/js/**", "/webjars/**", "/img/**", "/favicon.ico"};
 
     @Bean
-    public SecurityFilterChain webFilterChain(HttpSecurity http) throws Exception {
+    public SecurityFilterChain webFilterChain(HttpSecurity http, RegisteredClientRepository registeredClientRepository, OidcAuthorizationService oidcAuthorizationService, OAuth2ServerProps oAuth2ServerProps) throws Exception {
         http
                 .authorizeHttpRequests(auth -> auth
                         .requestMatchers("/rsa/publicKey").permitAll()
@@ -35,6 +38,7 @@ public class SecurityConfig {
                         .loginProcessingUrl("/login"))
                 .logout(logout -> logout
                         .logoutUrl("/connect/logout")
+                        .logoutSuccessHandler(new OidcLogoutSuccessHandler(registeredClientRepository, oidcAuthorizationService, oAuth2ServerProps))
                 );
 
         return http.build();

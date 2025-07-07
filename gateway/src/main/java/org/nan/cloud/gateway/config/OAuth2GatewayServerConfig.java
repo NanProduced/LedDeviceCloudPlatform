@@ -82,6 +82,7 @@ public class OAuth2GatewayServerConfig {
             .logout(logout -> logout
                     .logoutUrl("/logout")
                     .logoutSuccessHandler(oidcClientInitiatedServerLogoutSuccessHandler))
+            .oidcLogout(logout -> logout.backChannel(Customizer.withDefaults()))
             .oauth2Client(Customizer.withDefaults());
         return http.build();
     }

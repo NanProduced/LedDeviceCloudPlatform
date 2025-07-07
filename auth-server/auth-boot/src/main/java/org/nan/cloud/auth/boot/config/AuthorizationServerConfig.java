@@ -111,10 +111,10 @@ public class AuthorizationServerConfig {
                 .scope("openid")
                 .clientSettings(ClientSettings.builder()
                         .requireAuthorizationConsent(false)
-                        // ➜ ① 反向通道（Back-Channel）接收端点
+                        // 反向通道（Back-Channel）接收端点
                         .setting("settings.client.backchannel-logout-uri",
                                 "http://192.168.1.222:8082/connect/back-channel/logout")
-                        // ➜ ② 是否要求 RP 按 session 维度登出（可选，默认为 false）
+                        // 是否要求 RP 按 session 维度登出（可选，默认为 false）
                         .setting("settings.client.backchannel-logout-session-required", Boolean.TRUE)
                         .build())
                 .tokenSettings(TokenSettings.builder()

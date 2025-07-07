@@ -8,6 +8,8 @@ import com.nimbusds.jose.jwk.RSAKey;
 import com.nimbusds.jwt.JWT;
 import com.nimbusds.jwt.JWTClaimsSet;
 import com.nimbusds.jwt.SignedJWT;
+import com.nimbusds.oauth2.sdk.http.HTTPResponse;
+import com.nimbusds.openid.connect.sdk.BackChannelLogoutRequest;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
@@ -64,7 +66,8 @@ public class OidcLogoutSuccessHandler implements LogoutSuccessHandler {
     @Override
     public void onLogoutSuccess(HttpServletRequest request, HttpServletResponse response, Authentication authentication) throws IOException, ServletException {
         if (this.oAuth2ServerProps.getEnableOidcSLO()) {
-
+            oidcSloProcess(request, response, authentication);
+            return;
         }
         postLogoutRedirectUriDirectly(request, response);
     }
@@ -145,10 +148,11 @@ public class OidcLogoutSuccessHandler implements LogoutSuccessHandler {
                     String backchannelLogoutUri = registeredClient.getClientSettings().getSetting(OAuth2Constants.CLIENT_SETTINGS.BACKCHANNEL_LOGOUT_URI);
                     // 生成logout_token
                     JWT logoutToken = generateLogoutToken(registeredClient, regClientId2AuthInfoMap.get(registeredClient.getId()));
-
+                    sendBackchannelLogoutRequest(backchannelLogoutUri, logoutToken);
                 });
 
-
+        // 重定向回SLO调用RP的登出回调页面
+        redirectPostLogoutRedirectUri(request, response, curRegisteredClient);
     }
 
     private void redirectPostLogoutRedirectUri(HttpServletRequest request, HttpServletResponse response, RegisteredClient registeredClient) throws IOException {
@@ -234,7 +238,13 @@ public class OidcLogoutSuccessHandler implements LogoutSuccessHandler {
     private void sendBackchannelLogoutRequest(String backChannelLogoutUri, JWT logoutToken) {
         try {
             URI backchannelLogoutEndpointForRP = new URI(backChannelLogoutUri);
-            // todo:
+            BackChannelLogoutRequest backchannelLogoutRequest = new BackChannelLogoutRequest(backchannelLogoutEndpointForRP, logoutToken);
+            HTTPResponse httpResponse = backchannelLogoutRequest.toHTTPRequest().send();
+            if (httpResponse.indicatesSuccess()) {
+                log.debug("Custom-Debug-log===>send bacokchannel logout uri {} success with status_code {}", backChannelLogoutUri, httpResponse.getStatusCode());
+            } else {
+                log.debug("Custom-Debug-log===>send bacokchannel logout uri {} failed with status_code {}", backChannelLogoutUri, httpResponse.getStatusCode());
+            }
         } catch (Throwable e) {
             log.error("Custom-Debug-log===>send backchannel logout uri: {} error", backChannelLogoutUri, e);
         }
