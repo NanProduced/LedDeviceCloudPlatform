@@ -16,7 +16,7 @@ import java.util.Optional;
 
 @Service
 @RequiredArgsConstructor
-public class UserServiceImpl implements UserDetailsService, Serializable {
+public class DefaultUserServiceImpl implements UserDetailsService, Serializable {
 
     private final UserRepository userRepository;
 
