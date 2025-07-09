@@ -27,17 +27,6 @@ public class CasbinAuthorizationManager implements ReactiveAuthorizationManager<
     public Mono<AuthorizationDecision> check(Mono<Authentication> authentication, AuthorizationContext ctx) {
         String path = ctx.getExchange().getRequest().getPath().value();
         String method = ctx.getExchange().getRequest().getMethod().name();
-//        return authentication
-//                .filter(Authentication::isAuthenticated)
-//                .map(auth -> {
-//                    final Jwt token = ((JwtAuthenticationToken) auth).getToken();
-//                    long uid = token.getClaim("uid");
-//                    long oid = token.getClaim("oid");
-//                    boolean pass = enforcer.enforce(uid, oid, path, method);
-//                    if (!pass) throw new AccessDeniedException("Access denied");
-//                    return new AuthorizationDecision(true);
-//                })
-//                .switchIfEmpty(Mono.just(new AuthorizationDecision(false)));
         return authentication
                 .filter(Authentication::isAuthenticated)
                 .flatMap(auth -> {

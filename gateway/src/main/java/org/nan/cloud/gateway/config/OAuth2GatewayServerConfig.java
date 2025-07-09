@@ -4,6 +4,7 @@ import lombok.RequiredArgsConstructor;
 import org.nan.cloud.gateway.filter.RemoveJwtFilter;
 import org.nan.cloud.gateway.handler.AccessDeniedHandler;
 import org.nan.cloud.gateway.handler.AuthenticationEntryPoint;
+import org.nan.cloud.gateway.handler.RefreshTokenErrorMapReactiveOAuth2AuthorizedClientManager;
 import org.nan.cloud.gateway.handler.SaveRequestServerOauth2AuthorizationRequestResolver;
 import org.springframework.cloud.context.config.annotation.RefreshScope;
 import org.springframework.context.annotation.Bean;
@@ -16,6 +17,7 @@ import org.springframework.security.config.Customizer;
 import org.springframework.security.config.annotation.web.reactive.EnableWebFluxSecurity;
 import org.springframework.security.config.web.server.SecurityWebFiltersOrder;
 import org.springframework.security.config.web.server.ServerHttpSecurity;
+import org.springframework.security.oauth2.client.ReactiveOAuth2AuthorizedClientManager;
 import org.springframework.security.oauth2.client.oidc.web.logout.OidcClientInitiatedLogoutSuccessHandler;
 import org.springframework.security.oauth2.client.oidc.web.server.logout.OidcClientInitiatedServerLogoutSuccessHandler;
 import org.springframework.security.oauth2.client.registration.ReactiveClientRegistrationRepository;
@@ -134,6 +136,23 @@ public class OAuth2GatewayServerConfig {
         return new AuthenticationEntryPoint(auth_url);
     }
 
+    /**
+     * 自定义RefreshTokenErrorMapReactiveOAuth2AuthorizedClientManager实现，
+     * 支持refresh_token过期后触发登录（避免返回500）
+     */
+    @Bean
+    @Primary
+    public ReactiveOAuth2AuthorizedClientManager authorizedClientManager(ReactiveClientRegistrationRepository clientRegistrationRepository,
+                                                                         ServerOAuth2AuthorizedClientRepository authorizedClientRepository,
+                                                                         ServerSecurityContextRepository securityContextRepository) {
+        return new RefreshTokenErrorMapReactiveOAuth2AuthorizedClientManager(clientRegistrationRepository, authorizedClientRepository, securityContextRepository);
+    }
+
+    /**
+     *  OAuth2 Client Authorization Endpoint /oauth2/authoriztion/{clientRegId} <br/>
+     *  请求解析器扩展实现 - 支持提取query参数redirect_uri，用作后续OAuth2认证完成后SCG重定向到该指定redirect_uri。<br/>
+     *  适用场景：SPA -> SCG -> SCG返回401 -> SPA重定向到/oauth2/authorization/{clientRegId}?redirect_uri=http://spa -> SCG完成OAuth2认证后再重定向回http://spa
+     */
     @Bean
     @Primary
     public SaveRequestServerOauth2AuthorizationRequestResolver saveRequestServerOauth2AuthorizationRequestResolver(ReactiveClientRegistrationRepository clientRegistrationRepository) {
