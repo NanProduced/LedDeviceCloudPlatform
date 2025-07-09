@@ -8,8 +8,10 @@ import lombok.extern.slf4j.Slf4j;
 import org.nan.cloud.auth.common.utils.JsonUtils;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.core.Authentication;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.web.WebAttributes;
 import org.springframework.security.web.authentication.AuthenticationSuccessHandler;
+import org.springframework.security.web.context.HttpSessionSecurityContextRepository;
 import org.springframework.security.web.savedrequest.RequestCache;
 import org.springframework.security.web.savedrequest.SavedRequest;
 
@@ -35,17 +37,33 @@ public class ExtendedLoginJsonRespAuthenticationSuccessHandler implements Authen
 
         String redirectUri = Optional.ofNullable(requestCache.getRequest(request, response))
                 .map(SavedRequest::getRedirectUrl)
-                .orElse(null);
+                .orElse("/");
 
-        String respJson = JsonUtils.toJson(ExtendedLoginRespJson.builder()
-                .code("200")
-                .redirectUri(redirectUri)
-                .build());
-        log.debug("Extended login success - response: {}", respJson);
-        response.setStatus(HttpStatus.OK.value());
-        response.setContentType("application/json;charset=utf-8");
-        response.setContentLength(respJson.getBytes(StandardCharsets.UTF_8).length);
-        response.getWriter().write(respJson);
+        // 是否为 AJAX/JSON 请求
+        String xrw = request.getHeader("X-Requested-With");
+        String accept =  request.getHeader("Accept");
+        boolean isAjax = "XMLHttpRequest".equalsIgnoreCase(xrw) ||
+                (null != accept && accept.contains("application/json"));
+
+        if (isAjax) {
+            String respJson = JsonUtils.toJson(ExtendedLoginRespJson.builder()
+                    .code("200")
+                    .redirectUri(redirectUri)
+                    .build());
+            log.debug("Extended login success - response: {}", respJson);
+            response.setStatus(HttpStatus.OK.value());
+            response.setContentType("application/json;charset=utf-8");
+            response.setContentLength(respJson.getBytes(StandardCharsets.UTF_8).length);
+            response.getWriter().write(respJson);
+        }
+        else {
+            // 在发重定向前先把上下文写入 session
+            HttpSessionSecurityContextRepository repo = new HttpSessionSecurityContextRepository();
+            repo.saveContext(SecurityContextHolder.getContext(), request, response);
+            // 浏览器请求执行重定向
+            log.debug("Extended login success (Browser) - redirect url: {}", redirectUri);
+            response.sendRedirect(redirectUri);
+        }
     }
 
     /**

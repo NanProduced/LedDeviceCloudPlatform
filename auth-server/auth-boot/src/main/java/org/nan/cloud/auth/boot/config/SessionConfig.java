@@ -52,6 +52,7 @@ public class SessionConfig implements BeanClassLoaderAware {
                 .allowIfSubType("org.springframework.security.web")
                 .allowIfSubType("org.springframework.security.web.savedrequest")
                 .allowIfSubType("org.nan.cloud.auth.infrastructure.security")
+                .allowIfSubType("org.nan.cloud.auth.boot.login")
                 .allowIfSubType("org.springframework.security.authentication")
                 .allowIfSubType("java.lang")
                 .allowIfSubType("java.util")

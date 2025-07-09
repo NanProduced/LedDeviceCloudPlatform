@@ -16,6 +16,7 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.savedrequest.HttpSessionRequestCache;
 import org.springframework.security.web.savedrequest.RequestCache;
+import org.springframework.security.web.util.matcher.AntPathRequestMatcher;
 
 @Configuration
 public class SecurityConfig {
@@ -35,12 +36,14 @@ public class SecurityConfig {
                 ),configure -> {})
                 .authorizeHttpRequests(auth -> auth
                         .requestMatchers("/rsa/publicKey").permitAll()
-                        .requestMatchers("/login").permitAll()
+                        .requestMatchers(oAuth2ServerProps.getLoginPageUrl()).permitAll()
                         .requestMatchers("/actuator/**").permitAll()
+                        .requestMatchers("/error").permitAll()
                         .requestMatchers(AUTH_WHITELIST).permitAll()
                         .anyRequest().authenticated())
                 .csrf(csrf -> csrf
-                    .ignoringRequestMatchers(AUTH_WHITELIST))
+                    .ignoringRequestMatchers(AUTH_WHITELIST)
+                    .ignoringRequestMatchers(new AntPathRequestMatcher("/login", "POST")))
                 .formLogin(form -> form
                         .loginPage("/login")
                         .defaultSuccessUrl("/", false)

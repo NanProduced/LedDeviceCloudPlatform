@@ -14,7 +14,7 @@ import java.util.Collection;
 import java.util.Map;
 
 @JsonTypeInfo(use = JsonTypeInfo.Id.CLASS)
-@JsonIgnoreProperties("authParams")
+@JsonIgnoreProperties({"name", "authParams"})
 public class ExtendedLoginAuthenticationToken extends AbstractAuthenticationToken {
 
     @Serial
