@@ -9,7 +9,7 @@ import org.springframework.web.bind.annotation.RequestBody;
 
 public interface OrgApi {
 
-    String prefix = "/core/api/org";
+    String prefix = "/org";
 
     @PostMapping(prefix + "/create")
     CreateOrgResponse createOrg(@Validated @RequestBody CreateOrgRequest request);

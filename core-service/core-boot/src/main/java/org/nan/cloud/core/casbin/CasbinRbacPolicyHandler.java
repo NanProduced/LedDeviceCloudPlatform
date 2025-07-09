@@ -11,8 +11,12 @@ import java.util.List;
 @Component
 public class CasbinRbacPolicyHandler {
 
-    @Qualifier("rbacEnforcer")
-    private Enforcer rbacEnforcer;
+    private final Enforcer rbacEnforcer;
+
+    public CasbinRbacPolicyHandler(
+            @Qualifier("rbacEnforcer") Enforcer rbacEnforcer) {
+        this.rbacEnforcer = rbacEnforcer;
+    }
 
     public boolean addRolePolicy(Long rid, Long oid, String url, String method) {
         boolean added = rbacEnforcer.addPolicy(
@@ -20,16 +24,6 @@ public class CasbinRbacPolicyHandler {
                 oid.toString(),
                 url,
                 method);
-        if (added) {
-            rbacEnforcer.getAdapter().addPolicy(
-                    "p",
-                    "p",
-                    List.of(rid.toString(),
-                            oid.toString(),
-                            url,
-                            method)
-            );
-        }
         return added;
     }
 

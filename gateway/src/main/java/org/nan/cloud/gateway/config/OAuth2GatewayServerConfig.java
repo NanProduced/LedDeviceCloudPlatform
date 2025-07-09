@@ -1,5 +1,7 @@
 package org.nan.cloud.gateway.config;
 
+import io.swagger.v3.oas.annotations.enums.SecuritySchemeType;
+import io.swagger.v3.oas.annotations.security.SecurityScheme;
 import lombok.RequiredArgsConstructor;
 import org.nan.cloud.gateway.filter.RemoveJwtFilter;
 import org.nan.cloud.gateway.handler.AccessDeniedHandler;
@@ -25,7 +27,6 @@ import org.springframework.security.oauth2.client.web.server.ServerOAuth2Authori
 import org.springframework.security.oauth2.client.web.server.WebSessionServerOAuth2AuthorizedClientRepository;
 import org.springframework.security.web.server.SecurityWebFilterChain;
 import org.springframework.security.web.server.authentication.ServerAuthenticationEntryPointFailureHandler;
-import org.springframework.security.web.server.authentication.logout.ServerLogoutSuccessHandler;
 import org.springframework.security.web.server.context.ServerSecurityContextRepository;
 import org.springframework.security.web.server.context.WebSessionServerSecurityContextRepository;
 import org.springframework.security.web.server.util.matcher.NegatedServerWebExchangeMatcher;
@@ -33,7 +34,12 @@ import org.springframework.security.web.server.util.matcher.ServerWebExchangeMat
 import org.springframework.security.web.server.util.matcher.ServerWebExchangeMatchers;
 
 import java.net.URI;
-
+@SecurityScheme(
+    type = SecuritySchemeType.OAUTH2,
+    name = "OAuth2/OIDC",
+    scheme = "bearer",
+    bearerFormat = "JWT"
+)
 @Configuration
 @RequiredArgsConstructor
 @EnableWebFluxSecurity
@@ -106,7 +112,7 @@ public class OAuth2GatewayServerConfig {
                     .authenticationEntryPoint(authenticationEntryPoint)
             )
             .authorizeExchange(e -> e
-                    .pathMatchers(AUTH_WHITELIST).authenticated()
+                    .pathMatchers(AUTH_WHITELIST).permitAll()
                     .pathMatchers("/logout_status").permitAll()
                     // 过滤白名单
                     .pathMatchers(ignoreUrlsConfig.getUrls().toArray(String[]::new)).permitAll()

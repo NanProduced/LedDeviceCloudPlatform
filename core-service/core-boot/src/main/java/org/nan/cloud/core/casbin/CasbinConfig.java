@@ -5,8 +5,7 @@ import org.casbin.jcasbin.main.Enforcer;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
-import org.springframework.core.io.Resource;
-import org.springframework.core.io.ResourceLoader;
+import org.springframework.core.io.ClassPathResource;
 
 import javax.sql.DataSource;
 import java.io.IOException;
@@ -28,9 +27,8 @@ public class CasbinConfig {
 
     @Bean
     @Qualifier("rbacEnforcer")
-    public Enforcer rbacEnforcer(ResourceLoader resourceLoader,
-                                 @Qualifier("rbacAdapter") JDBCAdapter adapter) throws IOException {
-        Resource resource = resourceLoader.getResource("classpath:casbin/model_rbac.conf");
+    public Enforcer rbacEnforcer(@Qualifier("rbacAdapter") JDBCAdapter adapter) throws IOException {
+        ClassPathResource resource = new ClassPathResource("casbin/model_rbac.conf");
         String modelPath = resource.getFile().getAbsolutePath(); // 转成文件绝对路径
         Enforcer enforcer = new Enforcer(modelPath, adapter);
         enforcer.loadPolicy();
