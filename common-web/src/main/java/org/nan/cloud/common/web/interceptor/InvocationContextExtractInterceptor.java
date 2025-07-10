@@ -1,7 +1,8 @@
-package org.nan.cloud.common.web;
+package org.nan.cloud.common.web.interceptor;
 
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.StringUtils;
+import org.nan.cloud.common.web.CustomHttpHeaders;
 import org.nan.cloud.common.web.context.GenericInvocationContext;
 import org.nan.cloud.common.web.context.InvocationContextHolder;
 import org.springframework.lang.NonNull;
@@ -14,6 +15,9 @@ import org.springframework.web.context.request.WebRequestInterceptor;
 import java.nio.charset.StandardCharsets;
 import java.util.Base64;
 
+/**
+ * 收到请求时从HTTP头中提取用户信息并重建上下文
+ */
 @Slf4j
 @Component
 public class InvocationContextExtractInterceptor implements WebRequestInterceptor {

@@ -17,6 +17,8 @@ public class UserServiceImpl implements UserService {
 
     private final UserRepository userRepository;
 
+
+
     @Override
     public User createOrgManagerUser(CreateOrgDTO createOrgDTO) {
         User manager;
@@ -30,7 +32,8 @@ public class UserServiceImpl implements UserService {
                     .phone(createOrgDTO.getPhone())
                     .email(createOrgDTO.getEmail())
                     .type(0)
-                    .status(1)
+                    .creatorId(1L)
+                    .status(0)
                     .suffix(createOrgDTO.getSuffix())
                     .build());
         } catch (DuplicateKeyException ex) {

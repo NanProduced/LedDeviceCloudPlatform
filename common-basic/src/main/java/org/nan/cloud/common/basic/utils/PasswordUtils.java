@@ -1,10 +1,13 @@
 package org.nan.cloud.common.basic.utils;
 
 import org.nan.cloud.common.basic.exception.ExceptionEnum;
+import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 
 import java.security.SecureRandom;
 
 public class PasswordUtils {
+
+    private static final BCryptPasswordEncoder bCryptPasswordEncoder = new BCryptPasswordEncoder();
 
     // 定义密码字符集（包含大写字母、小写字母、数字和特殊字符）
     private static final String UPPER_CASE = "ABCDEFGHIJKLMNOPQRSTUVWXYZ";
@@ -16,6 +19,16 @@ public class PasswordUtils {
     private static final String ALL_CHARACTERS = UPPER_CASE + LOWER_CASE + DIGITS + SPECIAL_CHARACTERS;
 
     private static final SecureRandom random = new SecureRandom();
+
+    private PasswordUtils() {}
+
+    public static String encodeByBCrypt(CharSequence rawPassword) {
+        return bCryptPasswordEncoder.encode(rawPassword);
+    }
+
+    public static boolean matchesByBCrypt(CharSequence rawPassword, String encodedPassword) {
+        return bCryptPasswordEncoder.matches(rawPassword, encodedPassword);
+    }
 
     /**
      * 生成一个随机的x位密码

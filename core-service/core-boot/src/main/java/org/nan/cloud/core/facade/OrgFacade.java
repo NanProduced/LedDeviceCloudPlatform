@@ -1,7 +1,6 @@
 package org.nan.cloud.core.facade;
 
 import lombok.RequiredArgsConstructor;
-import org.nan.cloud.auth.api.client.AuthClient;
 import org.nan.cloud.common.basic.utils.PasswordUtils;
 import org.nan.cloud.common.web.context.InvocationContextHolder;
 import org.nan.cloud.core.DTO.CreateOrgDTO;
@@ -24,7 +23,6 @@ public class OrgFacade {
     private final OrgService orgService;
     private final UserService userService;
     private final OrgConverter orgConverter;
-    private final AuthClient authClient;
     private final CasbinRbacPolicyHandler rbacPolicyHandler;
 
     /**
@@ -42,8 +40,8 @@ public class OrgFacade {
         final Organization organization = orgService.createOrg(dto, currentUId);
         dto.fillOrgInfo(organization);
         // 创建组织管理员账户
-        String initPsw = PasswordUtils.generatePassword(8);
-        String encodePsw = authClient.encodePsw(initPsw);
+        String initPsw = PasswordUtils.generatePassword(10);
+        String encodePsw = PasswordUtils.encodeByBCrypt(initPsw);
         dto.setManagerPsw(encodePsw);
         final User orgManagerUser = userService.createOrgManagerUser(dto);
         // 分配组织管理员角色

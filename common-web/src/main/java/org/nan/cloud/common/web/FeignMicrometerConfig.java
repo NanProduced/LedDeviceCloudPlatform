@@ -1,8 +1,10 @@
 package org.nan.cloud.common.web;
 
 import feign.Capability;
+import feign.RequestInterceptor;
 import feign.micrometer.MicrometerCapability;
 import io.micrometer.core.instrument.MeterRegistry;
+import org.nan.cloud.common.web.interceptor.FeignInvocationInterceptor;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 
@@ -20,5 +22,13 @@ public class FeignMicrometerConfig {
     @Bean
     public feign.Logger.Level feignLoggerLevel() {
         return feign.Logger.Level.BASIC;
+    }
+    
+    /**
+     * 添加自定义的FeignInvocationInterceptor，用于在服务之间传递用户上下文信息
+     */
+    @Bean
+    public RequestInterceptor feignInvocationInterceptor() {
+        return new FeignInvocationInterceptor();
     }
 }

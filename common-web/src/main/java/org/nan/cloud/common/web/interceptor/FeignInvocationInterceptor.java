@@ -1,12 +1,16 @@
-package org.nan.cloud.common.web;
+package org.nan.cloud.common.web.interceptor;
 
 import feign.RequestInterceptor;
 import feign.RequestTemplate;
+import org.nan.cloud.common.web.CustomHttpHeaders;
 import org.nan.cloud.common.web.context.GenericInvocationContext;
 import org.nan.cloud.common.web.context.InvocationContextHolder;
 
 import java.nio.charset.StandardCharsets;
 
+/**
+ * Feign调用时将调用方的上下文信息通过HTTP头传递给被调用方
+ */
 public class FeignInvocationInterceptor implements RequestInterceptor {
     @Override
     public void apply(RequestTemplate template) {

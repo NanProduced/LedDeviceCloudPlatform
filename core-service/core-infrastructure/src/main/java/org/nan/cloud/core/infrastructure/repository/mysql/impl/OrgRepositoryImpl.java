@@ -33,8 +33,7 @@ public class OrgRepositoryImpl implements OrgRepository {
     public boolean updateOrganization(Organization organization) {
         final OrganizationDO organizationDO = commonConverter.organization2OrganizationDO(organization);
         organizationDO.setUpdateTime(LocalDateTime.now());
-        return orgMapper.updateById(organizationDO) != 1;
-
+        return orgMapper.updateById(organizationDO) == 1;
     }
 
     @Override
@@ -42,6 +41,6 @@ public class OrgRepositoryImpl implements OrgRepository {
         return orgMapper.update(new LambdaUpdateWrapper<OrganizationDO>()
                 .set(OrganizationDO::getRootUgid, rootUgid)
                 .set(OrganizationDO::getRootTgid, rootTgid)
-                .eq(OrganizationDO::getOid, oid)) != 1;
+                .eq(OrganizationDO::getOid, oid)) == 1;
     }
 }

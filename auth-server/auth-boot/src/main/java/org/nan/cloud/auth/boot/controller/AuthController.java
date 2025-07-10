@@ -9,10 +9,4 @@ import org.springframework.web.bind.annotation.RestController;
 @RequiredArgsConstructor
 public class AuthController implements AuthApi {
 
-    private final PasswordEncoder passwordEncoder;
-
-    @Override
-    public String encodePsw(String password) {
-        return passwordEncoder.encode(password);
-    }
 }

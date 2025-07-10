@@ -8,7 +8,7 @@ import lombok.Data;
 
 import java.time.LocalDateTime;
 
-@TableName("A_role")
+@TableName("role")
 @Data
 public class RoleDO {
 

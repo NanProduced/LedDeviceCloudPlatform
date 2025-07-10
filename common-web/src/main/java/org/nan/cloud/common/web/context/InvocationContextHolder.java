@@ -1,6 +1,6 @@
 package org.nan.cloud.common.web.context;
 
-import org.nan.cloud.common.web.InvocationContextExtractInterceptor;
+import org.nan.cloud.common.web.interceptor.InvocationContextExtractInterceptor;
 import org.springframework.lang.NonNull;
 
 /**
@@ -22,7 +22,11 @@ public class InvocationContextHolder {
 
     @NonNull
     public static GenericInvocationContext getContext() {
-        return contextHolder.get();
+        GenericInvocationContext context = contextHolder.get();
+        if (context == null) {
+            return createEmptyContext();
+        }
+        return context;
     }
 
     public static void setContext(GenericInvocationContext context) {
@@ -31,7 +35,9 @@ public class InvocationContextHolder {
 
     @NonNull
     public static GenericInvocationContext createEmptyContext() {
-        contextHolder.set(new GenericInvocationContext());
+        GenericInvocationContext context = new GenericInvocationContext();
+        context.setRequestUser(new RequestUserInfo());
+        contextHolder.set(context);
         return contextHolder.get();
     }
 
