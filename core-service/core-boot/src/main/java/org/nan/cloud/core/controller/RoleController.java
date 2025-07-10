@@ -8,7 +8,7 @@ import org.nan.cloud.core.api.DTO.req.CreateRoleRequest;
 import org.nan.cloud.core.facade.RoleFacade;
 import org.springframework.web.bind.annotation.RestController;
 
-@Tag(name = "Role(角色)", description = "角色相关的所有操作")
+@Tag(name = "Role(角色控制器)", description = "角色相关的所有操作")
 @RestController
 @RequiredArgsConstructor
 public class RoleController implements RoleApi {

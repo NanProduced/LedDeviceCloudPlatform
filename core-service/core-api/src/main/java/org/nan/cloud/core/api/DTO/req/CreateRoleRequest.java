@@ -5,13 +5,13 @@ import lombok.Data;
 
 import java.util.List;
 
-@Schema(name = "创建角色请求DTO")
+@Schema(description = "创建角色请求DTO")
 @Data
 public class CreateRoleRequest {
 
-    @Schema(name = "角色名称")
+    @Schema(description = "角色名称")
     private String roleName;
 
-    @Schema(name = "角色权限", description = "多选")
+    @Schema(description = "角色权限,多选")
     private List<Long> permissions;
 }

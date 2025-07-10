@@ -5,6 +5,7 @@ import org.apache.commons.lang3.StringUtils;
 import org.nan.cloud.common.web.context.GenericInvocationContext;
 import org.nan.cloud.common.web.context.InvocationContextHolder;
 import org.springframework.lang.NonNull;
+import org.springframework.stereotype.Component;
 import org.springframework.ui.ModelMap;
 import org.springframework.web.context.request.ServletWebRequest;
 import org.springframework.web.context.request.WebRequest;
@@ -14,6 +15,7 @@ import java.nio.charset.StandardCharsets;
 import java.util.Base64;
 
 @Slf4j
+@Component
 public class InvocationContextExtractInterceptor implements WebRequestInterceptor {
 
     @Override

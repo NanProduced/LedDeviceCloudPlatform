@@ -9,7 +9,7 @@ import org.nan.cloud.core.api.OrgApi;
 import org.nan.cloud.core.facade.OrgFacade;
 import org.springframework.web.bind.annotation.RestController;
 
-@Tag(name = "Organization(组织)", description = "组织相关的所有操作")
+@Tag(name = "Organization(组织控制器)", description = "组织相关的所有操作")
 @RestController
 @RequiredArgsConstructor
 public class OrgController implements OrgApi {

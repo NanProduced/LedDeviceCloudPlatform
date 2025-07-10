@@ -7,9 +7,11 @@ import org.nan.cloud.common.web.context.InvocationContextHolder;
 import org.nan.cloud.core.DTO.CreateOrgDTO;
 import org.nan.cloud.core.api.DTO.req.CreateOrgRequest;
 import org.nan.cloud.core.api.DTO.res.CreateOrgResponse;
+import org.nan.cloud.core.casbin.CasbinRbacPolicyHandler;
 import org.nan.cloud.core.converter.OrgConverter;
 import org.nan.cloud.core.domain.Organization;
 import org.nan.cloud.core.domain.User;
+import org.nan.cloud.core.infrastructure.repository.enums.SystemRolesRelEnums;
 import org.nan.cloud.core.service.OrgService;
 import org.nan.cloud.core.service.UserService;
 import org.springframework.stereotype.Component;
@@ -23,6 +25,7 @@ public class OrgFacade {
     private final UserService userService;
     private final OrgConverter orgConverter;
     private final AuthClient authClient;
+    private final CasbinRbacPolicyHandler rbacPolicyHandler;
 
     /**
      * 组织创建用例：
@@ -35,12 +38,16 @@ public class OrgFacade {
     public CreateOrgResponse createOrg(CreateOrgRequest req) {
         final Long currentUId = InvocationContextHolder.getCurrentUId();
         CreateOrgDTO dto = orgConverter.createOrgRequest2CreateOrgDTO(req);
+        // 创建组织
         final Organization organization = orgService.createOrg(dto, currentUId);
         dto.fillOrgInfo(organization);
+        // 创建组织管理员账户
         String initPsw = PasswordUtils.generatePassword(8);
         String encodePsw = authClient.encodePsw(initPsw);
         dto.setManagerPsw(encodePsw);
         final User orgManagerUser = userService.createOrgManagerUser(dto);
+        // 分配组织管理员角色
+        rbacPolicyHandler.addGroupPolicy(orgManagerUser.getUid(), SystemRolesRelEnums.ORG_MANAGER.getRid(), organization.getOid());
         return CreateOrgResponse.builder()
                 .oid(organization.getOid())
                 .orgName(organization.getName())

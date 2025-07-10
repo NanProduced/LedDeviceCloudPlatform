@@ -41,6 +41,7 @@ public class OrgServiceImpl implements OrgService {
                 .build();
         organization = tryCreateOrgWithSuffix(organization);
         Long oid = organization.getOid();
+        // 创建组织根用户组
         UserGroup rootUserGroup = userGroupRepository.createUserGroup(UserGroup
                         .builder()
                         .name(createOrgDTO.getOrgName())
@@ -52,6 +53,7 @@ public class OrgServiceImpl implements OrgService {
                         .creatorId(currentUid)
                         .build());
         organization.setRootUgid(rootUserGroup.getUgid());
+        // 创建组织根终端组
         TerminalGroup rootTerminalGroup = terminalGroupRepository.createTerminalGroup(TerminalGroup
                         .builder()
                         .name(createOrgDTO.getOrgName())

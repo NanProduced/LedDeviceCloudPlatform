@@ -1,5 +1,6 @@
 package org.nan.cloud.gateway.handler;
 
+import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpMethod;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
@@ -52,11 +53,23 @@ public class AuthenticationEntryPoint implements ServerAuthenticationEntryPoint 
         MediaTypeServerWebExchangeMatcher applicationJsonMatcher = new MediaTypeServerWebExchangeMatcher(MediaType.APPLICATION_JSON);
         applicationJsonMatcher.setIgnoredMediaTypes(Stream.of(MediaType.ALL).collect(Collectors.toSet()));
 
+        ServerWebExchangeMatcher contentTypeJsonMatcher = exchange -> {
+            String ct = exchange.getRequest().getHeaders().getFirst(HttpHeaders.CONTENT_TYPE);
+            boolean match = StringUtils.hasText(ct)
+                    && ct.contains(MediaType.APPLICATION_JSON_VALUE);
+            return match ? ServerWebExchangeMatcher.MatchResult.match() : ServerWebExchangeMatcher.MatchResult.notMatch();
+        };
+
         List<DelegatingServerAuthenticationEntryPoint.DelegateEntry> delegateEntryList = Arrays.asList(
                 // 请求头accept为application/json -> 返回401
                 new DelegatingServerAuthenticationEntryPoint.DelegateEntry(
                         applicationJsonMatcher,
-                        new HttpStatusServerEntryPoint(HttpStatus.UNAUTHORIZED)
+                        new JsonRespAuthenticationEntryPoint()
+                ),
+                // 请求头Content-Type为application/json -> 返回401
+                new DelegatingServerAuthenticationEntryPoint.DelegateEntry(
+                        contentTypeJsonMatcher,
+                        new JsonRespAuthenticationEntryPoint()
                 ),
                 // 请求头X-Requested-With为XMLHttpRequest -> 返回401
                 // jQuery AJAX 请求
@@ -67,7 +80,7 @@ public class AuthenticationEntryPoint implements ServerAuthenticationEntryPoint 
                         boolean match = StringUtils.hasText(xRequestedWith) && xRequestedWith.equals("XMLHttpRequest");
                         return match ? MatchResult.match() : MatchResult.notMatch();
                     }
-                }, new HttpStatusServerEntryPoint(HttpStatus.UNAUTHORIZED)),
+                }, new JsonRespAuthenticationEntryPoint()),
                 // 跨域OPTIONS请求返回200（解决浏览器报错）
                 new DelegatingServerAuthenticationEntryPoint.DelegateEntry(new ServerWebExchangeMatcher() {
                     @Override
