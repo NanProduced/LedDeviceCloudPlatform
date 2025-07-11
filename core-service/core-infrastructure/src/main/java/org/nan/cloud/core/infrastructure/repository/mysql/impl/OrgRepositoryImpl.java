@@ -43,4 +43,10 @@ public class OrgRepositoryImpl implements OrgRepository {
                 .set(OrganizationDO::getRootTgid, rootTgid)
                 .eq(OrganizationDO::getOid, oid)) == 1;
     }
+
+    @Override
+    public Organization getOrganizationById(Long oid) {
+        OrganizationDO orgDO = orgMapper.selectById(oid);
+        return orgDO == null ? null : commonConverter.organizationDO2Organization(orgDO);
+    }
 }

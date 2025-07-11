@@ -69,6 +69,11 @@ public class OrgServiceImpl implements OrgService {
         return organization;
     }
 
+    @Override
+    public Organization getOrgById(Long oid) {
+        return orgRepository.getOrganizationById(oid);
+    }
+
     /**
      * 创建组织及后缀
      * @param dto

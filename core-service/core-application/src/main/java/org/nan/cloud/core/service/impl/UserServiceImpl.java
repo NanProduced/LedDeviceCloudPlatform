@@ -41,4 +41,9 @@ public class UserServiceImpl implements UserService {
         }
         return manager;
     }
+
+    @Override
+    public User getUserById(Long uid) {
+        return userRepository.getUserById(uid);
+    }
 }

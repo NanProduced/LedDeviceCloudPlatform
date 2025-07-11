@@ -30,7 +30,4 @@ public class UserInfoResponse {
 
     @Schema(description = "用户电话号码")
     private String phone;
-
-    @Schema(description = "访问令牌")
-    private String accessToken;
 }

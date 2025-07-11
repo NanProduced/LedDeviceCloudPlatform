@@ -6,4 +6,6 @@ import org.nan.cloud.core.domain.User;
 public interface UserService {
 
     User createOrgManagerUser(CreateOrgDTO dto);
+    
+    User getUserById(Long uid);
 }

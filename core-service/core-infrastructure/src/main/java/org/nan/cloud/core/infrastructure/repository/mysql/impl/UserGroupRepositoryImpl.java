@@ -28,4 +28,10 @@ public class UserGroupRepositoryImpl implements UserGroupRepository {
         userGroupMapper.updateById(userGroupDO);
         return commonConverter.userGroupDO2UserGroup(userGroupDO);
     }
+
+    @Override
+    public UserGroup getUserGroupById(Long ugid) {
+        UserGroupDO userGroupDO = userGroupMapper.selectById(ugid);
+        return userGroupDO == null ? null : commonConverter.userGroupDO2UserGroup(userGroupDO);
+    }
 }

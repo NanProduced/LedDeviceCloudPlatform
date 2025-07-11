@@ -23,6 +23,8 @@ public class CasbinAuthorizationManager implements ReactiveAuthorizationManager<
 
     private final Enforcer enforcer;
 
+    private final CommonApiConfig commonApiConfig;
+
     @Override
     public Mono<AuthorizationDecision> check(Mono<Authentication> authentication, AuthorizationContext ctx) {
         String path = ctx.getExchange().getRequest().getPath().value();
@@ -41,10 +43,6 @@ public class CasbinAuthorizationManager implements ReactiveAuthorizationManager<
                         Map<String, Object> attrs = oauth2Auth.getPrincipal().getAttributes();
                         Object u = attrs.get("uid");
                         Object o = attrs.get("oid");
-                        if (!(u instanceof Number) || !(o instanceof Number)) {
-                            // 如果没拿到，就认为没权限
-                            return Mono.just(new AuthorizationDecision(false));
-                        }
                         uid = u.toString();
                         oid = o.toString();
                     }
@@ -52,8 +50,12 @@ public class CasbinAuthorizationManager implements ReactiveAuthorizationManager<
                         return Mono.just(new AuthorizationDecision(false));
                     }
 
-                    boolean allowed = enforcer.enforce(uid, oid, path, method);
-                    if (allowed) {
+                    // 通用接口跳过
+                    if (commonApiConfig.getUrls().stream().anyMatch(e -> e.equals(path))) {
+                        return Mono.just(new AuthorizationDecision(true));
+                    }
+                    // 接口鉴权
+                    if (enforcer.enforce(uid, oid, path, method)) {
                         return Mono.just(new AuthorizationDecision(true));
                     }
                     // 拒绝时抛出异常，后续可由 ExceptionTranslationWebFilter 转成 403

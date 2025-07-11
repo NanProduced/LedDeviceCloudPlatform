@@ -8,6 +8,8 @@ spring:
     import:
       - nacos:gateway-server-dev.yml?group=DEFAULT_GROUP&refresh=true
       - nacos:gateway-routes.yml?group=DEFAULT_GROUP&refresh=true
+      - nacos:gateway-whitelist.yml?group=DEFAULT_GROUP&refresh=true
+      - nacos:gateway-common-api.yml?group=DEFAULT_GROUP&refresh=true
 
 
   cloud:

@@ -6,4 +6,6 @@ import org.nan.cloud.core.domain.Organization;
 public interface OrgService {
 
     Organization createOrg(CreateOrgDTO createOrgDTO, Long currentUid);
+
+    Organization getOrgById(Long oid);
 }

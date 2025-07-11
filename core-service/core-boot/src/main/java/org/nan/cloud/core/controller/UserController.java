@@ -16,7 +16,7 @@ public class UserController implements UserApi {
 
     @Override
     public UserInfoResponse getCurrentUserInfo() {
-        return null;
+        return userFacade.getCurrentUserInfo();
     }
 
     @Override

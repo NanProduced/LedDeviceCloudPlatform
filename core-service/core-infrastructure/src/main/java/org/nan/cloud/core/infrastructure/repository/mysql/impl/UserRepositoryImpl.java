@@ -26,4 +26,10 @@ public class UserRepositoryImpl implements UserRepository {
         userMapper.insert(userDO);
         return commonConverter.userDO2User(userDO);
     }
+
+    @Override
+    public User getUserById(Long uid) {
+        UserDO userDO = userMapper.selectById(uid);
+        return userDO == null ? null : commonConverter.userDO2User(userDO);
+    }
 }

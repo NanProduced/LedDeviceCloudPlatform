@@ -10,5 +10,6 @@ public interface OrgRepository {
 
     boolean updateOrganizationRootGroup(Long oid, Long rootUgid, Long rootTgid);
 
+    Organization getOrganizationById(Long oid);
 
 }

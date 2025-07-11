@@ -12,8 +12,8 @@ import java.util.List;
 @EqualsAndHashCode(callSuper = false)
 @Component
 @RefreshScope
-@ConfigurationProperties(prefix = "customer.security.ignore")
-public class IgnoreUrlsConfig {
+@ConfigurationProperties(prefix = "customer.api.common")
+public class CommonApiConfig {
 
     private List<String> urls;
 }
