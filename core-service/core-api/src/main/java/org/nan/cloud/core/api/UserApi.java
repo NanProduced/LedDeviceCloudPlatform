@@ -1,8 +1,13 @@
 package org.nan.cloud.core.api;
 
-import jakarta.validation.constraints.NotBlank;
+import org.nan.cloud.core.api.DTO.req.CreateUserRequest;
+import org.nan.cloud.core.api.DTO.req.ModifyUserPasswordRequest;
 import org.nan.cloud.core.api.DTO.res.UserInfoResponse;
+import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestParam;
 
 public interface UserApi {
 
@@ -11,6 +16,13 @@ public interface UserApi {
     @GetMapping(prefix + "/current")
     UserInfoResponse getCurrentUserInfo();
 
-    void modifyPassword(@NotBlank String oldPassword, @NotBlank String newPassword);
+    @PostMapping(prefix + "/modify/pwd")
+    void modifyPassword(@Validated @RequestBody ModifyUserPasswordRequest  modifyUserPasswordRequest);
+
+    @PostMapping(prefix + "/create")
+    void createUser(@Validated @RequestBody CreateUserRequest createUserRequest);
+
+    @PostMapping(prefix + "/inactive")
+    void inactiveUser(@RequestParam("uid") Long uid);
 
 }

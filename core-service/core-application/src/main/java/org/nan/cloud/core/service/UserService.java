@@ -8,4 +8,6 @@ public interface UserService {
     User createOrgManagerUser(CreateOrgDTO dto);
     
     User getUserById(Long uid);
+
+    void updateUser(User user);
 }

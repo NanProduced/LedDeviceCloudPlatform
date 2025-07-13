@@ -1,6 +1,7 @@
 package org.nan.cloud.core.facade;
 
 import lombok.RequiredArgsConstructor;
+import org.nan.cloud.common.basic.exception.ExceptionEnum;
 import org.nan.cloud.common.basic.utils.PasswordUtils;
 import org.nan.cloud.common.web.context.GenericInvocationContext;
 import org.nan.cloud.common.web.context.InvocationContextHolder;
@@ -15,6 +16,7 @@ import org.nan.cloud.core.domain.User;
 import org.nan.cloud.core.domain.Organization;
 import org.nan.cloud.core.domain.UserGroup;
 import org.springframework.stereotype.Component;
+import org.springframework.transaction.annotation.Transactional;
 
 @Component
 @RequiredArgsConstructor
@@ -54,7 +56,14 @@ public class UserFacade {
         return resp;
     }
 
-    public void modifyPassword(String oldPassword, String newPassword) {
-        String encode = PasswordUtils.encodeByBCrypt(newPassword);
+    @Transactional(rollbackFor = Exception.class)
+    public void modifyPassword(String oldRawPassword, String newRawPassword) {
+        Long currentUId = InvocationContextHolder.getCurrentUId();
+        User currentUser = userService.getUserById(currentUId);
+        String oldEncodedPassword = currentUser.getPassword();
+        ExceptionEnum.USER_PASSWORD_NOT_MATCH.throwIf(!PasswordUtils.matchesByBCrypt(oldRawPassword, oldEncodedPassword));
+        String newEncoded = PasswordUtils.encodeByBCrypt(newRawPassword);
+        currentUser.setPassword(newEncoded);
+        userService.updateUser(currentUser);
     }
 }

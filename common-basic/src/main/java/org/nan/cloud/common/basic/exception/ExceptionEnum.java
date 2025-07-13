@@ -24,7 +24,11 @@ public enum ExceptionEnum {
 
     /* 参数校验 -> 4xxx */
     USER_NAME_DUPLICATION_EXCEPTION(4001, "Username is duplication"),
-    GROUP_HAS_SUB_GROUP(4002, "Group has sub group");
+    GROUP_HAS_SUB_GROUP(4002, "Group has sub group"),
+
+    /* 业务异常 -> 5xxx */
+    USER_PASSWORD_NOT_MATCH(5001, "User password not match"),
+    USER_GROUP_INIT_FAILED(5002, "User group init failed");
 
     private final Integer code;
     private final String message;

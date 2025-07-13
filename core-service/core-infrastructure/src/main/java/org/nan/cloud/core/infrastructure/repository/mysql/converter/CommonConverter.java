@@ -22,6 +22,8 @@ public interface CommonConverter {
 
     UserGroup userGroupDO2UserGroup(UserGroupDO userGroupDO);
 
+    List<UserGroup> userGroupDO2UserGroup(List<UserGroupDO> userGroupDOS);
+
     UserDO user2UserDO(User user);
 
     User userDO2User(UserDO userDO);

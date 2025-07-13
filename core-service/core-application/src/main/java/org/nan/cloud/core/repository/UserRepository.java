@@ -6,4 +6,5 @@ public interface UserRepository {
 
     User createUser(User user);
     User getUserById(Long uid);
+    void updateUser(User user);
 }

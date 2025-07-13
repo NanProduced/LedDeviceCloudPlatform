@@ -10,6 +10,8 @@ import org.nan.cloud.core.service.UserService;
 import org.springframework.dao.DuplicateKeyException;
 import org.springframework.stereotype.Service;
 
+import java.time.LocalDateTime;
+
 @Slf4j
 @Service
 @RequiredArgsConstructor
@@ -45,5 +47,10 @@ public class UserServiceImpl implements UserService {
     @Override
     public User getUserById(Long uid) {
         return userRepository.getUserById(uid);
+    }
+
+    @Override
+    public void updateUser(User user) {
+        userRepository.updateUser(user);
     }
 }

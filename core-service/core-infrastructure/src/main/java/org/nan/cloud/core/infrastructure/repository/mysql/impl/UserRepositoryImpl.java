@@ -32,4 +32,11 @@ public class UserRepositoryImpl implements UserRepository {
         UserDO userDO = userMapper.selectById(uid);
         return userDO == null ? null : commonConverter.userDO2User(userDO);
     }
+
+    @Override
+    public void updateUser(User user) {
+        UserDO userDO = commonConverter.user2UserDO(user);
+        userDO.setUpdateTime(LocalDateTime.now());
+        userMapper.updateById(userDO);
+    }
 }
