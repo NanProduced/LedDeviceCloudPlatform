@@ -33,4 +33,5 @@ public class CasbinRbacPolicyHandler {
                 oid.toString())) throw new BusinessException(ExceptionEnum.CREATE_FAILED,
                 "A grouping policy already exists：(" + uid + ", " + rid + ", " + oid + ")" );
     }
+
 }

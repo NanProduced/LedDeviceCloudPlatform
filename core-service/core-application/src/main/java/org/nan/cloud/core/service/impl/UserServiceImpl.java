@@ -2,7 +2,11 @@ package org.nan.cloud.core.service.impl;
 
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.nan.cloud.common.basic.exception.ExceptionEnum;
 import org.nan.cloud.core.DTO.CreateOrgDTO;
+
+
+import org.nan.cloud.core.DTO.CreateUserDTO;
 import org.nan.cloud.core.domain.User;
 import org.nan.cloud.core.exception.BusinessException;
 import org.nan.cloud.core.repository.UserRepository;
@@ -19,7 +23,7 @@ public class UserServiceImpl implements UserService {
 
     private final UserRepository userRepository;
 
-
+    private final
 
     @Override
     public User createOrgManagerUser(CreateOrgDTO createOrgDTO) {
@@ -50,7 +54,26 @@ public class UserServiceImpl implements UserService {
     }
 
     @Override
+    public Long createUser(CreateUserDTO createUserDTO) {
+        ExceptionEnum.SAME_USERNAME.throwIf(userRepository.ifHasSameUsername(createUserDTO.getOid(), createUserDTO.getUsername()));
+        User user = userRepository.createUser(User.builder()
+                .username(createUserDTO.getUsername())
+                .password(createUserDTO.getEncodePassword())
+                .ugid(createUserDTO.getUgid())
+                .oid(createUserDTO.getOid())
+                .phone(createUserDTO.getPhone())
+                .email(createUserDTO.getEmail())
+                .type(2)
+                .creatorId(createUserDTO.getCreatorId())
+                .status(0)
+                .suffix(createUserDTO.getSuffix())
+                .build());
+        return user.getUid();
+    }
+
+    @Override
     public void updateUser(User user) {
         userRepository.updateUser(user);
     }
+
 }

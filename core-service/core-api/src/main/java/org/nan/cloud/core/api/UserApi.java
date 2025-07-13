@@ -2,6 +2,7 @@ package org.nan.cloud.core.api;
 
 import org.nan.cloud.core.api.DTO.req.CreateUserRequest;
 import org.nan.cloud.core.api.DTO.req.ModifyUserPasswordRequest;
+import org.nan.cloud.core.api.DTO.req.MoveUserRequest;
 import org.nan.cloud.core.api.DTO.res.UserInfoResponse;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -24,5 +25,8 @@ public interface UserApi {
 
     @PostMapping(prefix + "/inactive")
     void inactiveUser(@RequestParam("uid") Long uid);
+
+    @PostMapping(prefix + "/move")
+    void moveUser(@Validated @RequestBody MoveUserRequest moveUserRequest);
 
 }

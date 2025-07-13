@@ -1,5 +1,6 @@
 package org.nan.cloud.core.infrastructure.repository.mysql.impl;
 
+import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import lombok.RequiredArgsConstructor;
 import org.nan.cloud.core.domain.User;
 import org.nan.cloud.core.infrastructure.repository.mysql.DO.UserDO;
@@ -38,5 +39,12 @@ public class UserRepositoryImpl implements UserRepository {
         UserDO userDO = commonConverter.user2UserDO(user);
         userDO.setUpdateTime(LocalDateTime.now());
         userMapper.updateById(userDO);
+    }
+
+    @Override
+    public boolean ifHasSameUsername(Long oid, String username) {
+        return userMapper.exists(new LambdaQueryWrapper<UserDO>()
+                .eq(UserDO::getOid, oid)
+                .eq(UserDO::getUsername, username));
     }
 }

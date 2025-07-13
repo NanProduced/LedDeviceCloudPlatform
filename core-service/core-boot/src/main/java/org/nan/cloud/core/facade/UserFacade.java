@@ -6,8 +6,13 @@ import org.nan.cloud.common.basic.utils.PasswordUtils;
 import org.nan.cloud.common.web.context.GenericInvocationContext;
 import org.nan.cloud.common.web.context.InvocationContextHolder;
 import org.nan.cloud.common.web.context.RequestUserInfo;
+import org.nan.cloud.core.DTO.CreateUserDTO;
+import org.nan.cloud.core.api.DTO.req.CreateUserRequest;
+import org.nan.cloud.core.api.DTO.req.MoveUserRequest;
 import org.nan.cloud.core.api.DTO.res.UserInfoResponse;
+import org.nan.cloud.core.casbin.CasbinRbacPolicyHandler;
 import org.nan.cloud.core.service.OrgService;
+import org.nan.cloud.core.service.PermissionChecker;
 import org.nan.cloud.core.service.UserGroupService;
 import org.nan.cloud.core.service.UserService;
 import org.nan.cloud.core.repository.OrgRepository;
@@ -27,6 +32,10 @@ public class UserFacade {
     private final OrgService orgService;
 
     private final UserGroupService userGroupService;
+
+    private final PermissionChecker permissionChecker;
+
+    private final CasbinRbacPolicyHandler rbacPolicyHandler;
 
 
     public UserInfoResponse getCurrentUserInfo() {
@@ -65,5 +74,38 @@ public class UserFacade {
         String newEncoded = PasswordUtils.encodeByBCrypt(newRawPassword);
         currentUser.setPassword(newEncoded);
         userService.updateUser(currentUser);
+    }
+
+    @Transactional(rollbackFor = Exception.class)
+    public void createUser(CreateUserRequest createUserRequest) {
+        RequestUserInfo requestUser = InvocationContextHolder.getContext().getRequestUser();
+        Long oid = requestUser.getOid();
+        Long currentUId = requestUser.getUid();
+        Long curUgid = requestUser.getUgid();
+        ExceptionEnum.USER_GROUP_PERMISSION_DENIED.throwIf(!permissionChecker.ifHasPermissionOnTargetUserGroup(curUgid, createUserRequest.getUgid()));
+        ExceptionEnum.ROLE_DOES_NOT_EXIST.throwIf(!permissionChecker.ifRolesExist(createUserRequest.getRoles()));
+        ExceptionEnum.USER_PERMISSION_DENIED.throwIf(!permissionChecker.ifHasPermissionOnTargetRoles(oid,
+                currentUId, createUserRequest.getRoles()));
+        CreateUserDTO createUserDTO = CreateUserDTO.builder()
+                .oid(oid)
+                .suffix(orgService.getSuffixById(oid))
+                .ugid(createUserRequest.getUgid())
+                .username(createUserRequest.getUsername())
+                .encodePassword(PasswordUtils.encodeByBCrypt(createUserRequest.getPassword()))
+                .email(createUserRequest.getEmail())
+                .phone(createUserRequest.getPhone())
+                .creatorId(currentUId)
+                .build();
+        Long createUid = userService.createUser(createUserDTO);
+
+        // userService.createUser(createUserRequest);
+    }
+// 
+    public void inactiveUser(Long uid) {
+        // userService.inactiveUser(uid);
+    }
+
+    public void moveUser(MoveUserRequest moveUserRequest) {
+        // userService.moveUser(moveUserRequest);
     }
 }

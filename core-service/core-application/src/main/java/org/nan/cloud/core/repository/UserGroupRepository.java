@@ -13,4 +13,10 @@ public interface UserGroupRepository {
     List<UserGroup> getAllUserGroupsByParent(Long ugid);
 
     List<UserGroup> getDirectUserGroupsByParent(Long ugid);
+
+    boolean isAncestor(Long aUgid, Long bUgid);
+
+    boolean isSibling(Long aUgid, Long bUgid);
+
+    boolean isAncestorOrSibling(Long aUgid, Long bUgid);
 }

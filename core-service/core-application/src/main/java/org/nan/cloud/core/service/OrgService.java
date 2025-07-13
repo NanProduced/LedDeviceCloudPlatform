@@ -8,4 +8,6 @@ public interface OrgService {
     Organization createOrg(CreateOrgDTO createOrgDTO, Long currentUid);
 
     Organization getOrgById(Long oid);
+
+    Integer getSuffixById(Long oid);
 }

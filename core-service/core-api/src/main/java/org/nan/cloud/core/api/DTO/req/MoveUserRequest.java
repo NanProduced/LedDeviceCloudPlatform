@@ -7,4 +7,12 @@ import lombok.Data;
 @Data
 public class MoveUserRequest {
 
+    @Schema(description = "用户Id", requiredMode = Schema.RequiredMode.REQUIRED)
+    private Long uid;
+
+    @Schema(description = "源用户组Id", requiredMode = Schema.RequiredMode.REQUIRED)
+    private Long sourceUgid;
+
+    @Schema(description = "目标用户组Id", requiredMode = Schema.RequiredMode.REQUIRED)
+    private Long targetUgid;
 }

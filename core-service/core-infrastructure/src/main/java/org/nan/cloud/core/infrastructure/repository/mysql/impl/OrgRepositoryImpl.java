@@ -1,5 +1,6 @@
 package org.nan.cloud.core.infrastructure.repository.mysql.impl;
 
+import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.core.conditions.update.LambdaUpdateWrapper;
 import lombok.RequiredArgsConstructor;
 import org.nan.cloud.core.domain.Organization;
@@ -48,5 +49,13 @@ public class OrgRepositoryImpl implements OrgRepository {
     public Organization getOrganizationById(Long oid) {
         OrganizationDO orgDO = orgMapper.selectById(oid);
         return orgDO == null ? null : commonConverter.organizationDO2Organization(orgDO);
+    }
+
+    @Override
+    public Integer getSuffixById(Long oid) {
+        return orgMapper.selectOne(new LambdaQueryWrapper<OrganizationDO>()
+                .select(OrganizationDO::getSuffix)
+                .eq(OrganizationDO::getOid, oid))
+                .getSuffix();
     }
 }

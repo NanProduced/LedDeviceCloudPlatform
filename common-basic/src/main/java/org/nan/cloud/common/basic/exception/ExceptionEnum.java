@@ -28,7 +28,12 @@ public enum ExceptionEnum {
 
     /* 业务异常 -> 5xxx */
     USER_PASSWORD_NOT_MATCH(5001, "User password not match"),
-    USER_GROUP_INIT_FAILED(5002, "User group init failed");
+    USER_GROUP_INIT_FAILED(5002, "User group init failed"),
+    USER_GROUP_PERMISSION_DENIED(5003, "User group permission denied"),
+    USER_PERMISSION_DENIED(5004, "User permission denied"),
+    ORG_PERMISSION_DENIED(5005, "Wrong organization permission"),
+    SAME_USERNAME(5006, "There is already a same username"),
+    ROLE_DOES_NOT_EXIST(5007, "Role doesn't exist");
 
     private final Integer code;
     private final String message;

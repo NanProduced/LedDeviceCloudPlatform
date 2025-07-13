@@ -2,7 +2,10 @@ package org.nan.cloud.core.controller;
 
 import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;
+
+import org.nan.cloud.core.api.DTO.req.CreateUserRequest;
 import org.nan.cloud.core.api.DTO.req.ModifyUserPasswordRequest;
+import org.nan.cloud.core.api.DTO.req.MoveUserRequest;
 import org.nan.cloud.core.api.DTO.res.UserInfoResponse;
 import org.nan.cloud.core.api.UserApi;
 import org.nan.cloud.core.facade.UserFacade;
@@ -24,5 +27,20 @@ public class UserController implements UserApi {
     public void modifyPassword(ModifyUserPasswordRequest modifyUserPasswordRequest) {
         userFacade.modifyPassword(modifyUserPasswordRequest.getOldPassword(),
                 modifyUserPasswordRequest.getNewPassword());
+    }
+
+    @Override
+    public void createUser(CreateUserRequest createUserRequest) {
+        userFacade.createUser(createUserRequest);
+    }
+
+    @Override
+    public void inactiveUser(Long uid) {
+        userFacade.inactiveUser(uid);
+    }
+
+    @Override
+    public void moveUser(MoveUserRequest moveUserRequest) {
+        userFacade.moveUser(moveUserRequest);
     }
 }

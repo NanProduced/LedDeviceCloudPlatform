@@ -12,4 +12,6 @@ public interface OrgRepository {
 
     Organization getOrganizationById(Long oid);
 
+    Integer getSuffixById(Long oid);
+
 }

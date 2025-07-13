@@ -9,6 +9,7 @@ import org.nan.cloud.core.repository.PermissionRepository;
 import org.springframework.stereotype.Repository;
 
 import java.util.List;
+import java.util.Set;
 
 @Repository
 @RequiredArgsConstructor
@@ -22,5 +23,20 @@ public class PermissionRepositoryImpl implements PermissionRepository {
     public List<Permission> getPermissionsByIds(List<Long> permissionIds) {
         final List<PermissionDO> permissionDOS = permissionMapper.selectByIds(permissionIds);
         return commonConverter.permissionDO2Permission(permissionDOS);
+    }
+
+    @Override
+    public List<Permission> getPermissionsByRoles(List<Long> rids) {
+        return List.of();
+    }
+
+    @Override
+    public Set<Long> getPermissionIdsByRoles(Long oid, List<Long> rids) {
+        return permissionMapper.getPermissionIdsByRoles(oid, rids);
+    }
+
+    @Override
+    public Set<Long> getPermissionIdsByUid(Long uid) {
+        return permissionMapper.getPermissionIdsByUid(uid);
     }
 }

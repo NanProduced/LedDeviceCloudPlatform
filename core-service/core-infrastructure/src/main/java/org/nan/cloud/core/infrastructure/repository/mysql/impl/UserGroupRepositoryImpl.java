@@ -58,4 +58,19 @@ public class UserGroupRepositoryImpl implements UserGroupRepository {
                 .eq(UserGroupDO::getParent, ugid));
         return commonConverter.userGroupDO2UserGroup(userGroupDOS);
     }
+
+    @Override
+    public boolean isAncestor(Long aUgid, Long bUgid) {
+        return userGroupMapper.isAncestor(aUgid, bUgid);
+    }
+
+    @Override
+    public boolean isSibling(Long aUgid, Long bUgid) {
+        return userGroupMapper.isSibling(aUgid, bUgid);
+    }
+
+    @Override
+    public boolean isAncestorOrSibling(Long aUgid, Long bUgid) {
+        return userGroupMapper.isAncestorOrSibling(aUgid, bUgid);
+    }
 }

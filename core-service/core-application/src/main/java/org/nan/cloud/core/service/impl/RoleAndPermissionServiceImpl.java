@@ -5,6 +5,7 @@ import org.nan.cloud.core.domain.Permission;
 import org.nan.cloud.core.domain.Role;
 import org.nan.cloud.core.domain.User;
 import org.nan.cloud.core.repository.PermissionRepository;
+import org.nan.cloud.core.repository.RoleRepository;
 import org.nan.cloud.core.service.RoleAndPermissionService;
 import org.springframework.stereotype.Service;
 
@@ -24,6 +25,11 @@ public class RoleAndPermissionServiceImpl implements RoleAndPermissionService {
     @Override
     public List<Permission> getPermissionsByIds(List<Long> permissionIds) {
         return permissionRepository.getPermissionsByIds(permissionIds);
+    }
+
+    @Override
+    public List<Permission> getPermissionsByRoles(Long oid, List<Long> rids) {
+        return List.of();
     }
 
     @Override

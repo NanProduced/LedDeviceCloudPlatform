@@ -12,10 +12,6 @@ import java.util.List;
 @Data
 public class CreateUserRequest {
 
-    @Schema(description = "组织Id", requiredMode = Schema.RequiredMode.REQUIRED)
-    @NotNull
-    private Long oid;
-
     @Schema(description = "用户组Id", requiredMode = Schema.RequiredMode.REQUIRED)
     @NotNull
     private Long ugid;

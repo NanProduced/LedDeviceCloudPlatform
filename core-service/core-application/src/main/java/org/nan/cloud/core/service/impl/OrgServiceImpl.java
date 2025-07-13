@@ -74,6 +74,11 @@ public class OrgServiceImpl implements OrgService {
         return orgRepository.getOrganizationById(oid);
     }
 
+    @Override
+    public Integer getSuffixById(Long oid) {
+        return orgRepository.getSuffixById(oid);
+    }
+
     /**
      * 创建组织及后缀
      * @param dto
