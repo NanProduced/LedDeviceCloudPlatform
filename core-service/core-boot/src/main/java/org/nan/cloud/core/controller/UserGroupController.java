@@ -22,15 +22,20 @@ public class UserGroupController implements UserGroupApi {
     @Operation(
             summary = "获取用户组树",
             description = "加载当前登录用户的用户组树",
-            tags = {"用户信息"}
+            tags = {"用户组管理"}
     )
     @Override
     public UserGroupTreeResponse getUserGroupTree() {
         return userGroupFacade.getUserGroupTree();
     }
 
+    @Operation(
+            summary = "获取用户列表",
+            description = "根据用户组Id获取用户列表",
+            tags = {"用户组管理"}
+    )
     @Override
     public PageVO<UserListResponse> listUser(PageRequestDTO<QueryUserListRequest> requestDTO) {
-        return null;
+        return userGroupFacade.listUser(requestDTO);
     }
 }

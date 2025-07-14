@@ -1,8 +1,14 @@
 package org.nan.cloud.core.infrastructure.repository.mysql.impl;
 
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
+import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
 import com.baomidou.mybatisplus.core.conditions.update.LambdaUpdateWrapper;
+import com.baomidou.mybatisplus.core.metadata.IPage;
+import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import lombok.RequiredArgsConstructor;
+import org.apache.commons.lang3.StringUtils;
+import org.nan.cloud.common.basic.model.PageVO;
+import org.nan.cloud.core.DTO.QueryUserListDTO;
 import org.nan.cloud.core.domain.User;
 import org.nan.cloud.core.infrastructure.repository.mysql.DO.UserDO;
 import org.nan.cloud.core.infrastructure.repository.mysql.converter.CommonConverter;
@@ -11,6 +17,7 @@ import org.nan.cloud.core.repository.UserRepository;
 import org.springframework.stereotype.Repository;
 
 import java.time.LocalDateTime;
+import java.util.Set;
 
 @Repository
 @RequiredArgsConstructor
@@ -33,6 +40,33 @@ public class UserRepositoryImpl implements UserRepository {
     public User getUserById(Long uid) {
         UserDO userDO = userMapper.selectById(uid);
         return userDO == null ? null : commonConverter.userDO2User(userDO);
+    }
+
+    @Override
+    public PageVO<User> pageUsers(int pageNum, int pageSize, Long oid, Set<Long> ugids, String usernameKeyword, String emailKeyword) {
+        Page<UserDO> page = new Page<>(pageNum, pageSize);
+        LambdaQueryWrapper<UserDO> queryWrapper = new LambdaQueryWrapper<UserDO>()
+                .select(UserDO.class, user -> user.getColumn().equals("password"))
+                .eq(UserDO::getOid, oid)
+                .in(UserDO::getUgid, ugids);
+        if (StringUtils.isNotBlank(usernameKeyword)) {
+            queryWrapper.like(UserDO::getUsername, usernameKeyword);
+        }
+        if (StringUtils.isNotBlank(emailKeyword)) {
+            queryWrapper.like(UserDO::getEmail, emailKeyword);
+        }
+        queryWrapper.orderByDesc(UserDO::getCreateTime);
+
+        IPage pageResult = userMapper.selectPage(page, queryWrapper);
+
+        PageVO<User> pageVO = PageVO.<User>builder()
+                .pageNum((int) pageResult.getCurrent())
+                .pageSize((int) pageResult.getSize())
+                .total(pageResult.getTotal())
+                .records(commonConverter.userDO2User(pageResult.getRecords()))
+                .build();
+        pageVO.calculate();
+        return pageVO;
     }
 
     @Override

@@ -3,20 +3,28 @@ package org.nan.cloud.core.service.impl;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.nan.cloud.common.basic.exception.ExceptionEnum;
+import org.nan.cloud.common.basic.model.PageVO;
 import org.nan.cloud.core.DTO.CreateOrgDTO;
 
 
 import org.nan.cloud.core.DTO.CreateUserDTO;
+import org.nan.cloud.core.DTO.QueryUserListDTO;
 import org.nan.cloud.core.domain.User;
+import org.nan.cloud.core.domain.UserGroup;
 import org.nan.cloud.core.enums.UserStatusEnum;
 import org.nan.cloud.core.enums.UserTypeEnum;
 import org.nan.cloud.core.exception.BusinessException;
+import org.nan.cloud.core.repository.UserGroupRepository;
 import org.nan.cloud.core.repository.UserRepository;
 import org.nan.cloud.core.service.UserService;
 import org.springframework.dao.DuplicateKeyException;
 import org.springframework.stereotype.Service;
 
 import java.time.LocalDateTime;
+import java.util.Collections;
+import java.util.Map;
+import java.util.function.Function;
+import java.util.stream.Collectors;
 
 @Slf4j
 @Service
@@ -24,6 +32,8 @@ import java.time.LocalDateTime;
 public class UserServiceImpl implements UserService {
 
     private final UserRepository userRepository;
+
+    private final UserGroupRepository userGroupRepository;
 
     @Override
     public User createOrgManagerUser(CreateOrgDTO createOrgDTO) {
@@ -46,6 +56,21 @@ public class UserServiceImpl implements UserService {
             throw new BusinessException(ex, "Duplicate usernames within the organization");
         }
         return manager;
+    }
+
+    @Override
+    public PageVO<User> pageUsers(int pageNum, int pageSize, QueryUserListDTO dto) {
+        Map<Long, String> groupMap;
+        if (dto.isIfIncludeSubGroups()) {
+            groupMap = userGroupRepository.getAllUserGroupsByParent(dto.getUgid()).stream()
+                            .collect(Collectors.toMap(UserGroup::getUgid, UserGroup::getName));
+        }
+        else {
+            groupMap = Collections.singletonMap(dto.getUgid(), userGroupRepository.getUserGroupById(dto.getUgid()).getName());
+        }
+        PageVO<User> userPageVO = userRepository.pageUsers(pageNum, pageSize, dto.getOid(), groupMap.keySet(), dto.getUserNameKeyword(), dto.getEmailKeyword());
+        userPageVO.getRecords().forEach(e -> e.setUgName(groupMap.get(e.getUid())));
+        return userPageVO;
     }
 
     @Override

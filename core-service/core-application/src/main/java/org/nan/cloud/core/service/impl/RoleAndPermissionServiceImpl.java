@@ -9,8 +9,9 @@ import org.nan.cloud.core.repository.RoleRepository;
 import org.nan.cloud.core.service.RoleAndPermissionService;
 import org.springframework.stereotype.Service;
 
-import java.util.List;
-import java.util.Set;
+import java.util.*;
+import java.util.function.Function;
+import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
@@ -38,6 +39,24 @@ public class RoleAndPermissionServiceImpl implements RoleAndPermissionService {
     @Override
     public List<Permission> getPermissionsByRoles(Long oid, List<Long> rids) {
         return List.of();
+    }
+
+    @Override
+    public Map<Long, List<Role>> getRolesByUserIds(List<Long> userIds) {
+        Map<Long, List<Long>> userRoleMap = roleRepository.getRoleIdsByUserIds(userIds);
+        Set<Long> roleSet = userRoleMap.values().stream().flatMap(List::stream)
+                .collect(Collectors.toSet());
+        Map<Long, Role> roleMap = roleRepository.getRolesByRids(roleSet).stream()
+                .collect(Collectors.toMap(Role::getRid, Function.identity()));
+        Map<Long, List<Role>> result = new HashMap<>(userRoleMap.size());
+        userRoleMap.forEach((uid, rids) -> {
+            List<Role> roles = rids.stream()
+                    .map(roleMap::get)
+                    .filter(Objects::nonNull)
+                    .collect(Collectors.toList());
+            result.put(uid, roles);
+        });
+        return result;
     }
 
     @Override

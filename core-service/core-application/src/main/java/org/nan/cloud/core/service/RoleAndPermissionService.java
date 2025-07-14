@@ -5,6 +5,7 @@ import org.nan.cloud.core.domain.Role;
 import org.nan.cloud.core.domain.User;
 
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 
 public interface RoleAndPermissionService {
@@ -16,6 +17,8 @@ public interface RoleAndPermissionService {
     List<Permission> getPermissionsByIds(List<Long> permissionIds);
 
     List<Permission> getPermissionsByRoles(Long oid, List<Long> rids);
+
+    Map<Long, List<Role>> getRolesByUserIds(List<Long> userIds);
 
     void assignPermissionsToRole(Role role, List<Permission> permissions);
 

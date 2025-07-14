@@ -1,12 +1,16 @@
 package org.nan.cloud.core.service;
 
+import org.nan.cloud.common.basic.model.PageVO;
 import org.nan.cloud.core.DTO.CreateOrgDTO;
 import org.nan.cloud.core.DTO.CreateUserDTO;
+import org.nan.cloud.core.DTO.QueryUserListDTO;
 import org.nan.cloud.core.domain.User;
 
 public interface UserService {
 
     User createOrgManagerUser(CreateOrgDTO dto);
+
+    PageVO<User> pageUsers(int pageNum, int pageSize, QueryUserListDTO dto);
     
     User getUserById(Long uid);
 

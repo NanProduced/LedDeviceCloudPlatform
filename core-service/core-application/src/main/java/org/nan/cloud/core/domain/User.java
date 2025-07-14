@@ -17,6 +17,8 @@ public class User {
 
     private Long ugid;
 
+    private String ugName;
+
     private Long oid;
 
     private String phone;

@@ -28,6 +28,8 @@ public interface CommonConverter {
 
     User userDO2User(UserDO userDO);
 
+    List<User> userDO2User(List<UserDO> userDOS);
+
     Permission permissionDO2Permission(PermissionDO permissionDO);
 
     List<Permission> permissionDO2Permission(List<PermissionDO> permissionDOS);
@@ -35,4 +37,6 @@ public interface CommonConverter {
     RoleDO role2RoleDO(Role role);
 
     Role roleDO2Role(RoleDO roleDO);
+
+    List<Role> roleDO2Role(List<RoleDO> roleDOS);
 }

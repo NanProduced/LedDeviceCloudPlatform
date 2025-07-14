@@ -9,6 +9,8 @@ import java.io.Serial;
 import java.io.Serializable;
 import java.util.Collections;
 import java.util.List;
+import java.util.function.Function;
+import java.util.stream.Collectors;
 
 /**
  * 分页统一返回实体
@@ -60,4 +62,47 @@ public class PageVO<T> implements Serializable {
         hasPrevious = pageNum > 1;
         hasNext = pageNum < totalPages;
     }
+
+    /**
+     * 通用映射：将当前 PageVO<T> 转为 PageVO<R>
+     *
+     * @param mapper 将 T 映射为 R 的函数
+     * @param <R>    目标类型
+     * @return 映射后的 PageVO<R>
+     */
+    public <R> PageVO<R> map(Function<? super T, ? extends R> mapper) {
+        PageVO<R> result = new PageVO<>();
+        result.setPageNum(this.pageNum);
+        result.setPageSize(this.pageSize);
+        result.setTotal(this.total);
+        // 转换 records 列表
+        result.setRecords(
+                this.records.stream()
+                        .map(mapper)
+                        .collect(Collectors.toList())
+        );
+        // 重新计算 totalPages、hasNext、hasPrevious
+        result.calculate();
+        return result;
+    }
+
+    /**
+     * 复制分页元信息到新 PageVO，同时使用外部提供的 records 列表
+     *
+     * @param newRecords 前端或者其他层已经准备好的 List<R>
+     * @param <R>        目标记录类型
+     * @return 包含相同分页信息、但 records 被替换为 newRecords 的新 PageVO<R>
+     */
+    public <R> PageVO<R> withRecords(List<R> newRecords) {
+        return PageVO.<R>builder()
+                .pageNum(this.pageNum)
+                .pageSize(this.pageSize)
+                .total(this.total)
+                .totalPages(this.totalPages)
+                .records(newRecords)
+                .hasNext(this.hasNext)
+                .hasPrevious(this.hasPrevious)
+                .build();
+    }
+
 }
