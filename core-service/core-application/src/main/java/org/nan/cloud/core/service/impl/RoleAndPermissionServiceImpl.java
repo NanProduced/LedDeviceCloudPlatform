@@ -10,16 +10,24 @@ import org.nan.cloud.core.service.RoleAndPermissionService;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
+import java.util.Set;
 
 @Service
 @RequiredArgsConstructor
 public class RoleAndPermissionServiceImpl implements RoleAndPermissionService {
 
+    private final RoleRepository roleRepository;
+
     private final PermissionRepository permissionRepository;
 
     @Override
     public Role createRole(Role role) {
-        return null;
+        return roleRepository.createRole(role);
+    }
+
+    @Override
+    public void createRolePermissionRel(Long rid, Set<Long> permissionIds) {
+        permissionRepository.insertRolePermissionRel(rid, permissionIds);
     }
 
     @Override

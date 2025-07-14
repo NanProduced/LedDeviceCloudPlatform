@@ -8,6 +8,8 @@ import org.nan.cloud.core.DTO.CreateOrgDTO;
 
 import org.nan.cloud.core.DTO.CreateUserDTO;
 import org.nan.cloud.core.domain.User;
+import org.nan.cloud.core.enums.UserStatusEnum;
+import org.nan.cloud.core.enums.UserTypeEnum;
 import org.nan.cloud.core.exception.BusinessException;
 import org.nan.cloud.core.repository.UserRepository;
 import org.nan.cloud.core.service.UserService;
@@ -23,8 +25,6 @@ public class UserServiceImpl implements UserService {
 
     private final UserRepository userRepository;
 
-    private final
-
     @Override
     public User createOrgManagerUser(CreateOrgDTO createOrgDTO) {
         User manager;
@@ -37,9 +37,9 @@ public class UserServiceImpl implements UserService {
                     .oid(createOrgDTO.getTgid())
                     .phone(createOrgDTO.getPhone())
                     .email(createOrgDTO.getEmail())
-                    .type(0)
+                    .type(UserTypeEnum.ORG_MANAGER_USER.getCode())
                     .creatorId(1L)
-                    .status(0)
+                    .status(UserStatusEnum.ACTIVE.getCode())
                     .suffix(createOrgDTO.getSuffix())
                     .build());
         } catch (DuplicateKeyException ex) {
@@ -63,9 +63,9 @@ public class UserServiceImpl implements UserService {
                 .oid(createUserDTO.getOid())
                 .phone(createUserDTO.getPhone())
                 .email(createUserDTO.getEmail())
-                .type(2)
+                .type(UserTypeEnum.NORMAL_USER.getCode())
                 .creatorId(createUserDTO.getCreatorId())
-                .status(0)
+                .status(UserStatusEnum.ACTIVE.getCode())
                 .suffix(createUserDTO.getSuffix())
                 .build());
         return user.getUid();
@@ -76,4 +76,23 @@ public class UserServiceImpl implements UserService {
         userRepository.updateUser(user);
     }
 
+    @Override
+    public void inactiveUser(Long uid) {
+        userRepository.updateUserStatus(uid, UserStatusEnum.INACTIVE.getCode());
+    }
+
+    @Override
+    public void activeUser(Long uid) {
+        userRepository.updateUserStatus(uid, UserStatusEnum.ACTIVE.getCode());
+    }
+
+    @Override
+    public void moveUser(Long uid, Long targetUid) {
+        userRepository.modifyUserGroup(uid, targetUid);
+    }
+
+    @Override
+    public void deleteUser(Long uid) {
+        userRepository.deleteUser(uid);
+    }
 }

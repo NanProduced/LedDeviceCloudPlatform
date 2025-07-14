@@ -36,6 +36,8 @@ public class UserPrincipal implements UserDetails, Serializable {
 
     private Integer status;
 
+    private Integer userType;
+
     public UserPrincipal(User user) {
         this.uid = user.getUid();
         this.username = user.getUsername();
@@ -43,6 +45,7 @@ public class UserPrincipal implements UserDetails, Serializable {
         this.oid = user.getOid();
         this.uGid = user.getUgid();
         this.status = user.getStatus();
+        this.userType = user.getType();
     }
 
     @Override

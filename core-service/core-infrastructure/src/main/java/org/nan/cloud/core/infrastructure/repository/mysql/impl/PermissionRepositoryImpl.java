@@ -2,6 +2,7 @@ package org.nan.cloud.core.infrastructure.repository.mysql.impl;
 
 import lombok.RequiredArgsConstructor;
 import org.nan.cloud.core.domain.Permission;
+import org.nan.cloud.core.domain.Role;
 import org.nan.cloud.core.infrastructure.repository.mysql.DO.PermissionDO;
 import org.nan.cloud.core.infrastructure.repository.mysql.converter.CommonConverter;
 import org.nan.cloud.core.infrastructure.repository.mysql.mapper.PermissionMapper;
@@ -28,6 +29,11 @@ public class PermissionRepositoryImpl implements PermissionRepository {
     @Override
     public List<Permission> getPermissionsByRoles(List<Long> rids) {
         return List.of();
+    }
+
+    @Override
+    public void insertRolePermissionRel(Long rid, Set<Long> permissionIds) {
+        permissionMapper.insertRolePermissions(rid, permissionIds);
     }
 
     @Override

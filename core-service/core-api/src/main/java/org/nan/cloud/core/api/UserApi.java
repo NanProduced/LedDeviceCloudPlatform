@@ -26,7 +26,13 @@ public interface UserApi {
     @PostMapping(prefix + "/inactive")
     void inactiveUser(@RequestParam("uid") Long uid);
 
+    @PostMapping(prefix + "/active")
+    void activeUser(@RequestParam("uid") Long uid);
+
     @PostMapping(prefix + "/move")
     void moveUser(@Validated @RequestBody MoveUserRequest moveUserRequest);
+
+    @PostMapping(prefix + "/delete")
+    void deleteUser(@RequestParam("uid") Long uid);
 
 }

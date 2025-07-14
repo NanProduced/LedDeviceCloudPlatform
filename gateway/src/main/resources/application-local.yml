@@ -77,6 +77,12 @@ casbin:
   table-name: rbac_casbin_rules
   policy-topic: RBAC_CASBIN_POLICY_TOPIC
 
+springdoc:
+  swagger-ui:
+    urls:
+        - name: core-service
+          url: /core/api/v3/api-docs
+
 logging:
   level:
     org.springframework.security: DEBUG

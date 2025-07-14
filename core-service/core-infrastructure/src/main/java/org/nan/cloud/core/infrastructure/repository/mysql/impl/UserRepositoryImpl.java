@@ -1,6 +1,7 @@
 package org.nan.cloud.core.infrastructure.repository.mysql.impl;
 
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
+import com.baomidou.mybatisplus.core.conditions.update.LambdaUpdateWrapper;
 import lombok.RequiredArgsConstructor;
 import org.nan.cloud.core.domain.User;
 import org.nan.cloud.core.infrastructure.repository.mysql.DO.UserDO;
@@ -42,9 +43,35 @@ public class UserRepositoryImpl implements UserRepository {
     }
 
     @Override
+    public void updateUserStatus(Long uid, Integer status) {
+        userMapper.update(new LambdaUpdateWrapper<UserDO>()
+                .eq(UserDO::getUid,uid)
+                .set(UserDO::getStatus,status)
+                .set(UserDO::getUpdateTime,LocalDateTime.now()));
+    }
+
+    @Override
+    public void modifyUserGroup(Long uid, Long ugid) {
+        userMapper.update(new LambdaUpdateWrapper<UserDO>()
+                .eq(UserDO::getUid,uid)
+                .set(UserDO::getUgid,ugid)
+                .set(UserDO::getUpdateTime,LocalDateTime.now()));
+    }
+
+    @Override
+    public void deleteUser(Long uid) {
+        userMapper.deleteById(uid);
+    }
+
+    @Override
     public boolean ifHasSameUsername(Long oid, String username) {
         return userMapper.exists(new LambdaQueryWrapper<UserDO>()
                 .eq(UserDO::getOid, oid)
                 .eq(UserDO::getUsername, username));
+    }
+
+    @Override
+    public boolean isAncestorOrSiblingByUser(Long aUgid, Long bUgid) {
+        return userMapper.isAncestorOrSiblingByUser(aUgid, bUgid);
     }
 }

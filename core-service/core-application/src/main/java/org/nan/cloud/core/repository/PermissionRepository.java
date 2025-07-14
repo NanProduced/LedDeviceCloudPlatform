@@ -11,6 +11,8 @@ public interface PermissionRepository {
 
     List<Permission> getPermissionsByRoles(List<Long> rids);
 
+    void insertRolePermissionRel(Long rid, Set<Long> permissionIds);
+
     Set<Long> getPermissionIdsByRoles(Long oid, List<Long> rids);
 
     Set<Long> getPermissionIdsByUid(Long uid);

@@ -6,15 +6,17 @@ import org.nan.cloud.common.web.context.InvocationContextHolder;
 import org.nan.cloud.core.DTO.CreateOrgDTO;
 import org.nan.cloud.core.api.DTO.req.CreateOrgRequest;
 import org.nan.cloud.core.api.DTO.res.CreateOrgResponse;
-import org.nan.cloud.core.casbin.CasbinRbacPolicyHandler;
 import org.nan.cloud.core.converter.OrgConverter;
 import org.nan.cloud.core.domain.Organization;
 import org.nan.cloud.core.domain.User;
 import org.nan.cloud.core.infrastructure.repository.enums.SystemRolesRelEnums;
 import org.nan.cloud.core.service.OrgService;
+import org.nan.cloud.core.service.PermissionEventPublisher;
 import org.nan.cloud.core.service.UserService;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
+
+import java.util.Collections;
 
 @Component
 @RequiredArgsConstructor
@@ -23,7 +25,7 @@ public class OrgFacade {
     private final OrgService orgService;
     private final UserService userService;
     private final OrgConverter orgConverter;
-    private final CasbinRbacPolicyHandler rbacPolicyHandler;
+    private final PermissionEventPublisher  permissionEventPublisher;
 
     /**
      * 组织创建用例：
@@ -45,7 +47,7 @@ public class OrgFacade {
         dto.setManagerPsw(encodePsw);
         final User orgManagerUser = userService.createOrgManagerUser(dto);
         // 分配组织管理员角色
-        rbacPolicyHandler.addGroupPolicy(orgManagerUser.getUid(), SystemRolesRelEnums.ORG_MANAGER.getRid(), organization.getOid());
+        permissionEventPublisher.publishAddUserAndRoleRelEvent(orgManagerUser.getUid(), organization.getOid(), Collections.singletonList(SystemRolesRelEnums.ORG_MANAGER.getRid()));
         return CreateOrgResponse.builder()
                 .oid(organization.getOid())
                 .orgName(organization.getName())

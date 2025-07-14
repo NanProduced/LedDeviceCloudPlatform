@@ -10,4 +10,6 @@ public class RequestUserInfo {
     private Long ugid;
 
     private Long oid;
+
+    private Integer userType;
 }

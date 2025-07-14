@@ -18,4 +18,12 @@ public interface UserService {
     Long createUser(CreateUserDTO dto);
 
     void updateUser(User user);
+
+    void inactiveUser(Long uid);
+
+    void activeUser(Long uid);
+
+    void moveUser(Long uid, Long targetUid);
+
+    void deleteUser(Long uid);
 }

@@ -10,16 +10,13 @@ import org.nan.cloud.core.DTO.CreateUserDTO;
 import org.nan.cloud.core.api.DTO.req.CreateUserRequest;
 import org.nan.cloud.core.api.DTO.req.MoveUserRequest;
 import org.nan.cloud.core.api.DTO.res.UserInfoResponse;
-import org.nan.cloud.core.casbin.CasbinRbacPolicyHandler;
-import org.nan.cloud.core.service.OrgService;
-import org.nan.cloud.core.service.PermissionChecker;
-import org.nan.cloud.core.service.UserGroupService;
-import org.nan.cloud.core.service.UserService;
-import org.nan.cloud.core.repository.OrgRepository;
-import org.nan.cloud.core.repository.UserGroupRepository;
+import org.nan.cloud.core.aspect.SkipOrgManagerPermissionCheck;
+import org.nan.cloud.core.event.UserDeleteEvent;
+import org.nan.cloud.core.service.*;
 import org.nan.cloud.core.domain.User;
 import org.nan.cloud.core.domain.Organization;
 import org.nan.cloud.core.domain.UserGroup;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -35,7 +32,9 @@ public class UserFacade {
 
     private final PermissionChecker permissionChecker;
 
-    private final CasbinRbacPolicyHandler rbacPolicyHandler;
+    private final PermissionEventPublisher permissionEventPublisher;
+
+    private final ApplicationEventPublisher applicationEventPublisher;
 
 
     public UserInfoResponse getCurrentUserInfo() {
@@ -77,6 +76,7 @@ public class UserFacade {
     }
 
     @Transactional(rollbackFor = Exception.class)
+    @SkipOrgManagerPermissionCheck
     public void createUser(CreateUserRequest createUserRequest) {
         RequestUserInfo requestUser = InvocationContextHolder.getContext().getRequestUser();
         Long oid = requestUser.getOid();
@@ -97,15 +97,40 @@ public class UserFacade {
                 .creatorId(currentUId)
                 .build();
         Long createUid = userService.createUser(createUserDTO);
-
-        // userService.createUser(createUserRequest);
+        permissionEventPublisher.publishAddUserAndRoleRelEvent(createUid, oid, createUserRequest.getRoles());
     }
-// 
+
+    @Transactional(rollbackFor = Exception.class)
     public void inactiveUser(Long uid) {
-        // userService.inactiveUser(uid);
+        RequestUserInfo requestUser = InvocationContextHolder.getContext().getRequestUser();
+        ExceptionEnum.USER_PERMISSION_DENIED.throwIf(!permissionChecker.ifHasPermissionOnTargetUser(requestUser.getUid(), uid));
+        userService.inactiveUser(uid);
     }
 
+    @Transactional(rollbackFor = Exception.class)
+    public void activeUser(Long uid) {
+        RequestUserInfo requestUser = InvocationContextHolder.getContext().getRequestUser();
+        ExceptionEnum.USER_PERMISSION_DENIED.throwIf(!permissionChecker.ifHasPermissionOnTargetUser(requestUser.getUid(), uid));
+        userService.activeUser(uid);
+    }
+
+    @Transactional(rollbackFor = Exception.class)
     public void moveUser(MoveUserRequest moveUserRequest) {
-        // userService.moveUser(moveUserRequest);
+        RequestUserInfo requestUser = InvocationContextHolder.getContext().getRequestUser();
+        ExceptionEnum.USER_PERMISSION_DENIED.throwIf(!permissionChecker.ifHasPermissionOnTargetUser(requestUser.getUid(), moveUserRequest.getUid()));
+        ExceptionEnum.USER_GROUP_PERMISSION_DENIED.throwIf(!permissionChecker.ifHasPermissionOnTargetUserGroup(requestUser.getUgid(), moveUserRequest.getTargetUgid()));
+        userService.moveUser(moveUserRequest.getUid(), moveUserRequest.getTargetUgid());
+    }
+
+    @Transactional(rollbackFor = Exception.class)
+    public void deleteUser(Long uid) {
+        Long currenUid = InvocationContextHolder.getCurrentUId();
+        ExceptionEnum.USER_PERMISSION_DENIED.throwIf(!permissionChecker.ifHasPermissionOnTargetUser(currenUid, uid));
+        User deleteUser = userService.getUserById(uid);
+        userService.deleteUser(uid);
+        UserDeleteEvent event = new UserDeleteEvent(this, deleteUser, currenUid);
+        applicationEventPublisher.publishEvent(event);
+        permissionEventPublisher.publishRemoveUserAndRoleRelEvent(event);
+
     }
 }

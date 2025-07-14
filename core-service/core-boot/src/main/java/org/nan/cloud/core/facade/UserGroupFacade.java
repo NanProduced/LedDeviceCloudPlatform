@@ -2,13 +2,17 @@ package org.nan.cloud.core.facade;
 
 import lombok.RequiredArgsConstructor;
 import org.nan.cloud.common.basic.exception.ExceptionEnum;
+import org.nan.cloud.common.basic.model.PageRequestDTO;
+import org.nan.cloud.common.basic.model.PageVO;
 import org.nan.cloud.common.web.context.GenericInvocationContext;
 import org.nan.cloud.common.web.context.InvocationContextHolder;
 import org.nan.cloud.common.web.context.RequestUserInfo;
 import org.nan.cloud.core.DTO.UserGroupRelDTO;
 import org.nan.cloud.core.api.DTO.common.OrganizationDTO;
 import org.nan.cloud.core.api.DTO.common.UserGroupTreeNode;
+import org.nan.cloud.core.api.DTO.req.QueryUserListRequest;
 import org.nan.cloud.core.api.DTO.res.UserGroupTreeResponse;
+import org.nan.cloud.core.api.DTO.res.UserListResponse;
 import org.nan.cloud.core.domain.Organization;
 import org.nan.cloud.core.domain.UserGroup;
 import org.nan.cloud.core.service.OrgService;
@@ -39,6 +43,10 @@ public class UserGroupFacade {
         response.setOrganization(new OrganizationDTO(organization.getOid(), organization.getName(), organization.getSuffix()));
         response.setRoot(rootNode);
         return response;
+    }
+
+    public PageVO<UserListResponse> listUser(PageRequestDTO<QueryUserListRequest> requestDTO) {
+
     }
 
     private UserGroupTreeNode generateRootNode(Long rootUgid, List<UserGroupRelDTO> userGroupRel) {

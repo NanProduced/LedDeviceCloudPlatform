@@ -1,9 +1,11 @@
 package org.nan.cloud.core.service.impl;
 
 import lombok.RequiredArgsConstructor;
+import org.nan.cloud.core.manager.PermissionCheckSkipContext;
 import org.nan.cloud.core.repository.PermissionRepository;
 import org.nan.cloud.core.repository.RoleRepository;
 import org.nan.cloud.core.repository.UserGroupRepository;
+import org.nan.cloud.core.repository.UserRepository;
 import org.nan.cloud.core.service.PermissionChecker;
 import org.springframework.stereotype.Service;
 
@@ -15,6 +17,8 @@ import java.util.Set;
 public class PermissionCheckerImpl implements PermissionChecker {
 
     private final UserGroupRepository userGroupRepository;
+
+    private final UserRepository userRepository;
 
     private final PermissionRepository permissionRepository;
 
@@ -33,7 +37,13 @@ public class PermissionCheckerImpl implements PermissionChecker {
     }
 
     @Override
+    public boolean ifHasPermissionOnTargetUser(Long curUid, Long targetUid) {
+        return userRepository.isAncestorOrSiblingByUser(curUid, targetUid);
+    }
+
+    @Override
     public boolean ifHasPermissionOnTargetRoles(Long oid, Long uid, List<Long> targetRoles) {
+        if (PermissionCheckSkipContext.isSkip()) return true;
         Set<Long> curPermissions = permissionRepository.getPermissionIdsByUid(uid);
         Set<Long> targetPermissions = permissionRepository.getPermissionIdsByRoles(oid, targetRoles);
         return curPermissions.containsAll(targetPermissions);

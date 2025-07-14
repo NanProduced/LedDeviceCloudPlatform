@@ -5,10 +5,13 @@ import org.nan.cloud.core.domain.Role;
 import org.nan.cloud.core.domain.User;
 
 import java.util.List;
+import java.util.Set;
 
 public interface RoleAndPermissionService {
 
     Role createRole(Role role);
+
+    void createRolePermissionRel(Long rid, Set<Long> permissionIds);
 
     List<Permission> getPermissionsByIds(List<Long> permissionIds);
 

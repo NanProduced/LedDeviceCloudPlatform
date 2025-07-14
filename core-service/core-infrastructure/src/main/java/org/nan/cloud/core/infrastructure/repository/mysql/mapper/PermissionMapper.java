@@ -1,6 +1,7 @@
 package org.nan.cloud.core.infrastructure.repository.mysql.mapper;
 
 import com.baomidou.mybatisplus.core.mapper.BaseMapper;
+import org.apache.ibatis.annotations.Insert;
 import org.apache.ibatis.annotations.Mapper;
 import org.apache.ibatis.annotations.Param;
 import org.apache.ibatis.annotations.Select;
@@ -44,5 +45,23 @@ public interface PermissionMapper extends BaseMapper<PermissionDO> {
     })
     Set<Long> getPermissionIdsByRoles(@Param("oid") Long oid, @Param("rids") List<Long> rids);
 
+    /**
+     * 给角色批量添加权限关系
+     * @param rid           角色 ID
+     * @param permissionIds 权限 ID 列表
+     * @return 插入的记录数
+     */
+    @Insert({
+            "<script>",
+            "INSERT INTO role_permission_rel (rid, permission_id) VALUES",
+            "<foreach collection='permissionIds' item='pid' index='idx' separator=','>",
+            "(#{rid}, #{pid})",
+            "</foreach>",
+            "</script>"
+    })
+    int insertRolePermissions(
+            @Param("rid") Long rid,
+            @Param("permissionIds") Set<Long> permissionIds
+    );
 
 }

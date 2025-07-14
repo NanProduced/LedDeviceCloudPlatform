@@ -5,21 +5,22 @@ import lombok.extern.slf4j.Slf4j;
 import org.nan.cloud.common.basic.exception.ExceptionEnum;
 import org.nan.cloud.common.web.context.InvocationContextHolder;
 import org.nan.cloud.core.api.DTO.req.CreateRoleRequest;
-import org.nan.cloud.core.casbin.CasbinRbacPolicyHandler;
 import org.nan.cloud.core.domain.Permission;
 import org.nan.cloud.core.domain.Role;
+import org.nan.cloud.core.service.PermissionEventPublisher;
 import org.nan.cloud.core.service.RoleAndPermissionService;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
+import java.util.stream.Collectors;
 
 @Slf4j
 @Component
 @RequiredArgsConstructor
 public class RoleFacade {
 
-    private final CasbinRbacPolicyHandler rbacPolicyHandler;
+    private final PermissionEventPublisher  permissionEventPublisher;
 
     private final RoleAndPermissionService roleAndPermissionService;
 
@@ -39,13 +40,8 @@ public class RoleFacade {
                 .build());
         ExceptionEnum.CREATE_FAILED.throwIf(null == role.getRid());
         final Long rid = role.getRid();
-        permissions.forEach(p -> {
-            final boolean b = rbacPolicyHandler.addRolePolicy(rid, oid, p.getUrl(), p.getMethod());
-            if (!b) {
-                log.warn("rbac add policy failed: role:{}--permission:{}", role, p);
-                ExceptionEnum.SERVER_ERROR.throwThis();
-            }
-        });
+        roleAndPermissionService.createRolePermissionRel(rid, permissions.stream().map(Permission::getPermissionId).collect(Collectors.toSet()));
+        permissionEventPublisher.publishAddRoleAndPermissionRelEvent(rid, oid, permissions);
     }
 
     void assignRolesToUser() {

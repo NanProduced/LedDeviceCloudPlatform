@@ -61,18 +61,9 @@ public class AuthGlobalFilter implements GlobalFilter, Ordered {
         jsonNode.put("uid", Long.parseLong((String) claims.get("uid")));
         jsonNode.put("oid", Long.parseLong((String) claims.get("oid")));
         jsonNode.put("ugid", Long.parseLong((String) claims.get("ugid")));
+        jsonNode.put("userType", Integer.parseInt((String) claims.get("userType")));
         return Base64.getUrlEncoder().withoutPadding()
                 .encodeToString(jsonNode.toString().getBytes(UTF_8));
-    }
-
-    private String analysisUserInfo(Jwt jwt) {
-        ObjectMapper objectMapper = JsonUtils.getObjectMapper();
-        ObjectNode jsonNode = objectMapper.createObjectNode();
-        jsonNode.put("uid", Long.parseLong(jwt.getClaim("uid")));
-        jsonNode.put("oid", Long.parseLong(jwt.getClaim("oid")));
-        jsonNode.put("ugid", Long.parseLong(jwt.getClaim("ugid")));
-        byte[] bytes = jsonNode.toString().getBytes(UTF_8);
-        return Base64.getUrlEncoder().withoutPadding().encodeToString(bytes);
     }
 
     @Override

@@ -55,7 +55,8 @@ public class DefaultOidcTokenCustomer implements OAuth2TokenCustomizer<JwtEncodi
                 context.getClaims()
                         .claim("uid", user.getUid().toString())
                         .claim("oid", user.getOid().toString())
-                        .claim("ugid", user.getUGid().toString());
+                        .claim("ugid", user.getUGid().toString())
+                        .claim("userType", user.getUserType().toString());
             }
         }
     }

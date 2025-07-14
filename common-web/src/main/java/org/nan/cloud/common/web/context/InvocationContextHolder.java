@@ -48,6 +48,10 @@ public class InvocationContextHolder {
 
     public static Long getOid() {return contextHolder.get().getRequestUser().getOid();}
 
+    public static boolean ifOrgManager() {
+        return contextHolder.get().getRequestUser().getUserType() == 1;
+    }
+
     @NonNull
     public static Long getCurrentUId() {
         return contextHolder.get().getRequestUser().getUid();
