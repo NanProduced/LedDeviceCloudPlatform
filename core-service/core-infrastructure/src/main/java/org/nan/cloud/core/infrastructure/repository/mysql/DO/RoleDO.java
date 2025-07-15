@@ -21,6 +21,12 @@ public class RoleDO {
     @TableField("name")
     private String name;
 
+    @TableField("display_name")
+    private String displayName;
+
+    @TableField("description")
+    private String description;
+
     @TableField("type")
     private Integer type;
 
@@ -29,4 +35,10 @@ public class RoleDO {
 
     @TableField("create_time")
     private LocalDateTime createTime;
+
+    @TableField("updater_id")
+    private Long updaterId;
+
+    @TableField("update_time")
+    private LocalDateTime updateTime;
 }

@@ -1,4 +1,4 @@
-package org.nan.cloud.core.event;
+package org.nan.cloud.core.event.rbac;
 
 import lombok.Getter;
 import org.springframework.context.ApplicationEvent;

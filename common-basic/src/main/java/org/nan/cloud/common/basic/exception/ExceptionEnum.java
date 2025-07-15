@@ -33,7 +33,9 @@ public enum ExceptionEnum {
     USER_PERMISSION_DENIED(5004, "User permission denied"),
     ORG_PERMISSION_DENIED(5005, "Wrong organization permission"),
     SAME_USERNAME(5006, "There is already a same username"),
-    ROLE_DOES_NOT_EXIST(5007, "Role doesn't exist");
+    ROLE_DOES_NOT_EXIST(5007, "Role doesn't exist"),
+    ROLE_PERMISSION_DENIED(5008, "Doesn't have enough role permissions"),
+    NAME_DUPLICATE_ERROR(5009, "Already has the same name");
 
     private final Integer code;
     private final String message;

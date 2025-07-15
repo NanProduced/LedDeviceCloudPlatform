@@ -19,9 +19,7 @@ public class QueryUserListRequest {
     @Schema(description = "邮箱关键字")
     private String emailKeyword;
 
-    @Schema(description = "手机号码关键字")
-    private String phoneKeyword;
-
-
+    @Schema(description = "状态筛选, 0:正常;1:封禁", defaultValue = "Null")
+    private Integer status;
 
 }

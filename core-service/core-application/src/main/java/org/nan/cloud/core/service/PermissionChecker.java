@@ -16,5 +16,13 @@ public interface PermissionChecker {
 
     boolean ifHasPermissionOnTargetRoles(Long oid, Long uid, List<Long> targetRoles);
 
+    boolean ifHasPermissionOnTargetRole(Long uid, Long targetRole);
+
+    boolean ifHasPermissionOnTargetPermissions(Long uid, List<Long> permissionIds);
+
     boolean ifRolesExist(List<Long> roles);
+
+    boolean ifTargetUserIsTheSameOrg(Long oid, Long targetUid);
+
+    boolean ifTargetRoleIsTheSameOrg(Long oid, Long targetRid);
 }

@@ -64,6 +64,21 @@ public class PageVO<T> implements Serializable {
     }
 
     /**
+     * 返回一个空的 PageVO：pageNum=1，pageSize=0，total=0，无数据记录
+     */
+    public static <R> PageVO<R> empty() {
+        PageVO<R> vo = new PageVO<>();
+        vo.setPageNum(1);
+        vo.setPageSize(0);
+        vo.setTotal(0);
+        vo.setTotalPages(0);
+        vo.setRecords(Collections.emptyList());
+        vo.setHasNext(false);
+        vo.setHasPrevious(false);
+        return vo;
+    }
+
+    /**
      * 通用映射：将当前 PageVO<T> 转为 PageVO<R>
      *
      * @param mapper 将 T 映射为 R 的函数

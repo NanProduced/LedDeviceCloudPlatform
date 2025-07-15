@@ -9,11 +9,12 @@ public interface UserRepository {
 
     User createUser(User user);
     User getUserById(Long uid);
-    PageVO<User> pageUsers(int pageNum, int pageSize, Long oid, Set<Long> ugids, String usernameKeyword, String emailKeyword);
+    PageVO<User> pageUsers(int pageNum, int pageSize, Long oid, Set<Long> ugids, String usernameKeyword, String emailKeyword, Integer status);
     void updateUser(User user);
     void updateUserStatus(Long uid, Integer status);
     void modifyUserGroup(Long uid, Long ugid);
     void deleteUser(Long uid);
     boolean ifHasSameUsername(Long oid, String username);
     boolean isAncestorOrSiblingByUser(Long aUgid, Long bUgid);
+    boolean ifTheSameOrg(Long oid, Long targetUid);
 }

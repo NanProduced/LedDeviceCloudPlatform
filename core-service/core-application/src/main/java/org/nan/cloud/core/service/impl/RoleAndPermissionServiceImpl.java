@@ -1,13 +1,19 @@
 package org.nan.cloud.core.service.impl;
 
 import lombok.RequiredArgsConstructor;
+import org.apache.commons.lang3.StringUtils;
+import org.nan.cloud.common.basic.exception.BaseException;
+import org.nan.cloud.common.basic.exception.ExceptionEnum;
+import org.nan.cloud.core.DTO.UpdateRoleDTO;
 import org.nan.cloud.core.domain.Permission;
 import org.nan.cloud.core.domain.Role;
 import org.nan.cloud.core.domain.User;
 import org.nan.cloud.core.repository.PermissionRepository;
 import org.nan.cloud.core.repository.RoleRepository;
 import org.nan.cloud.core.service.RoleAndPermissionService;
+import org.springframework.dao.DuplicateKeyException;
 import org.springframework.stereotype.Service;
+import org.springframework.util.CollectionUtils;
 
 import java.util.*;
 import java.util.function.Function;
@@ -27,6 +33,41 @@ public class RoleAndPermissionServiceImpl implements RoleAndPermissionService {
     }
 
     @Override
+    public Role getRoleByRid(Long rid) {
+        return roleRepository.getRoleByRid(rid);
+    }
+
+    @Override
+    public List<Role> getRolesByUid(Long uid) {
+        return roleRepository.getRolesByUid(uid);
+    }
+
+    public void updateRole(UpdateRoleDTO updateRoleDTO) {
+        Role role = getRoleByRid(updateRoleDTO.getRid());
+        role.setUpdaterId(updateRoleDTO.getUpdaterUid());
+        if (StringUtils.isNotBlank(updateRoleDTO.getRoleName())) {
+            role.setDisplayName(updateRoleDTO.getRoleName());
+        }
+        if (StringUtils.isNotBlank(updateRoleDTO.getDescription())) {
+            role.setDescription(updateRoleDTO.getDescription());
+        }
+        try {
+            roleRepository.updateRole(role);
+        } catch (DuplicateKeyException e) {
+            throw new BaseException(ExceptionEnum.NAME_DUPLICATE_ERROR, e.getMessage());
+        }
+    }
+
+    @Override
+    public void deleteRole(Long oid, Long rid) {
+        List<Long> userWithOnlyRole = roleRepository.getUserWithOnlyRole(oid, rid);
+        if (!CollectionUtils.isEmpty(userWithOnlyRole)) {
+            // todo: 抛出业务异常阻止删除
+        }
+
+    }
+
+    @Override
     public void createRolePermissionRel(Long rid, Set<Long> permissionIds) {
         permissionRepository.insertRolePermissionRel(rid, permissionIds);
     }
@@ -37,12 +78,24 @@ public class RoleAndPermissionServiceImpl implements RoleAndPermissionService {
     }
 
     @Override
-    public List<Permission> getPermissionsByRoles(Long oid, List<Long> rids) {
-        return List.of();
+    public List<Permission> getPermissionsByUid(Long oid, Long uid) {
+        List<Long> rids = roleRepository.getRidsByUid(uid);
+        return permissionRepository.getPermissionsByRids(oid, rids);
+    }
+
+
+    @Override
+    public List<Long> getPermissionIdsByRid(Long rid) {
+        return permissionRepository.getPermissionIdsByRid(rid);
     }
 
     @Override
-    public Map<Long, List<Role>> getRolesByUserIds(List<Long> userIds) {
+    public List<Permission> getAllPermissions() {
+        return permissionRepository.getAllPermissions();
+    }
+
+    @Override
+    public Map<Long, List<Role>> getRolesByUids(List<Long> userIds) {
         Map<Long, List<Long>> userRoleMap = roleRepository.getRoleIdsByUserIds(userIds);
         Set<Long> roleSet = userRoleMap.values().stream().flatMap(List::stream)
                 .collect(Collectors.toSet());
@@ -57,6 +110,12 @@ public class RoleAndPermissionServiceImpl implements RoleAndPermissionService {
             result.put(uid, roles);
         });
         return result;
+    }
+
+    @Override
+    public List<Role> getVisibleRolesByUid(Long oid, Long uid) {
+        List<Long> rids = roleRepository.getRidsByUid(uid);
+        return roleRepository.getCoveredRolesByRids(rids, oid);
     }
 
     @Override

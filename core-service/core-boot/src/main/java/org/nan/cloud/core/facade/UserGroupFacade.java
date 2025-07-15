@@ -1,10 +1,10 @@
 package org.nan.cloud.core.facade;
 
 import lombok.RequiredArgsConstructor;
+import org.apache.commons.collections4.CollectionUtils;
 import org.nan.cloud.common.basic.exception.ExceptionEnum;
 import org.nan.cloud.common.basic.model.PageRequestDTO;
 import org.nan.cloud.common.basic.model.PageVO;
-import org.nan.cloud.common.web.context.GenericInvocationContext;
 import org.nan.cloud.common.web.context.InvocationContextHolder;
 import org.nan.cloud.common.web.context.RequestUserInfo;
 import org.nan.cloud.core.DTO.QueryUserListDTO;
@@ -18,8 +18,6 @@ import org.nan.cloud.core.api.DTO.res.UserListResponse;
 import org.nan.cloud.core.domain.Organization;
 import org.nan.cloud.core.domain.Role;
 import org.nan.cloud.core.domain.User;
-import org.nan.cloud.core.domain.UserGroup;
-import org.nan.cloud.core.infrastructure.repository.mysql.DO.RoleDO;
 import org.nan.cloud.core.service.*;
 import org.springframework.stereotype.Component;
 
@@ -63,16 +61,20 @@ public class UserGroupFacade {
                 .ifIncludeSubGroups(requestDTO.getParams().isIncludeSubGroups())
                 .userNameKeyword(requestDTO.getParams().getUserNameKeyword())
                 .emailKeyword(requestDTO.getParams().getEmailKeyword())
+                .status(requestDTO.getParams().getStatus())
                 .build();
         PageVO<User> userPageVO = userService.pageUsers(requestDTO.getPageNum(), requestDTO.getPageSize(), dto);
+        if (CollectionUtils.isEmpty(userPageVO.getRecords())) {
+            return PageVO.empty();
+        }
         List<Long> uids = userPageVO.getRecords().stream().map(User::getUid).toList();
-        Map<Long, List<Role>> rolesMap = roleAndPermissionService.getRolesByUserIds(uids);
+        Map<Long, List<Role>> rolesMap = roleAndPermissionService.getRolesByUids(uids);
         return userPageVO.map(e -> UserListResponse.builder()
                 .uid(e.getUid())
                 .username(e.getUsername())
                 .ugid(e.getUgid())
                 .ugName(e.getUgName())
-                .roles(rolesMap.get(e.getUid()).stream().map(r -> new RoleDTO(r.getRid(), r.getOid(), r.getName())).collect(Collectors.toSet()))
+                .roles(rolesMap.get(e.getUid()).stream().map(r -> new RoleDTO(r.getRid(), r.getOid(), r.getName(), r.getDisplayName())).collect(Collectors.toSet()))
                 .email(e.getEmail())
                 .active(e.getStatus())
                 .updateTime(e.getUpdateTime())

@@ -2,9 +2,10 @@ package org.nan.cloud.core.event;
 
 import org.apache.commons.lang3.tuple.Pair;
 import org.nan.cloud.core.domain.User;
+import org.nan.cloud.core.event.rbac.RemoveUserAndRoleRel;
 import org.springframework.context.ApplicationEvent;
 
-public class UserDeleteEvent extends ApplicationEvent implements RemoveUserAndRoleRel{
+public class UserDeleteEvent extends ApplicationEvent implements RemoveUserAndRoleRel {
 
     private User user;
 

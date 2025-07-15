@@ -1,8 +1,7 @@
-package org.nan.cloud.core.event;
+package org.nan.cloud.core.event.rbac;
 
-import lombok.AllArgsConstructor;
-import lombok.Data;
 import lombok.Getter;
+import org.nan.cloud.core.DTO.UrlAndMethod;
 import org.springframework.context.ApplicationEvent;
 
 import java.util.List;
@@ -23,14 +22,5 @@ public class AddRoleAndPermissionRelEvent extends ApplicationEvent {
         this.rid = rid;
         this.oid = oid;
         this.urlAndMethods = urlAndMethods;
-    }
-
-    @Data
-    @AllArgsConstructor
-    public static class UrlAndMethod {
-
-        private String url;
-
-        private String method;
     }
 }

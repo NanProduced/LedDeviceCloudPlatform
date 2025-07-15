@@ -2,10 +2,10 @@ package org.nan.cloud.core.infrastructure.repository.mysql.impl;
 
 import lombok.RequiredArgsConstructor;
 import org.nan.cloud.core.domain.Permission;
-import org.nan.cloud.core.domain.Role;
 import org.nan.cloud.core.infrastructure.repository.mysql.DO.PermissionDO;
 import org.nan.cloud.core.infrastructure.repository.mysql.converter.CommonConverter;
 import org.nan.cloud.core.infrastructure.repository.mysql.mapper.PermissionMapper;
+import org.nan.cloud.core.infrastructure.repository.mysql.mapper.RoleMapper;
 import org.nan.cloud.core.repository.PermissionRepository;
 import org.springframework.stereotype.Repository;
 
@@ -19,6 +19,16 @@ public class PermissionRepositoryImpl implements PermissionRepository {
     private final PermissionMapper permissionMapper;
 
     private final CommonConverter commonConverter;
+    private final RoleMapper roleMapper;
+
+
+    @Override
+    public List<Permission> getAllPermissions() {
+        List<PermissionDO> allPermissions = permissionMapper.selectList(null);
+        return commonConverter.permissionDO2Permission(allPermissions);
+
+
+    }
 
     @Override
     public List<Permission> getPermissionsByIds(List<Long> permissionIds) {
@@ -27,8 +37,14 @@ public class PermissionRepositoryImpl implements PermissionRepository {
     }
 
     @Override
-    public List<Permission> getPermissionsByRoles(List<Long> rids) {
-        return List.of();
+    public List<Permission> getPermissionsByRids(Long oid, List<Long> rids) {
+        Set<Long> permissionIds = permissionMapper.getPermissionIdsByRids(oid, rids);
+        return commonConverter.permissionDO2Permission(permissionMapper.selectByIds(permissionIds));
+    }
+
+    @Override
+    public List<Long> getPermissionIdsByRid(Long rid) {
+        return permissionMapper.getPermissionIdByRid(rid);
     }
 
     @Override
@@ -37,8 +53,8 @@ public class PermissionRepositoryImpl implements PermissionRepository {
     }
 
     @Override
-    public Set<Long> getPermissionIdsByRoles(Long oid, List<Long> rids) {
-        return permissionMapper.getPermissionIdsByRoles(oid, rids);
+    public Set<Long> getPermissionIdsByRids(Long oid, List<Long> rids) {
+        return permissionMapper.getPermissionIdsByRids(oid, rids);
     }
 
     @Override

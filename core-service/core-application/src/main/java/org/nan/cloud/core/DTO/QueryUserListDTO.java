@@ -16,4 +16,6 @@ public class QueryUserListDTO {
     private String userNameKeyword;
 
     private String emailKeyword;
+
+    private Integer status;
 }

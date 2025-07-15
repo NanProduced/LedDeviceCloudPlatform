@@ -10,9 +10,35 @@ public interface RoleRepository {
 
     Role createRole(Role role);
 
+    Role getRoleByRid(Long rid);
+
+    List<Long> getRidsByUid(Long uid);
+
+    List<Role> getRolesByUid(Long uid);
+
+    void updateRole(Role role);
+
     boolean allRolesExist(List<Long> roles);
 
     List<Role> getRolesByRids(Collection<Long> rids);
 
     Map<Long, List<Long>> getRoleIdsByUserIds(List<Long> userIds);
+
+    /**
+     * 根据传入的角色Id查询权限覆盖的角色
+     * @param rids
+     * @param oid
+     * @return
+     */
+    List<Role> getCoveredRolesByRids(Collection<Long> rids, Long oid);
+
+    boolean ifTheSameOrg(Long oid, Long rid);
+
+    /**
+     * 获取组织中只有指定角色的用户
+     * @param oid
+     * @param rid
+     * @return
+     */
+    List<Long> getUserWithOnlyRole(Long oid, Long rid);
 }

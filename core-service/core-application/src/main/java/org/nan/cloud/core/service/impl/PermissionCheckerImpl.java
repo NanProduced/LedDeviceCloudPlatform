@@ -45,12 +45,38 @@ public class PermissionCheckerImpl implements PermissionChecker {
     public boolean ifHasPermissionOnTargetRoles(Long oid, Long uid, List<Long> targetRoles) {
         if (PermissionCheckSkipContext.isSkip()) return true;
         Set<Long> curPermissions = permissionRepository.getPermissionIdsByUid(uid);
-        Set<Long> targetPermissions = permissionRepository.getPermissionIdsByRoles(oid, targetRoles);
+        Set<Long> targetPermissions = permissionRepository.getPermissionIdsByRids(oid, targetRoles);
         return curPermissions.containsAll(targetPermissions);
     }
 
     @Override
+    public boolean ifHasPermissionOnTargetRole(Long uid, Long targetRole) {
+        if (PermissionCheckSkipContext.isSkip()) return true;
+        Set<Long> curPermissions = permissionRepository.getPermissionIdsByUid(uid);
+        List<Long> targetPermissions = permissionRepository.getPermissionIdsByRid(targetRole);
+        return curPermissions.containsAll(targetPermissions);
+    }
+
+    @Override
+    public boolean ifHasPermissionOnTargetPermissions(Long uid, List<Long> permissionIds) {
+        if (PermissionCheckSkipContext.isSkip()) return true;
+        Set<Long> curPermissions = permissionRepository.getPermissionIdsByUid(uid);
+        return curPermissions.containsAll(permissionIds);
+    }
+
+
+    @Override
     public boolean ifRolesExist(List<Long> roles) {
         return roleRepository.allRolesExist(roles);
+    }
+
+    @Override
+    public boolean ifTargetUserIsTheSameOrg(Long oid, Long targetUid) {
+        return userRepository.ifTheSameOrg(oid,  targetUid);
+    }
+
+    @Override
+    public boolean ifTargetRoleIsTheSameOrg(Long oid, Long targetRid) {
+        return roleRepository.ifTheSameOrg(oid, targetRid);
     }
 }

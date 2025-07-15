@@ -8,6 +8,7 @@ import org.nan.cloud.core.infrastructure.repository.mysql.DO.RoleDO;
 import org.nan.cloud.core.infrastructure.repository.mysql.converter.CommonConverter;
 import org.nan.cloud.core.infrastructure.repository.mysql.mapper.RoleMapper;
 import org.nan.cloud.core.repository.RoleRepository;
+import org.springframework.dao.DuplicateKeyException;
 import org.springframework.stereotype.Repository;
 
 import java.time.LocalDateTime;
@@ -33,6 +34,31 @@ public class RoleRepositoryImpl implements RoleRepository {
     }
 
     @Override
+    public Role getRoleByRid(Long rid) {
+        return commonConverter.roleDO2Role(roleMapper.selectById(rid));
+    }
+
+    @Override
+    public List<Long> getRidsByUid(Long uid) {
+        return roleMapper.getRidsByUid(uid);
+    }
+
+    @Override
+    public List<Role> getRolesByUid(Long uid) {
+        List<Long> rids = roleMapper.getRidsByUid(uid);
+        List<RoleDO> roleDOS = roleMapper.selectByIds(rids);
+        return commonConverter.roleDO2Role(roleDOS);
+    }
+
+    @Override
+    public void updateRole(Role role) throws DuplicateKeyException {
+        RoleDO roleDO = commonConverter.role2RoleDO(role);
+        roleDO.setUpdateTime(LocalDateTime.now());
+        roleMapper.updateById(roleDO);
+    }
+
+
+    @Override
     public boolean allRolesExist(List<Long> roles) {
         return roleMapper.selectCount(new LambdaQueryWrapper<RoleDO>()
                 .eq(RoleDO::getRid, roles)) == roles.size();
@@ -53,5 +79,22 @@ public class RoleRepositoryImpl implements RoleRepository {
                         Collectors.toList()
                 )
         ));
+    }
+
+    @Override
+    public List<Role> getCoveredRolesByRids(Collection<Long> rids, Long oid) {
+        return commonConverter.roleDO2Role(roleMapper.selectCoveredRoles(rids, oid));
+    }
+
+    @Override
+    public boolean ifTheSameOrg(Long oid, Long rid) {
+        return roleMapper.exists(new LambdaQueryWrapper<RoleDO>()
+                .eq(RoleDO::getOid, oid)
+                .eq(RoleDO::getRid, rid));
+    }
+
+    @Override
+    public List<Long> getUserWithOnlyRole(Long oid, Long rid) {
+        return roleMapper.getUserWithOnlyRole(oid, rid);
     }
 }

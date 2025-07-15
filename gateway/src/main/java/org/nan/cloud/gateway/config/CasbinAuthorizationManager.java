@@ -34,17 +34,21 @@ public class CasbinAuthorizationManager implements ReactiveAuthorizationManager<
                 .flatMap(auth -> {
                     String uid;
                     String oid;
+                    String userType;
                     if (auth instanceof JwtAuthenticationToken jwtAuth) {
                         Jwt jwt = jwtAuth.getToken();
                         uid = jwt.getClaim("uid");
                         oid = jwt.getClaim("oid");
+                        userType = jwt.getClaim("userType");
                     }
                     else if (auth instanceof OAuth2AuthenticationToken oauth2Auth) {
                         Map<String, Object> attrs = oauth2Auth.getPrincipal().getAttributes();
                         Object u = attrs.get("uid");
                         Object o = attrs.get("oid");
+                        Object ut = attrs.get("userType");
                         uid = u.toString();
                         oid = o.toString();
+                        userType = ut.toString();
                     }
                     else {
                         return Mono.just(new AuthorizationDecision(false));
@@ -52,6 +56,10 @@ public class CasbinAuthorizationManager implements ReactiveAuthorizationManager<
 
                     // 通用接口跳过
                     if (commonApiConfig.getUrls().stream().anyMatch(e -> e.equals(path))) {
+                        return Mono.just(new AuthorizationDecision(true));
+                    }
+                    // 组织管理员跳过
+                    if (Integer.parseInt(userType) == 1) {
                         return Mono.just(new AuthorizationDecision(true));
                     }
                     // 接口鉴权

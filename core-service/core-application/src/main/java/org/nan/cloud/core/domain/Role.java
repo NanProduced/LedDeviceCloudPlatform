@@ -15,6 +15,10 @@ public class Role {
 
     private String name;
 
+    private String displayName;
+
+    private String description;
+
     /**
      * 0: system
      * 1: customer
@@ -24,4 +28,8 @@ public class Role {
     private Long creatorId;
 
     private LocalDateTime createTime;
+
+    private Long updaterId;
+
+    private LocalDateTime updateTime;
 }

@@ -1,5 +1,6 @@
 package org.nan.cloud.core.api;
 
+import org.nan.cloud.core.api.DTO.req.AssignRolesRequest;
 import org.nan.cloud.core.api.DTO.req.CreateUserRequest;
 import org.nan.cloud.core.api.DTO.req.ModifyUserPasswordRequest;
 import org.nan.cloud.core.api.DTO.req.MoveUserRequest;
@@ -9,6 +10,8 @@ import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestParam;
+
+import java.util.List;
 
 public interface UserApi {
 
@@ -34,5 +37,8 @@ public interface UserApi {
 
     @PostMapping(prefix + "/delete")
     void deleteUser(@RequestParam("uid") Long uid);
+
+    @PostMapping(prefix + "/assign-roles")
+    void assignUserRoles(@Validated @RequestBody AssignRolesRequest assignRolesRequest);
 
 }

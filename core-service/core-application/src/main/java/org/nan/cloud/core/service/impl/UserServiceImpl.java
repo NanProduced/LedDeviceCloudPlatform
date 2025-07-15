@@ -20,10 +20,8 @@ import org.nan.cloud.core.service.UserService;
 import org.springframework.dao.DuplicateKeyException;
 import org.springframework.stereotype.Service;
 
-import java.time.LocalDateTime;
 import java.util.Collections;
 import java.util.Map;
-import java.util.function.Function;
 import java.util.stream.Collectors;
 
 @Slf4j
@@ -68,8 +66,8 @@ public class UserServiceImpl implements UserService {
         else {
             groupMap = Collections.singletonMap(dto.getUgid(), userGroupRepository.getUserGroupById(dto.getUgid()).getName());
         }
-        PageVO<User> userPageVO = userRepository.pageUsers(pageNum, pageSize, dto.getOid(), groupMap.keySet(), dto.getUserNameKeyword(), dto.getEmailKeyword());
-        userPageVO.getRecords().forEach(e -> e.setUgName(groupMap.get(e.getUid())));
+        PageVO<User> userPageVO = userRepository.pageUsers(pageNum, pageSize, dto.getOid(), groupMap.keySet(), dto.getUserNameKeyword(), dto.getEmailKeyword(), dto.getStatus());
+        userPageVO.getRecords().forEach(e -> e.setUgName(groupMap.get(e.getUgid())));
         return userPageVO;
     }
 

@@ -19,4 +19,10 @@ public class PermissionDO {
 
     @TableField("method")
     private String method;
+
+    @TableField("description")
+    private String description;
+
+    @TableField("group")
+    private String group;
 }

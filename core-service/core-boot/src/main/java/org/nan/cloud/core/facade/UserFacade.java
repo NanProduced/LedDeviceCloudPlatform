@@ -7,6 +7,8 @@ import org.nan.cloud.common.web.context.GenericInvocationContext;
 import org.nan.cloud.common.web.context.InvocationContextHolder;
 import org.nan.cloud.common.web.context.RequestUserInfo;
 import org.nan.cloud.core.DTO.CreateUserDTO;
+import org.nan.cloud.core.api.DTO.common.RoleDTO;
+import org.nan.cloud.core.api.DTO.req.AssignRolesRequest;
 import org.nan.cloud.core.api.DTO.req.CreateUserRequest;
 import org.nan.cloud.core.api.DTO.req.MoveUserRequest;
 import org.nan.cloud.core.api.DTO.res.UserInfoResponse;
@@ -29,6 +31,8 @@ public class UserFacade {
     private final OrgService orgService;
 
     private final UserGroupService userGroupService;
+
+    private final RoleAndPermissionService roleAndPermissionService;
 
     private final PermissionChecker permissionChecker;
 
@@ -60,6 +64,11 @@ public class UserFacade {
         // 用户组名称
         UserGroup userGroup = userGroupService.getUserGroupById(ugid);
         resp.setUgName(userGroup.getName());
+
+        resp.setRoles(
+                roleAndPermissionService.getRolesByUid(uid).stream()
+                        .map(r -> new RoleDTO(r.getRid(), r.getOid(), r.getName(), r.getDisplayName()))
+                        .toList());
 
         return resp;
     }
@@ -132,5 +141,17 @@ public class UserFacade {
         applicationEventPublisher.publishEvent(event);
         permissionEventPublisher.publishRemoveUserAndRoleRelEvent(event);
 
+    }
+
+    @Transactional(rollbackFor = Exception.class)
+    @SkipOrgManagerPermissionCheck
+    public void assignRolesToUser(AssignRolesRequest request) {
+        RequestUserInfo requestUser = InvocationContextHolder.getContext().getRequestUser();
+        Long oid = requestUser.getOid();
+        Long curUid = requestUser.getUid();
+        ExceptionEnum.ORG_PERMISSION_DENIED.throwIf(!permissionChecker.ifTargetUserIsTheSameOrg(oid, request.getTargetUid()));
+        ExceptionEnum.USER_PERMISSION_DENIED.throwIf(!permissionChecker.ifHasPermissionOnTargetUser(curUid, request.getTargetUid()));
+        ExceptionEnum.ROLE_PERMISSION_DENIED.throwIf(!permissionChecker.ifHasPermissionOnTargetRoles(oid, curUid, request.getRids()));
+        permissionEventPublisher.publishCoverUserAndRoleRelEvent(request.getTargetUid(), oid, request.getRids());
     }
 }

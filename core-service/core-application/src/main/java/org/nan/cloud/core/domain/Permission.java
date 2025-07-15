@@ -13,4 +13,8 @@ public class Permission {
 
     private String method;
 
+    private String description;
+
+    private String group;
+
 }

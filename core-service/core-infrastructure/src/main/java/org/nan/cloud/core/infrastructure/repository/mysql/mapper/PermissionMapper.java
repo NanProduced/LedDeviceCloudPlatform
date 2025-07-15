@@ -43,7 +43,14 @@ public interface PermissionMapper extends BaseMapper<PermissionDO> {
             "   </if>",
             "</script>"
     })
-    Set<Long> getPermissionIdsByRoles(@Param("oid") Long oid, @Param("rids") List<Long> rids);
+    Set<Long> getPermissionIdsByRids(@Param("oid") Long oid, @Param("rids") List<Long> rids);
+
+    @Select({
+            "SELECT permission_id",
+            " FROM role_permission_rel",
+            " WHERE rid = #{rid}"
+    })
+    List<Long> getPermissionIdByRid(@Param("rid") Long rid);
 
     /**
      * 给角色批量添加权限关系

@@ -17,6 +17,9 @@ public class RoleDTO {
     @Schema(description = "组织Id")
     private Long oid;
 
-    @Schema(description = "组织名称")
+    @Schema(description = "角色名称")
     private String roleName;
+
+    @Schema(description = "前端展示名称")
+    private String displayName;
 }

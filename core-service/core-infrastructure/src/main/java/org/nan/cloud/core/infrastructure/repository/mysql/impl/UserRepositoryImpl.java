@@ -17,6 +17,7 @@ import org.nan.cloud.core.repository.UserRepository;
 import org.springframework.stereotype.Repository;
 
 import java.time.LocalDateTime;
+import java.util.Objects;
 import java.util.Set;
 
 @Repository
@@ -43,10 +44,10 @@ public class UserRepositoryImpl implements UserRepository {
     }
 
     @Override
-    public PageVO<User> pageUsers(int pageNum, int pageSize, Long oid, Set<Long> ugids, String usernameKeyword, String emailKeyword) {
+    public PageVO<User> pageUsers(int pageNum, int pageSize, Long oid, Set<Long> ugids, String usernameKeyword, String emailKeyword, Integer status) {
         Page<UserDO> page = new Page<>(pageNum, pageSize);
         LambdaQueryWrapper<UserDO> queryWrapper = new LambdaQueryWrapper<UserDO>()
-                .select(UserDO.class, user -> user.getColumn().equals("password"))
+                .select(UserDO.class, user -> !user.getColumn().equals("password"))
                 .eq(UserDO::getOid, oid)
                 .in(UserDO::getUgid, ugids);
         if (StringUtils.isNotBlank(usernameKeyword)) {
@@ -54,6 +55,9 @@ public class UserRepositoryImpl implements UserRepository {
         }
         if (StringUtils.isNotBlank(emailKeyword)) {
             queryWrapper.like(UserDO::getEmail, emailKeyword);
+        }
+        if (Objects.nonNull(status)) {
+            queryWrapper.eq(UserDO::getStatus, status);
         }
         queryWrapper.orderByDesc(UserDO::getCreateTime);
 
@@ -107,5 +111,12 @@ public class UserRepositoryImpl implements UserRepository {
     @Override
     public boolean isAncestorOrSiblingByUser(Long aUgid, Long bUgid) {
         return userMapper.isAncestorOrSiblingByUser(aUgid, bUgid);
+    }
+
+    @Override
+    public boolean ifTheSameOrg(Long oid, Long targetUid) {
+        return userMapper.exists(new LambdaQueryWrapper<UserDO>()
+                .eq(UserDO::getOid, oid)
+                .eq(UserDO::getUid, targetUid));
     }
 }

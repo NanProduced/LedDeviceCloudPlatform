@@ -4,6 +4,7 @@ import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;
 
+import org.nan.cloud.core.api.DTO.req.AssignRolesRequest;
 import org.nan.cloud.core.api.DTO.req.CreateUserRequest;
 import org.nan.cloud.core.api.DTO.req.ModifyUserPasswordRequest;
 import org.nan.cloud.core.api.DTO.req.MoveUserRequest;
@@ -11,6 +12,8 @@ import org.nan.cloud.core.api.DTO.res.UserInfoResponse;
 import org.nan.cloud.core.api.UserApi;
 import org.nan.cloud.core.facade.UserFacade;
 import org.springframework.web.bind.annotation.RestController;
+
+import java.util.List;
 
 @Tag(name = "User(用户控制器)", description = "用户相关的所有操作")
 @RestController
@@ -22,7 +25,7 @@ public class UserController implements UserApi {
     @Operation(
             summary = "返回当前登录用户信息",
             description = "返回当前登录用户信息",
-            tags = {"用户信息"}
+            tags = {"用户信息", "通用接口"}
     )
     @Override
     public UserInfoResponse getCurrentUserInfo() {
@@ -32,7 +35,7 @@ public class UserController implements UserApi {
     @Operation(
             summary = "修改密码",
             description = "当前登录用户修改自己的密码",
-            tags = {"用户信息"}
+            tags = {"用户信息", "通用接口"}
     )
     @Override
     public void modifyPassword(ModifyUserPasswordRequest modifyUserPasswordRequest) {
@@ -87,6 +90,16 @@ public class UserController implements UserApi {
     )
     @Override
     public void deleteUser(Long uid) {
+        userFacade.deleteUser(uid);
+    }
 
+    @Operation(
+            summary = "给用户分配角色",
+            description = "给指定用户分配角色，注意：该操作为覆盖操作，将传入的角色列表覆盖用户角色",
+            tags = {"用户管理"}
+    )
+    @Override
+    public void assignUserRoles(AssignRolesRequest request) {
+        userFacade.assignRolesToUser(request);
     }
 }

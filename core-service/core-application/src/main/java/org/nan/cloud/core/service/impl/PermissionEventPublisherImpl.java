@@ -1,11 +1,9 @@
 package org.nan.cloud.core.service.impl;
 
 import lombok.RequiredArgsConstructor;
+import org.nan.cloud.core.DTO.UrlAndMethod;
 import org.nan.cloud.core.domain.Permission;
-import org.nan.cloud.core.event.AddRoleAndPermissionRelEvent;
-import org.nan.cloud.core.event.AddUserAndRoleRelEvent;
-import org.nan.cloud.core.event.RemoveUserAndRoleRel;
-import org.nan.cloud.core.event.RemoveUserAndRoleRelEvent;
+import org.nan.cloud.core.event.rbac.*;
 import org.nan.cloud.core.service.PermissionEventPublisher;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
@@ -21,9 +19,9 @@ public class PermissionEventPublisherImpl implements PermissionEventPublisher {
 
     @Override
     public void publishAddRoleAndPermissionRelEvent(Long rid, Long oid, List<Permission> permissions) {
-        List<AddRoleAndPermissionRelEvent.UrlAndMethod> collect = permissions.stream().filter(Objects::nonNull)
+        List<UrlAndMethod> collect = permissions.stream().filter(Objects::nonNull)
                 .map(e -> {
-                    return new AddRoleAndPermissionRelEvent.UrlAndMethod(e.getUrl(), e.getMethod());
+                    return new UrlAndMethod(e.getUrl(), e.getMethod());
                 }).toList();
         AddRoleAndPermissionRelEvent event = new AddRoleAndPermissionRelEvent(this, rid, oid, collect);
         applicationEventPublisher.publishEvent(event);
@@ -38,5 +36,25 @@ public class PermissionEventPublisherImpl implements PermissionEventPublisher {
     public void publishRemoveUserAndRoleRelEvent(RemoveUserAndRoleRel event) {
         applicationEventPublisher.publishEvent(new RemoveUserAndRoleRelEvent(this,
                 event.getOidAndUid().getRight(),  event.getOidAndUid().getLeft()));
+    }
+
+    @Override
+    public void publishCoverUserAndRoleRelEvent(Long uid, Long oid, List<Long> rids) {
+        applicationEventPublisher.publishEvent(new CoverUserAndRoleRelEvent(this, uid, oid, rids));
+    }
+
+    @Override
+    public void publishChangeRoleAndPermissionRelEvent(Long rid, Long oid, List<Permission> permissions) {
+        List<UrlAndMethod> collect = permissions.stream().filter(Objects::nonNull)
+                .map(e -> {
+                    return new UrlAndMethod(e.getUrl(), e.getMethod());
+                }).toList();
+        applicationEventPublisher.publishEvent(new ChangeRoleAndPermissionRelEvent(this, rid, oid, collect));
+
+    }
+
+    @Override
+    public void publishRemoveRoleEvent(Long rid, Long oid) {
+        applicationEventPublisher.publishEvent(new RemoveRoleEvent(this, rid, oid));
     }
 }
