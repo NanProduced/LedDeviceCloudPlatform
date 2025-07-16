@@ -29,7 +29,7 @@ public class PermissionFacade {
             permissions = roleAndPermissionService.getPermissionsByUid(requestUser.getOid(), requestUser.getUid());
         }
         return permissions.stream().map(p ->
-                new PermissionResponse(p.getPermissionId(), p.getName(), p.getDescription(), p.getGroup()))
+                new PermissionResponse(p.getPermissionId(), p.getName(), p.getDescription(), p.getPermissionGroup()))
                 .collect(Collectors.groupingBy(PermissionResponse::getPermissionType, Collectors.toList()));
     }
 }

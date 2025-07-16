@@ -25,7 +25,7 @@ public class TerminalGroup {
      * 0：org root
      * 1: normal
      */
-    private Integer type;
+    private Integer tgType;
 
     private Long creatorId;
 

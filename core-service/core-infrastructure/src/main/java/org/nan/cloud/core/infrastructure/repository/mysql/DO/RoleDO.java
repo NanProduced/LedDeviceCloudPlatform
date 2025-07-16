@@ -28,7 +28,7 @@ public class RoleDO {
     private String description;
 
     @TableField("role_type")
-    private Integer type;
+    private Integer roleType;
 
     @TableField("creator_id")
     private Long creatorId;

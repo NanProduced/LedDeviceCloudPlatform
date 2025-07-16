@@ -26,8 +26,8 @@ public class PermissionDO {
     private String description;
 
     @TableField("permission_group")
-    private String group;
+    private String permissionGroup;
 
     @TableField("permission_type")
-    private Integer type;
+    private Integer permissionType;
 }

@@ -15,8 +15,8 @@ public class Permission {
 
     private String description;
 
-    private String group;
+    private String permissionGroup;
 
-    private Integer type;
+    private Integer permissionType;
 
 }

@@ -5,7 +5,6 @@ import com.fasterxml.jackson.annotation.JsonTypeInfo;
 import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
-import lombok.RequiredArgsConstructor;
 import org.nan.cloud.auth.application.model.User;
 import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.core.userdetails.UserDetails;
@@ -45,7 +44,7 @@ public class UserPrincipal implements UserDetails, Serializable {
         this.oid = user.getOid();
         this.uGid = user.getUgid();
         this.status = user.getStatus();
-        this.userType = user.getType();
+        this.userType = user.getUserType();
     }
 
     @Override

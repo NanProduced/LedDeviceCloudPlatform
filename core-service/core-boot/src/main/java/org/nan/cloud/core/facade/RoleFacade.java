@@ -48,7 +48,7 @@ public class RoleFacade {
                 .name(StringUtils.generateOrgRoleName(oid))
                 .displayName(request.getRoleName())
                 .creatorId(currentUId)
-                .type(0)
+                .roleType(0)
                 .build());
         ExceptionEnum.CREATE_FAILED.throwIf(null == role.getRid());
         final Long rid = role.getRid();

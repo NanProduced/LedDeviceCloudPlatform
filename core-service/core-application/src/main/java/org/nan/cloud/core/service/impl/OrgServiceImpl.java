@@ -49,7 +49,7 @@ public class OrgServiceImpl implements OrgService {
                         .oid(oid)
                         .parent(0L)
                         .path("")
-                        .type(0)
+                        .ugType(0)
                         .creatorId(currentUid)
                         .build());
         organization.setRootUgid(rootUserGroup.getUgid());
@@ -61,7 +61,7 @@ public class OrgServiceImpl implements OrgService {
                         .oid(oid)
                         .parent(0L)
                         .path("")
-                        .type(0)
+                        .tgType(0)
                         .creatorId(currentUid)
                         .build());
         organization.setRootTgid(rootTerminalGroup.getTgid());

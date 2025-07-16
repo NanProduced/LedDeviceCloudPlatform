@@ -15,8 +15,6 @@ import org.nan.cloud.core.service.UserGroupService;
 import org.springframework.stereotype.Service;
 import org.springframework.util.CollectionUtils;
 
-import java.util.ArrayList;
-import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
@@ -43,7 +41,7 @@ public class UserGroupServiceImpl implements UserGroupService {
                 .name(dto.getUgName())
                 .description(dto.getDescription())
                 .path(parentGroup.getPath())
-                .type(UserGroupTypeEnum.NORMAL_GROUP.getType())
+                .ugType(UserGroupTypeEnum.NORMAL_GROUP.getType())
                 .creatorId(dto.getCreatorUid())
                 .build());
     }

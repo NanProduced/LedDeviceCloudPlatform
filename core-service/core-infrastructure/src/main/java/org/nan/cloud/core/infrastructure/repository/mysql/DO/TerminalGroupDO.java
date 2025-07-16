@@ -27,8 +27,8 @@ public class TerminalGroupDO {
     @TableField("path")
     private String path;
 
-    @TableField("type")
-    private Integer type;
+    @TableField("tg_type")
+    private Integer tgType;
 
     @TableField("description")
     private String description;

@@ -23,6 +23,6 @@ public class User {
 
     private Integer status;
 
-    private Integer type;
+    private Integer userType;
 
 }

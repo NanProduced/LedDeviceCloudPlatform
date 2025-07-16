@@ -28,7 +28,7 @@ public class UserGroup {
      * 0：org root
      * 1: normal
      */
-    private Integer type;
+    private Integer ugType;
 
     private Long creatorId;
 

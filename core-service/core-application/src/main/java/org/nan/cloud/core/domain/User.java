@@ -36,7 +36,7 @@ public class User {
      * 1：org manager
      * 2：normal
      */
-    private Integer type;
+    private Integer userType;
 
     private Integer suffix;
 

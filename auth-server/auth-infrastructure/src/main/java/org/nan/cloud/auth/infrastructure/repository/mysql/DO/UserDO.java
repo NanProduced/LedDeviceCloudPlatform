@@ -34,7 +34,7 @@ public class UserDO {
     private Integer status;
 
     @TableField("user_type")
-    private Integer type;
+    private Integer userType;
 
     @TableField("oid")
     private Long oid;

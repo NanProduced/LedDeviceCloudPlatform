@@ -23,7 +23,7 @@ public class Role {
      * 0: system
      * 1: customer
      */
-    private Integer type;
+    private Integer roleType;
 
     private Long creatorId;
 
