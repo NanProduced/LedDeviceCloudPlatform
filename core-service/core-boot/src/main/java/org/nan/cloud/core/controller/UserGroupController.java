@@ -5,6 +5,7 @@ import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;
 import org.nan.cloud.common.basic.model.PageRequestDTO;
 import org.nan.cloud.common.basic.model.PageVO;
+import org.nan.cloud.core.api.DTO.req.CreateUserGroupRequest;
 import org.nan.cloud.core.api.DTO.req.QueryUserListRequest;
 import org.nan.cloud.core.api.DTO.res.UserGroupTreeResponse;
 import org.nan.cloud.core.api.DTO.res.UserListResponse;
@@ -37,5 +38,25 @@ public class UserGroupController implements UserGroupApi {
     @Override
     public PageVO<UserListResponse> listUser(PageRequestDTO<QueryUserListRequest> requestDTO) {
         return userGroupFacade.listUser(requestDTO);
+    }
+
+    @Operation(
+            summary = "创建用户组",
+            description = "在指定组下创建用户组",
+            tags = {"用户组管理"}
+    )
+    @Override
+    public void createUserGroup(CreateUserGroupRequest createUserGroupRequest) {
+        userGroupFacade.createUserGroup(createUserGroupRequest);
+    }
+
+    @Operation(
+            summary = "删除用户组",
+            description = "删除指定用户组及其根组，需要组下没有用户",
+            tags = {"用户组管理"}
+    )
+    @Override
+    public void deleteUserGroup(Long ugid) {
+        userGroupFacade.deleteUserGroup(ugid);
     }
 }

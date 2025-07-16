@@ -3,7 +3,9 @@ package org.nan.cloud.core.service.impl;
 import lombok.RequiredArgsConstructor;
 import org.apache.commons.lang3.StringUtils;
 import org.nan.cloud.common.basic.exception.BaseException;
+import org.nan.cloud.common.basic.exception.BusinessRefuseException;
 import org.nan.cloud.common.basic.exception.ExceptionEnum;
+import org.nan.cloud.common.basic.utils.JsonUtils;
 import org.nan.cloud.core.DTO.UpdateRoleDTO;
 import org.nan.cloud.core.domain.Permission;
 import org.nan.cloud.core.domain.Role;
@@ -62,9 +64,11 @@ public class RoleAndPermissionServiceImpl implements RoleAndPermissionService {
     public void deleteRole(Long oid, Long rid) {
         List<Long> userWithOnlyRole = roleRepository.getUserWithOnlyRole(oid, rid);
         if (!CollectionUtils.isEmpty(userWithOnlyRole)) {
-            // todo: 抛出业务异常阻止删除
+            throw new BusinessRefuseException(ExceptionEnum.HAS_USER_WITH_ONLY_ROLE,
+                    "refuse to delete role",
+                    JsonUtils.toJson(userWithOnlyRole));
         }
-
+        roleRepository.deleteRole(rid);
     }
 
     @Override

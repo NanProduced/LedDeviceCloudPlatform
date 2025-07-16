@@ -10,7 +10,9 @@ import org.nan.cloud.core.repository.UserGroupRepository;
 import org.springframework.stereotype.Repository;
 
 import java.time.LocalDateTime;
+import java.util.ArrayList;
 import java.util.List;
+import java.util.stream.Collectors;
 
 @Repository
 @RequiredArgsConstructor
@@ -37,6 +39,11 @@ public class UserGroupRepositoryImpl implements UserGroupRepository {
         return userGroupDO == null ? null : commonConverter.userGroupDO2UserGroup(userGroupDO);
     }
 
+    @Override
+    public void deleteUserGroupsByUgids(List<Long> ugids) {
+        userGroupMapper.deleteByIds(ugids);
+    }
+
     /**
      * 数据量大于10w  or -> union
      * @param ugid
@@ -50,6 +57,15 @@ public class UserGroupRepositoryImpl implements UserGroupRepository {
                 .or()
                 .eq(UserGroupDO::getUgid, ugid));
         return commonConverter.userGroupDO2UserGroup(userGroupDOS);
+    }
+
+    public List<Long> getAllUgidsByParent(Long ugid) {
+        return userGroupMapper.selectList(new LambdaQueryWrapper<UserGroupDO>()
+                .select(UserGroupDO::getUgid)
+                .likeRight(UserGroupDO::getPath, ugid + "|")
+                .or()
+                .eq(UserGroupDO::getUgid, ugid)).stream()
+                .map(UserGroupDO::getUgid).toList();
     }
 
     @Override

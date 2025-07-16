@@ -67,7 +67,7 @@ public interface RoleMapper extends BaseMapper<RoleDO> {
             "  SELECT rid\n" +
             "  FROM role\n" +
             "  WHERE oid = #{oid}\n" +
-            "  AND `type` != 0\n" +
+            "  AND `role_type` != 0\n" +
             ")\n" +
             "SELECT r.*\n" +
             "FROM role r\n" +

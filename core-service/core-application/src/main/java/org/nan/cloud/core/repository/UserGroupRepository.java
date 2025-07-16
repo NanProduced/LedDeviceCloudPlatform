@@ -10,7 +10,11 @@ public interface UserGroupRepository {
 
     UserGroup getUserGroupById(Long ugid);
 
+    void deleteUserGroupsByUgids(List<Long> ugids);
+
     List<UserGroup> getAllUserGroupsByParent(Long ugid);
+
+    List<Long> getAllUgidsByParent(Long ugid);
 
     List<UserGroup> getDirectUserGroupsByParent(Long ugid);
 

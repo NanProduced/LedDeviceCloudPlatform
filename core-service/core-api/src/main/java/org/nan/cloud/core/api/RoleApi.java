@@ -24,4 +24,7 @@ public interface RoleApi {
     @PostMapping(prefix + "/update")
     void updateRoles(@Validated @RequestBody UpdateRolesRequest request);
 
+    @PostMapping(prefix + "/delete")
+    void deleteRole(@RequestParam("rid") Long rid);
+
 }

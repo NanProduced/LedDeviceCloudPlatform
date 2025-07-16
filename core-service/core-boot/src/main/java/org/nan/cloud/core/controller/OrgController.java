@@ -19,7 +19,7 @@ public class OrgController implements OrgApi {
     @Operation(
             summary = "创建组织",
             description = "超级管理员/系统管理员创建组织",
-            tags = {"组织管理"}
+            tags = {"组织管理", ""}
     )
     @Override
     public CreateOrgResponse createOrg(CreateOrgRequest request) {

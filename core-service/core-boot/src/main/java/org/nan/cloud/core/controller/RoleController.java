@@ -48,4 +48,14 @@ public class RoleController implements RoleApi {
     public void updateRoles(UpdateRolesRequest request) {
         roleFacade.updateRole(request);
     }
+
+    @Operation(
+            summary = "删除指定角色",
+            description = "删除指定角色",
+            tags = {"角色管理"}
+    )
+    @Override
+    public void deleteRole(Long rid) {
+        roleFacade.deleteRole(rid);
+    }
 }

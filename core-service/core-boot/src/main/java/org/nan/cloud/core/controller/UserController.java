@@ -99,7 +99,7 @@ public class UserController implements UserApi {
             tags = {"用户管理"}
     )
     @Override
-    public void assignUserRoles(AssignRolesRequest request) {
+    public void assignRolesToUser(AssignRolesRequest request) {
         userFacade.assignRolesToUser(request);
     }
 }

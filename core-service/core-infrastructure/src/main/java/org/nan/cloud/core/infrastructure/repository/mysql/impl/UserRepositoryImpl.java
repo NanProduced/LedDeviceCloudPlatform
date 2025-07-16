@@ -17,6 +17,7 @@ import org.nan.cloud.core.repository.UserRepository;
 import org.springframework.stereotype.Repository;
 
 import java.time.LocalDateTime;
+import java.util.List;
 import java.util.Objects;
 import java.util.Set;
 
@@ -71,6 +72,14 @@ public class UserRepositoryImpl implements UserRepository {
                 .build();
         pageVO.calculate();
         return pageVO;
+    }
+
+    @Override
+    public List<User> getUsersByUgids(Long oid, List<Long> ugids) {
+        List<UserDO> userDOS = userMapper.selectList(new LambdaQueryWrapper<UserDO>()
+                .eq(UserDO::getOid, oid)
+                .eq(UserDO::getUgid, ugids));
+        return commonConverter.userDO2User(userDOS);
     }
 
     @Override

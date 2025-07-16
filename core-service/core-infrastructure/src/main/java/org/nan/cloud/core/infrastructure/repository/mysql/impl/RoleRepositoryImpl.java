@@ -57,6 +57,11 @@ public class RoleRepositoryImpl implements RoleRepository {
         roleMapper.updateById(roleDO);
     }
 
+    @Override
+    public void deleteRole(Long rid) {
+        roleMapper.deleteById(rid);
+    }
+
 
     @Override
     public boolean allRolesExist(List<Long> roles) {

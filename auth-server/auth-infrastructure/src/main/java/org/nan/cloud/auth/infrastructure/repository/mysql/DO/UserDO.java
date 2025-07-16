@@ -33,7 +33,7 @@ public class UserDO {
     @TableField("status")
     private Integer status;
 
-    @TableField("type")
+    @TableField("user_type")
     private Integer type;
 
     @TableField("oid")

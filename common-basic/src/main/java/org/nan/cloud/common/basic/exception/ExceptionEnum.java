@@ -35,7 +35,9 @@ public enum ExceptionEnum {
     SAME_USERNAME(5006, "There is already a same username"),
     ROLE_DOES_NOT_EXIST(5007, "Role doesn't exist"),
     ROLE_PERMISSION_DENIED(5008, "Doesn't have enough role permissions"),
-    NAME_DUPLICATE_ERROR(5009, "Already has the same name");
+    NAME_DUPLICATE_ERROR(5009, "Already has the same name"),
+    HAS_USER_WITH_ONLY_ROLE(5010, "There are users with only role"),
+    HAS_USER_IN_TARGET_GROUP(5011, "There are users in target group");
 
     private final Integer code;
     private final String message;

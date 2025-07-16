@@ -94,6 +94,7 @@ public class CasbinRbacPolicyHandler {
     @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
     public void onRemoveRoleEvent(RemoveRoleEvent event) {
         rbacEnforcer.removeFilteredNamedPolicy("p", 0, event.getRid().toString(), event.getOid().toString());
+        rbacEnforcer.removeFilteredGroupingPolicy(1, event.getRid().toString(), event.getOid().toString());
     }
 
 

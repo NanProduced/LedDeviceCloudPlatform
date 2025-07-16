@@ -27,7 +27,7 @@ public class UserGroupDO {
     @TableField("path")
     private String path;
 
-    @TableField("type")
+    @TableField("ug_type")
     private Integer type;
 
     @TableField("description")

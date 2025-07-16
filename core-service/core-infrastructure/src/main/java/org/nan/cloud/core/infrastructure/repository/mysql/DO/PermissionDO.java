@@ -4,8 +4,10 @@ import com.baomidou.mybatisplus.annotation.IdType;
 import com.baomidou.mybatisplus.annotation.TableField;
 import com.baomidou.mybatisplus.annotation.TableId;
 import com.baomidou.mybatisplus.annotation.TableName;
+import lombok.Data;
 
 @TableName("permission")
+@Data
 public class PermissionDO {
 
     @TableId(value = "permission_id", type = IdType.AUTO)
@@ -23,6 +25,9 @@ public class PermissionDO {
     @TableField("description")
     private String description;
 
-    @TableField("group")
+    @TableField("permission_group")
     private String group;
+
+    @TableField("permission_type")
+    private Integer type;
 }

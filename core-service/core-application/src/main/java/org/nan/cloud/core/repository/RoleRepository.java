@@ -18,6 +18,8 @@ public interface RoleRepository {
 
     void updateRole(Role role);
 
+    void deleteRole(Long rid);
+
     boolean allRolesExist(List<Long> roles);
 
     List<Role> getRolesByRids(Collection<Long> rids);

@@ -1,6 +1,7 @@
 package org.nan.cloud.core.facade;
 
 import lombok.RequiredArgsConstructor;
+import org.nan.cloud.common.basic.exception.ExceptionEnum;
 import org.nan.cloud.common.basic.utils.PasswordUtils;
 import org.nan.cloud.common.web.context.InvocationContextHolder;
 import org.nan.cloud.core.DTO.CreateOrgDTO;
@@ -34,8 +35,10 @@ public class OrgFacade {
      * 3. 调用 application 模块的 service
      * 4. 结果 → 响应
      */
-    @Transactional
+    @Transactional(rollbackFor =  Exception.class)
     public CreateOrgResponse createOrg(CreateOrgRequest req) {
+        // 系统管理员
+        ExceptionEnum.PERMISSION_DENIED.throwIf(!InvocationContextHolder.ifOrgManager());
         final Long currentUId = InvocationContextHolder.getCurrentUId();
         CreateOrgDTO dto = orgConverter.createOrgRequest2CreateOrgDTO(req);
         // 创建组织

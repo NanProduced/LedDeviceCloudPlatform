@@ -1,5 +1,6 @@
 package org.nan.cloud.core.infrastructure.repository.mysql.impl;
 
+import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import lombok.RequiredArgsConstructor;
 import org.nan.cloud.core.domain.Permission;
 import org.nan.cloud.core.infrastructure.repository.mysql.DO.PermissionDO;
@@ -19,12 +20,12 @@ public class PermissionRepositoryImpl implements PermissionRepository {
     private final PermissionMapper permissionMapper;
 
     private final CommonConverter commonConverter;
-    private final RoleMapper roleMapper;
 
 
     @Override
     public List<Permission> getAllPermissions() {
-        List<PermissionDO> allPermissions = permissionMapper.selectList(null);
+        List<PermissionDO> allPermissions = permissionMapper.selectList(new LambdaQueryWrapper<PermissionDO>()
+                .eq(PermissionDO::getType, 1));
         return commonConverter.permissionDO2Permission(allPermissions);
 
 
@@ -32,7 +33,9 @@ public class PermissionRepositoryImpl implements PermissionRepository {
 
     @Override
     public List<Permission> getPermissionsByIds(List<Long> permissionIds) {
-        final List<PermissionDO> permissionDOS = permissionMapper.selectByIds(permissionIds);
+        final List<PermissionDO> permissionDOS = permissionMapper.selectList(new LambdaQueryWrapper<PermissionDO>()
+                .eq(PermissionDO::getType, 1)
+                .eq(PermissionDO::getPermissionId, permissionIds));
         return commonConverter.permissionDO2Permission(permissionDOS);
     }
 

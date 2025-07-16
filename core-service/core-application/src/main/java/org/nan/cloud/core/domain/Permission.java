@@ -17,4 +17,6 @@ public class Permission {
 
     private String group;
 
+    private Integer type;
+
 }

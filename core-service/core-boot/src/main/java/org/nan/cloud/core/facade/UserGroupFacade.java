@@ -7,11 +7,13 @@ import org.nan.cloud.common.basic.model.PageRequestDTO;
 import org.nan.cloud.common.basic.model.PageVO;
 import org.nan.cloud.common.web.context.InvocationContextHolder;
 import org.nan.cloud.common.web.context.RequestUserInfo;
+import org.nan.cloud.core.DTO.CreateUserGroupDTO;
 import org.nan.cloud.core.DTO.QueryUserListDTO;
 import org.nan.cloud.core.DTO.UserGroupRelDTO;
 import org.nan.cloud.core.api.DTO.common.OrganizationDTO;
 import org.nan.cloud.core.api.DTO.common.RoleDTO;
 import org.nan.cloud.core.api.DTO.common.UserGroupTreeNode;
+import org.nan.cloud.core.api.DTO.req.CreateUserGroupRequest;
 import org.nan.cloud.core.api.DTO.req.QueryUserListRequest;
 import org.nan.cloud.core.api.DTO.res.UserGroupTreeResponse;
 import org.nan.cloud.core.api.DTO.res.UserListResponse;
@@ -20,6 +22,7 @@ import org.nan.cloud.core.domain.Role;
 import org.nan.cloud.core.domain.User;
 import org.nan.cloud.core.service.*;
 import org.springframework.stereotype.Component;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.util.*;
 import java.util.stream.Collectors;
@@ -51,13 +54,34 @@ public class UserGroupFacade {
         return response;
     }
 
+    @Transactional(rollbackFor = Exception.class)
+    public void createUserGroup(CreateUserGroupRequest createUserGroupRequest) {
+        RequestUserInfo requestUser = InvocationContextHolder.getContext().getRequestUser();
+        ExceptionEnum.USER_GROUP_PERMISSION_DENIED.throwIf(!permissionChecker.ifHasPermissionOnTargetUserGroup(requestUser.getUid(), createUserGroupRequest.getParentUgid()));
+        CreateUserGroupDTO createUserGroupDTO = CreateUserGroupDTO.builder()
+                .oid(requestUser.getOid())
+                .creatorUid(requestUser.getUid())
+                .parentUgid(createUserGroupRequest.getParentUgid())
+                .ugName(createUserGroupRequest.getUserGroupName())
+                .description(createUserGroupRequest.getDescription())
+                .build();
+        userGroupService.createUserGroup(createUserGroupDTO);
+    }
+
+    @Transactional(rollbackFor = Exception.class)
+    public void deleteUserGroup(Long ugid) {
+        RequestUserInfo requestUser = InvocationContextHolder.getContext().getRequestUser();
+        ExceptionEnum.USER_GROUP_PERMISSION_DENIED.throwIf(!permissionChecker.ifHasPermissionOnTargetUserGroup(requestUser.getUid(), ugid));
+        userGroupService.deleteUserGroup(requestUser.getOid(), ugid);
+    }
+
     public PageVO<UserListResponse> listUser(PageRequestDTO<QueryUserListRequest> requestDTO) {
         Long ugid = InvocationContextHolder.getUgid();
         Long oid = InvocationContextHolder.getOid();
         ExceptionEnum.USER_GROUP_PERMISSION_DENIED.throwIf(!permissionChecker.ifHasPermissionOnTargetUserGroup(ugid, requestDTO.getParams().getUgid()));
         QueryUserListDTO dto = QueryUserListDTO.builder()
                 .oid(oid)
-                .ugid(ugid)
+                .ugid(requestDTO.getParams().getUgid())
                 .ifIncludeSubGroups(requestDTO.getParams().isIncludeSubGroups())
                 .userNameKeyword(requestDTO.getParams().getUserNameKeyword())
                 .emailKeyword(requestDTO.getParams().getEmailKeyword())

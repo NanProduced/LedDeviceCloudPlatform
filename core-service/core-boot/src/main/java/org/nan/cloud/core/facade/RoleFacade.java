@@ -96,6 +96,7 @@ public class RoleFacade {
         ExceptionEnum.ORG_PERMISSION_DENIED.throwIf(!permissionChecker.ifTargetRoleIsTheSameOrg(requestUser.getOid(), rid));
         ExceptionEnum.ROLE_PERMISSION_DENIED.throwIf(!permissionChecker.ifHasPermissionOnTargetRole(requestUser.getUid(), rid));
         roleAndPermissionService.deleteRole(requestUser.getOid(), rid);
+        permissionEventPublisher.publishRemoveRoleEvent(rid, requestUser.getOid());
     }
 
 
