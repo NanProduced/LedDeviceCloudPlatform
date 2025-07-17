@@ -66,7 +66,7 @@ public class RoleRepositoryImpl implements RoleRepository {
     @Override
     public boolean allRolesExist(List<Long> roles) {
         return roleMapper.selectCount(new LambdaQueryWrapper<RoleDO>()
-                .eq(RoleDO::getRid, roles)) == roles.size();
+                .in(RoleDO::getRid, roles)) == roles.size();
     }
 
     @Override
@@ -89,6 +89,12 @@ public class RoleRepositoryImpl implements RoleRepository {
     @Override
     public List<Role> getCoveredRolesByRids(Collection<Long> rids, Long oid) {
         return commonConverter.roleDO2Role(roleMapper.selectCoveredRoles(rids, oid));
+    }
+
+    @Override
+    public List<Role> getAllRolesByOid(Long oid) {
+        return commonConverter.roleDO2Role(roleMapper.selectList(new LambdaQueryWrapper<RoleDO>()
+                .eq(RoleDO::getOid, oid)));
     }
 
     @Override

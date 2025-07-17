@@ -34,6 +34,8 @@ public interface RoleRepository {
      */
     List<Role> getCoveredRolesByRids(Collection<Long> rids, Long oid);
 
+    List<Role> getAllRolesByOid(Long oid);
+
     boolean ifTheSameOrg(Long oid, Long rid);
 
     /**

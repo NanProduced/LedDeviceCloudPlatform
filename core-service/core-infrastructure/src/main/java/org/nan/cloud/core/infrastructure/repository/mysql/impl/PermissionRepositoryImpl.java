@@ -34,7 +34,7 @@ public class PermissionRepositoryImpl implements PermissionRepository {
     public List<Permission> getPermissionsByIds(List<Long> permissionIds) {
         final List<PermissionDO> permissionDOS = permissionMapper.selectList(new LambdaQueryWrapper<PermissionDO>()
                 .eq(PermissionDO::getPermissionType, 1)
-                .eq(PermissionDO::getPermissionId, permissionIds));
+                .in(PermissionDO::getPermissionId, permissionIds));
         return commonConverter.permissionDO2Permission(permissionDOS);
     }
 

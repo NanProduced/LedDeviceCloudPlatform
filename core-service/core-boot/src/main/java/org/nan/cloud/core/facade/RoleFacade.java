@@ -15,6 +15,7 @@ import org.nan.cloud.core.api.DTO.res.VisibleRolesResponse;
 import org.nan.cloud.core.aspect.SkipOrgManagerPermissionCheck;
 import org.nan.cloud.core.domain.Permission;
 import org.nan.cloud.core.domain.Role;
+import org.nan.cloud.core.enums.RoleTypeEnum;
 import org.nan.cloud.core.service.PermissionChecker;
 import org.nan.cloud.core.service.PermissionEventPublisher;
 import org.nan.cloud.core.service.RoleAndPermissionService;
@@ -48,7 +49,7 @@ public class RoleFacade {
                 .name(StringUtils.generateOrgRoleName(oid))
                 .displayName(request.getRoleName())
                 .creatorId(currentUId)
-                .roleType(0)
+                .roleType(RoleTypeEnum.CUSTOM_ROLE.getType())
                 .build());
         ExceptionEnum.CREATE_FAILED.throwIf(null == role.getRid());
         final Long rid = role.getRid();
@@ -58,7 +59,13 @@ public class RoleFacade {
 
     public VisibleRolesResponse getVisibleRoles() {
         RequestUserInfo requestUser = InvocationContextHolder.getContext().getRequestUser();
-        List<Role> visibleRoles = roleAndPermissionService.getVisibleRolesByUid(requestUser.getOid(), requestUser.getUid());
+        List<Role> visibleRoles;
+        if (InvocationContextHolder.ifOrgManager()) {
+            visibleRoles = roleAndPermissionService.getAllRolesByOid(requestUser.getOid());
+        }
+        else {
+            visibleRoles = roleAndPermissionService.getVisibleRolesByUid(requestUser.getOid(), requestUser.getUid());
+        }
         return VisibleRolesResponse.builder()
                 .uid(requestUser.getUid())
                 .visibleRoles(visibleRoles.stream().map(r -> new RoleDTO(r.getRid(), r.getOid(), r.getName(), r.getDisplayName())).toList())

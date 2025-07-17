@@ -78,7 +78,7 @@ public class UserRepositoryImpl implements UserRepository {
     public List<User> getUsersByUgids(Long oid, List<Long> ugids) {
         List<UserDO> userDOS = userMapper.selectList(new LambdaQueryWrapper<UserDO>()
                 .eq(UserDO::getOid, oid)
-                .eq(UserDO::getUgid, ugids));
+                .in(UserDO::getUgid, ugids));
         return commonConverter.userDO2User(userDOS);
     }
 

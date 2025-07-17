@@ -123,6 +123,11 @@ public class RoleAndPermissionServiceImpl implements RoleAndPermissionService {
     }
 
     @Override
+    public List<Role> getAllRolesByOid(Long oid) {
+        return roleRepository.getAllRolesByOid(oid);
+    }
+
+    @Override
     public void assignPermissionsToRole(Role role, List<Permission> permissions) {
 
     }

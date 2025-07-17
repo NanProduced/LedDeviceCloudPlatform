@@ -39,6 +39,8 @@ public interface RoleAndPermissionService {
 
     List<Role> getVisibleRolesByUid(Long oid, Long uid);
 
+    List<Role> getAllRolesByOid(Long oid);
+
     void assignPermissionsToRole(Role role, List<Permission> permissions);
 
     void assignRoleToUser(Role role, User user);
