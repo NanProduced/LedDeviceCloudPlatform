@@ -1,0 +1,196 @@
+<!DOCTYPE html>
+<html lang="zh-CN" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>认证中心 | 登录成功</title>
+    <style>
+        :root {
+            --primary-color: #3498db;
+            --secondary-color: #2980b9;
+            --success-color: #2ecc71;
+            --text-color: #333;
+            --light-bg: #f9f9f9;
+            --card-shadow: 0 4px 12px rgba(0,0,0,0.1);
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
+            margin: 0;
+            padding: 0;
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            color: var(--text-color);
+        }
+
+        .container {
+            width: 90%;
+            max-width: 800px;
+            background: white;
+            border-radius: 12px;
+            box-shadow: var(--card-shadow);
+            overflow: hidden;
+        }
+
+        .header {
+            background: var(--primary-color);
+            color: white;
+            padding: 30px 40px;
+            text-align: center;
+        }
+
+        .header h1 {
+            margin: 0;
+            font-size: 2.2rem;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 12px;
+        }
+
+        .check-icon {
+            font-size: 2.5rem;
+        }
+
+        .content {
+            padding: 30px 40px;
+        }
+
+        .user-card {
+            background: var(--light-bg);
+            border-radius: 8px;
+            padding: 20px;
+            margin-bottom: 30px;
+        }
+
+        .info-row {
+            display: flex;
+            margin-bottom: 15px;
+            padding-bottom: 15px;
+            border-bottom: 1px solid #eee;
+        }
+
+        .info-label {
+            font-weight: 600;
+            width: 150px;
+            color: var(--secondary-color);
+        }
+
+        .info-value {
+            flex: 1;
+            word-break: break-all;
+        }
+
+        .btn-container {
+            text-align: center;
+            margin-top: 30px;
+        }
+
+        .portal-btn {
+            display: inline-flex;
+            align-items: center;
+            gap: 10px;
+            background: var(--success-color);
+            color: white;
+            padding: 14px 28px;
+            border-radius: 50px;
+            text-decoration: none;
+            font-weight: 600;
+            font-size: 1.1rem;
+            transition: all 0.3s ease;
+            box-shadow: 0 4px 8px rgba(46, 204, 113, 0.3);
+        }
+
+        .portal-btn:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 6px 12px rgba(46, 204, 113, 0.4);
+            background: #27ae60;
+        }
+
+        .footer {
+            text-align: center;
+            padding: 20px;
+            color: #777;
+            font-size: 0.9rem;
+            border-top: 1px solid #eee;
+        }
+
+        @media (max-width: 600px) {
+            .header, .content {
+                padding: 20px;
+            }
+
+            .info-row {
+                flex-direction: column;
+            }
+
+            .info-label {
+                margin-bottom: 5px;
+                width: 100%;
+            }
+        }
+    </style>
+</head>
+<body>
+<div class="container">
+    <div class="header">
+        <h1>
+            <span class="check-icon">✓</span>
+            认证成功
+        </h1>
+        <p>您已安全登录认证中心系统</p>
+    </div>
+
+    <div class="content">
+        <div class="user-card">
+            <h2>用户认证信息</h2>
+
+            <div class="info-row">
+                <div class="info-label">用户名:</div>
+                <div class="info-value" th:text="${authentication.name}">admin</div>
+            </div>
+
+            <div class="info-row">
+                <div class="info-label">认证状态:</div>
+                <div class="info-value">
+                    <span th:if="${authentication.authenticated}">已认证 ✓</span>
+                    <span th:unless="${authentication.authenticated}">未认证</span>
+                </div>
+            </div>
+
+            <div class="info-row">
+                <div class="info-label">Session:</div>
+                <div class="info-value">
+                    <ul>
+                        <li th:text="${session_id}">session</li>
+                    </ul>
+                </div>
+            </div>
+
+            <div class="info-row">
+                <div class="info-label">组织ID:</div>
+                <div class="info-value" th:text="${oid}">oid</div>
+            </div>
+
+        </div>
+
+        <div class="btn-container">
+            <a th:href="${portalGatewayUrl}" class="portal-btn">
+                <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path>
+                    <polyline points="9 22 9 12 15 12 15 22"></polyline>
+                </svg>
+                进入门户网关首页
+            </a>
+        </div>
+    </div>
+
+    <div class="footer">
+        <p>认证中心服务 | 安全访问系统</p>
+    </div>
+</div>
+</body>
+</html>

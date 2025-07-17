@@ -1,0 +1,599 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>系统登录 | 用户名与组织后缀</title>
+    <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;500;700&family=Noto+Sans+SC:wght@400;500;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        :root {
+            --primary-color: #4361ee;
+            --secondary-color: #3a0ca3;
+            --accent-color: #4cc9f0;
+            --background-color: #f8f9fa;
+            --card-background: #ffffff;
+            --text-color-dark: #2b2d42;
+            --text-color-light: #8d99ae;
+            --border-color: #e9ecef;
+            --error-color: #e5383b;
+            --success-color: #2a9d8f;
+            --focus-glow: rgba(67, 97, 238, 0.3);
+            --shadow: 0 10px 30px rgba(0, 0, 0, 0.08);
+            --transition: all 0.3s ease;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Roboto', 'Noto Sans SC', sans-serif;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            background: linear-gradient(135deg, #e0f7fa 0%, #f3e5f5 100%);
+            color: var(--text-color-dark);
+            padding: 20px;
+            -webkit-font-smoothing: antialiased;
+            -moz-osx-font-smoothing: grayscale;
+            background-image: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="100" height="100" viewBox="0 0 100 100"><rect width="100" height="100" fill="none" stroke="rgba(67, 97, 238, 0.03)" stroke-width="1"/></svg>');
+            background-size: 20px 20px;
+        }
+
+        .login-container {
+            width: 100%;
+            max-width: 480px;
+            padding: 40px;
+            border-radius: 16px;
+            box-shadow: var(--shadow);
+            background-color: var(--card-background);
+            text-align: center;
+            position: relative;
+            overflow: hidden;
+            animation: fadeIn 0.8s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+            border: 1px solid rgba(255, 255, 255, 0.5);
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(-30px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        .login-header {
+            margin-bottom: 32px;
+            position: relative;
+        }
+
+        .logo {
+            width: 80px;
+            height: 80px;
+            background: linear-gradient(135deg, var(--primary-color), var(--secondary-color));
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin: 0 auto 20px;
+            color: white;
+            font-size: 32px;
+            box-shadow: 0 5px 15px rgba(67, 97, 238, 0.3);
+        }
+
+        h2 {
+            font-size: 28px;
+            font-weight: 700;
+            color: var(--text-color-dark);
+            margin-bottom: 8px;
+            letter-spacing: 0.5px;
+        }
+
+        .subtitle {
+            font-size: 16px;
+            color: var(--text-color-light);
+            font-weight: 400;
+            margin-bottom: 24px;
+        }
+
+        .form-group {
+            margin-bottom: 24px;
+            text-align: left;
+        }
+
+        label {
+            display: block;
+            margin-bottom: 10px;
+            font-weight: 500;
+            color: var(--text-color-dark);
+            font-size: 15px;
+        }
+
+        .input-group {
+            display: flex;
+            align-items: center;
+            border: 1px solid var(--border-color);
+            border-radius: 10px;
+            overflow: hidden;
+            transition: var(--transition);
+            background: white;
+        }
+
+        .input-group:focus-within {
+            border-color: var(--primary-color);
+            box-shadow: 0 0 0 3px var(--focus-glow);
+        }
+
+        .input-group.invalid {
+            border-color: var(--error-color);
+        }
+
+        .input-group.valid {
+            border-color: var(--success-color);
+        }
+
+        .input-group i {
+            padding: 0 15px;
+            color: var(--text-color-light);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            height: 100%;
+        }
+
+        input[type="text"],
+        input[type="password"] {
+            flex: 1;
+            padding: 16px;
+            border: none;
+            font-size: 16px;
+            color: var(--text-color-dark);
+            background: transparent;
+            outline: none;
+            height: 100%;
+        }
+
+        .username-input {
+            display: flex;
+            align-items: center;
+            flex: 1;
+            border-right: 1px solid var(--border-color);
+        }
+
+        .suffix-input {
+            width: 120px;
+            text-align: center;
+            font-weight: 600;
+            color: var(--secondary-color);
+            border-left: 1px solid var(--border-color);
+        }
+
+        .suffix-input::placeholder {
+            font-weight: normal;
+            color: var(--text-color-light);
+        }
+
+        .input-info {
+            font-size: 13px;
+            color: var(--text-color-light);
+            margin-top: 8px;
+            display: flex;
+            align-items: center;
+        }
+
+        .input-info i {
+            margin-right: 6px;
+            font-size: 14px;
+        }
+
+        .input-info.error {
+            color: var(--error-color);
+        }
+
+        .divider {
+            display: flex;
+            align-items: center;
+            margin: 24px 0;
+            color: var(--text-color-light);
+            font-size: 14px;
+        }
+
+        .divider::before,
+        .divider::after {
+            content: "";
+            flex: 1;
+            height: 1px;
+            background: var(--border-color);
+        }
+
+        .divider span {
+            padding: 0 12px;
+        }
+
+        .btn-login {
+            width: 100%;
+            padding: 16px;
+            background: linear-gradient(135deg, var(--primary-color), var(--secondary-color));
+            border: none;
+            color: white;
+            border-radius: 10px;
+            cursor: pointer;
+            font-size: 17px;
+            font-weight: 600;
+            transition: var(--transition);
+            letter-spacing: 0.5px;
+            position: relative;
+            overflow: hidden;
+            box-shadow: 0 5px 15px rgba(67, 97, 238, 0.25);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 10px;
+        }
+
+        .btn-login:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 8px 20px rgba(67, 97, 238, 0.35);
+        }
+
+        .btn-login:active {
+            transform: translateY(1px);
+        }
+
+        .btn-login:disabled {
+            background: #cccccc;
+            cursor: not-allowed;
+            transform: none;
+            box-shadow: none;
+        }
+
+        .status-indicator {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin-top: 20px;
+            padding: 12px;
+            border-radius: 8px;
+            font-size: 14px;
+            font-weight: 500;
+        }
+
+        .status-indicator.online {
+            background: rgba(42, 157, 143, 0.1);
+            color: var(--success-color);
+        }
+
+        .status-indicator.offline {
+            background: rgba(229, 56, 59, 0.1);
+            color: var(--error-color);
+        }
+
+        .status-indicator i {
+            margin-right: 8px;
+            font-size: 12px;
+        }
+
+        .footer {
+            margin-top: 30px;
+            font-size: 14px;
+            color: var(--text-color-light);
+            display: flex;
+            justify-content: space-between;
+        }
+
+        .footer a {
+            color: var(--primary-color);
+            text-decoration: none;
+            transition: color 0.2s;
+            display: flex;
+            align-items: center;
+            gap: 5px;
+        }
+
+        .footer a:hover {
+            color: var(--secondary-color);
+            text-decoration: underline;
+        }
+
+        .decoration {
+            position: absolute;
+            width: 200px;
+            height: 200px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, rgba(67, 97, 238, 0.08), rgba(58, 12, 163, 0.05));
+            z-index: -1;
+        }
+
+        .dec-1 {
+            top: -80px;
+            right: -80px;
+        }
+
+        .dec-2 {
+            bottom: -100px;
+            left: -100px;
+            width: 250px;
+            height: 250px;
+        }
+
+        .error-message {
+            color: var(--error-color);
+            background-color: #FEE;
+            border: 1px solid var(--error-color);
+            padding: 12px 15px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            font-size: 14px;
+            text-align: center;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            animation: slideIn 0.3s ease-out;
+        }
+
+        @keyframes slideIn {
+            from { opacity: 0; transform: translateY(-10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        .password-container {
+            position: relative;
+        }
+
+        .password-toggle {
+            position: absolute;
+            right: 15px;
+            top: 50%;
+            transform: translateY(-50%);
+            cursor: pointer;
+            color: var(--text-color-light);
+        }
+
+        /* 响应式设计 */
+        @media (max-width: 500px) {
+            .login-container {
+                padding: 30px 20px;
+            }
+
+            .footer {
+                flex-direction: column;
+                gap: 10px;
+                text-align: center;
+            }
+
+            .suffix-input {
+                width: 100px;
+            }
+
+            h2 {
+                font-size: 24px;
+            }
+        }
+    </style>
+</head>
+<body>
+<div class="login-container">
+    <div class="decoration dec-1"></div>
+    <div class="decoration dec-2"></div>
+
+    <div class="login-header">
+        <div class="logo">
+            <i class="fas fa-lock"></i>
+        </div>
+        <h2>系统登录</h2>
+        <p class="subtitle">请输入您的用户名和组织后缀进行登录</p>
+    </div>
+
+    <!-- 错误信息提示 -->
+    <div class="error-message" id="errorMessage" style="display: none;">
+        <i class="fas fa-exclamation-circle"></i>
+        <span id="errorText">用户名或密码错误，请重试</span>
+    </div>
+
+    <form id="loginForm" method="post" action="/login">
+        <div class="form-group">
+            <label for="username">用户名与组织后缀</label>
+            <div class="input-group" id="usernameGroup">
+                <div class="username-input">
+                    <i class="fas fa-user" style="line-height: 1;"></i>
+                    <input type="text" id="username" name="username" placeholder="请输入用户名" required>
+                </div>
+                <span style="padding: 0 12px; font-weight: 600; color: var(--text-color-light);">#</span>
+                <input type="text" id="suffix" name="suffix" class="suffix-input" placeholder="12345"
+                       maxlength="5" pattern="\d{5}" required>
+            </div>
+            <div class="input-info" id="suffixInfo">
+                <i class="fas fa-info-circle"></i> 组织后缀必须是5位数字
+            </div>
+        </div>
+
+        <div class="form-group">
+            <label for="password">密码</label>
+            <div class="input-group">
+                <i class="fas fa-key" style="line-height: 1;"></i>
+                <input type="password" id="password" name="password" placeholder="请输入密码" required>
+                <span class="password-toggle" id="passwordToggle">
+                        <i class="fas fa-eye"></i>
+                    </span>
+            </div>
+        </div>
+
+        <button type="submit" class="btn-login" id="loginButton">
+            <i class="fas fa-sign-in-alt"></i> 立即登录
+        </button>
+    </form>
+
+    <div class="divider">
+        <span>系统状态</span>
+    </div>
+
+    <div class="status-indicator online">
+        <i class="fas fa-circle"></i> 系统运行正常 - 所有服务在线
+    </div>
+
+    <div class="footer">
+        <a href="#"><i class="fas fa-question-circle"></i> 忘记密码?</a>
+        <a href="#"><i class="fas fa-user-plus"></i> 注册新账户</a>
+        <a href="#"><i class="fas fa-headset"></i> 技术支持</a>
+    </div>
+</div>
+
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        const suffixInput = document.getElementById('suffix');
+        const usernameGroup = document.getElementById('usernameGroup');
+        const suffixInfo = document.getElementById('suffixInfo');
+        const loginButton = document.getElementById('loginButton');
+        const loginForm = document.getElementById('loginForm');
+        const errorMessage = document.getElementById('errorMessage');
+        const errorText = document.getElementById('errorText');
+        const passwordInput = document.getElementById('password');
+        const passwordToggle = document.getElementById('passwordToggle');
+
+        // 修复图标垂直对齐问题
+        const userIcon = document.querySelector('.username-input i');
+        const keyIcon = document.querySelector('.input-group:not(#usernameGroup) i');
+
+        // 设置图标高度与输入框一致
+        const fixIconAlignment = () => {
+            const inputHeight = document.querySelector('#username').offsetHeight;
+            userIcon.style.height = `${inputHeight}px`;
+            userIcon.style.lineHeight = `${inputHeight}px`;
+
+            if (keyIcon) {
+                keyIcon.style.height = `${inputHeight}px`;
+                keyIcon.style.lineHeight = `${inputHeight}px`;
+            }
+        };
+
+        // 页面加载和窗口大小变化时调整图标
+        window.addEventListener('load', fixIconAlignment);
+        window.addEventListener('resize', fixIconAlignment);
+
+        // 密码显示/隐藏切换
+        passwordToggle.addEventListener('click', function() {
+            if (passwordInput.type === 'password') {
+                passwordInput.type = 'text';
+                this.innerHTML = '<i class="fas fa-eye-slash"></i>';
+            } else {
+                passwordInput.type = 'password';
+                this.innerHTML = '<i class="fas fa-eye"></i>';
+            }
+        });
+
+        // 实时验证组织后缀输入
+        suffixInput.addEventListener('input', function() {
+            // 只允许输入数字
+            this.value = this.value.replace(/[^\d]/g, '');
+
+            // 验证输入
+            validateSuffix();
+        });
+
+        // 验证函数
+        function validateSuffix() {
+            const value = suffixInput.value;
+
+            // 移除之前的验证状态
+            usernameGroup.classList.remove('valid', 'invalid');
+            suffixInfo.classList.remove('error');
+
+            if (value.length === 0) {
+                return false;
+            }
+
+            if (value.length === 5) {
+                usernameGroup.classList.add('valid');
+                suffixInfo.innerHTML = '<i class="fas fa-check-circle"></i> 组织后缀格式正确';
+                suffixInfo.classList.remove('error');
+                return true;
+            } else {
+                usernameGroup.classList.add('invalid');
+                suffixInfo.innerHTML = '<i class="fas fa-exclamation-circle"></i> 组织后缀必须是5位数字';
+                suffixInfo.classList.add('error');
+                return false;
+            }
+        }
+
+        // 表单提交处理
+        // loginForm.addEventListener('submit', function(e) {
+        //     // 阻止默认表单提交行为
+        //     e.preventDefault();
+        //
+        //     // 隐藏之前的错误信息
+        //     errorMessage.style.display = 'none';
+        //
+        //     // 验证后缀
+        //     if (!validateSuffix()) {
+        //         suffixInput.focus();
+        //         return;
+        //     }
+        //
+        //     // 获取表单数据
+        //     const username = document.getElementById('username').value;
+        //     const password = passwordInput.value;
+        //     const suffix = suffixInput.value;
+        //
+        //     // 显示加载状态
+        //     loginButton.innerHTML = '<i class="fas fa-spinner fa-spin"></i> 登录中...';
+        //     loginButton.disabled = true;
+        //
+        //     // 创建表单数据对象
+        //     const formData = new FormData();
+        //     formData.append('username', username);
+        //     formData.append('password', password);
+        //     formData.append('suffix', suffix);
+        //
+        //     // 发送真正的POST请求
+        //     fetch('/login', {
+        //         method: 'POST',
+        //         body: formData
+        //     })
+        //         .then(response => {
+        //             if (!response.ok) {
+        //                 throw new Error('登录失败');
+        //             }
+        //             return response.json();
+        //         })
+        //         .then(data => {
+        //             if (data.success) {
+        //                 // 登录成功，由后端处理重定向
+        //                 console.log('登录成功，后端将处理重定向');
+        //             } else {
+        //                 // 登录失败，显示错误信息
+        //                 showError(data.message || '用户名或密码错误');
+        //             }
+        //         })
+        //         .catch(error => {
+        //             showError(error.message || '登录请求失败，请重试');
+        //         })
+        //         .finally(() => {
+        //             // 恢复按钮状态
+        //             loginButton.innerHTML = '<i class="fas fa-sign-in-alt"></i> 立即登录';
+        //             loginButton.disabled = false;
+        //         });
+        // });
+
+        // 显示错误信息
+        function showError(message) {
+            errorText.textContent = message;
+            errorMessage.style.display = 'flex';
+
+            // 添加抖动动画
+            errorMessage.style.animation = 'none';
+            setTimeout(() => {
+                errorMessage.style.animation = 'slideIn 0.3s ease-out';
+            }, 10);
+        }
+
+        // 初始聚焦用户名输入框
+        document.getElementById('username').focus();
+
+        // 初始修复图标位置
+        fixIconAlignment();
+    });
+</script>
+</body>
+</html>

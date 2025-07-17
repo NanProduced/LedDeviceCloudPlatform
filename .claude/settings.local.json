@@ -1,0 +1,17 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(claude mcp add:*)",
+      "Bash(if exist \"C:\\Program Files\\Git\\bin\\bash.exe\" echo Git Bash found at default location)",
+      "Bash(where git)",
+      "Bash(set CLAUDE_CODE_GIT_BASH_PATH=C:Program FilesGitbinbash.exe)",
+      "Bash(claude mcp:*)",
+      "Bash(claude config show)",
+      "Bash(claude config --help)",
+      "Bash(claude config list)",
+      "Bash(echo $env:APPDATA)",
+      "Bash(where claude)"
+    ],
+    "deny": []
+  }
+}
