@@ -140,10 +140,21 @@ public class TerminalGroupFacade {
                 userInfo.getUid(), userInfo.getUgid(), request.getUgid(), null);
         
         // 转换为内部DTO
+        List<BatchBindingOperationDTO.TerminalGroupPermissionDTO> grantPermissions = null;
+        if (request.getGrantPermissions() != null) {
+            grantPermissions = request.getGrantPermissions().stream()
+                    .map(permission -> BatchBindingOperationDTO.TerminalGroupPermissionDTO.builder()
+                            .tgid(permission.getTgid())
+                            .includeChildren(permission.getIncludeChildren())
+                            .description(permission.getDescription())
+                            .build())
+                    .collect(Collectors.toList());
+        }
+        
         BatchBindingOperationDTO internalRequest = BatchBindingOperationDTO.builder()
                 .ugid(request.getUgid())
-                .bindTgids(request.getGrantTerminalGroupIds())
-                .unbindTgids(request.getRevokeTerminalGroupIds())
+                .grantPermissions(grantPermissions)
+                .revokeTerminalGroupIds(request.getRevokeTerminalGroupIds())
                 .operatorId(userInfo.getUid())
                 .operationDescription(request.getDescription())
                 .build();

@@ -39,6 +39,8 @@ public class UserGroupTerminalGroupBinding {
     /** 创建时间 */
     private LocalDateTime createTime;
 
+    private Long updaterId;
+
     /** 更新时间 */
     private LocalDateTime updateTime;
 }

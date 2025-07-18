@@ -97,11 +97,11 @@ public class UserGroupTerminalGroupBindingServiceImpl implements UserGroupTermin
         // 获取用户组当前的所有绑定关系
         List<UserGroupTerminalGroupBinding> currentBindings = bindingRepository.getUserGroupBindings(request.getUgid());
         
-        // 处理要绑定的终端组
-        if (!CollectionUtils.isEmpty(request.getBindTgids())) {
-            for (Long tgid : request.getBindTgids()) {
+        // 处理要添加权限的终端组
+        if (!CollectionUtils.isEmpty(request.getGrantPermissions())) {
+            for (BatchBindingOperationDTO.TerminalGroupPermissionDTO permission : request.getGrantPermissions()) {
                 BatchBindingOperationResultDTO.BindingOperationDetailDTO detail = 
-                    processBindOperation(request.getUgid(), tgid, currentBindings, request.getOperatorId());
+                    processGrantPermissionOperation(request.getUgid(), permission, currentBindings, request.getOperatorId());
                 operationDetails.add(detail);
                 
                 if ("CREATED_INCLUDE".equals(detail.getOperationType())) {
@@ -110,9 +110,9 @@ public class UserGroupTerminalGroupBindingServiceImpl implements UserGroupTermin
             }
         }
         
-        // 处理要解绑的终端组
-        if (!CollectionUtils.isEmpty(request.getUnbindTgids())) {
-            for (Long tgid : request.getUnbindTgids()) {
+        // 处理要移除权限的终端组
+        if (!CollectionUtils.isEmpty(request.getRevokeTerminalGroupIds())) {
+            for (Long tgid : request.getRevokeTerminalGroupIds()) {
                 BatchBindingOperationResultDTO.BindingOperationDetailDTO detail = 
                     processUnbindOperation(request.getUgid(), tgid, currentBindings, request.getOperatorId());
                 operationDetails.add(detail);
@@ -135,10 +135,23 @@ public class UserGroupTerminalGroupBindingServiceImpl implements UserGroupTermin
     }
     
     /**
+     * 处理授权操作
+     */
+    private BatchBindingOperationResultDTO.BindingOperationDetailDTO processGrantPermissionOperation(
+            Long ugid, BatchBindingOperationDTO.TerminalGroupPermissionDTO permission, 
+            List<UserGroupTerminalGroupBinding> currentBindings, Long operatorId) {
+        
+        Long tgid = permission.getTgid();
+        Boolean includeChildren = permission.getIncludeChildren();
+        
+        return processBindOperation(ugid, tgid, includeChildren, currentBindings, operatorId);
+    }
+    
+    /**
      * 处理绑定操作
      */
     private BatchBindingOperationResultDTO.BindingOperationDetailDTO processBindOperation(
-            Long ugid, Long tgid, List<UserGroupTerminalGroupBinding> currentBindings, Long operatorId) {
+            Long ugid, Long tgid, Boolean includeChildren, List<UserGroupTerminalGroupBinding> currentBindings, Long operatorId) {
         
         TerminalGroup targetGroup = terminalGroupService.getTerminalGroupById(tgid);
         String terminalGroupName = targetGroup != null ? targetGroup.getName() : "未知终端组";
@@ -167,13 +180,37 @@ public class UserGroupTerminalGroupBindingServiceImpl implements UserGroupTermin
                 .orElse(null);
         
         if (existingIncludeBinding != null) {
-            // 已经存在包含绑定，无需操作
-            return BatchBindingOperationResultDTO.BindingOperationDetailDTO.builder()
-                    .tgid(tgid)
-                    .terminalGroupName(terminalGroupName)
-                    .operationType("NO_CHANGE")
-                    .description("已有权限")
-                    .build();
+            // 如果已经存在包含绑定，检查包含子组设置是否需要更新
+            if (includeChildren != null && !includeChildren.equals(existingIncludeBinding.getIncludeSub())) {
+                // 更新包含子组设置
+                UserGroupTerminalGroupBinding updatedBinding = UserGroupTerminalGroupBinding.builder()
+                        .bindingId(existingIncludeBinding.getBindingId())
+                        .tgid(tgid)
+                        .ugid(ugid)
+                        .bindingType(BindingType.INCLUDE)
+                        .includeSub(includeChildren)
+                        .createTime(existingIncludeBinding.getCreateTime())
+                        .updateTime(LocalDateTime.now())
+                        .updaterId(operatorId)
+                        .build();
+                
+                bindingRepository.updateBinding(updatedBinding);
+                
+                return BatchBindingOperationResultDTO.BindingOperationDetailDTO.builder()
+                        .tgid(tgid)
+                        .terminalGroupName(terminalGroupName)
+                        .operationType("UPDATED_INCLUDE")
+                        .description("更新权限设置")
+                        .build();
+            } else {
+                // 如果已经存在包含绑定且设置相同，无需重复创建
+                return BatchBindingOperationResultDTO.BindingOperationDetailDTO.builder()
+                        .tgid(tgid)
+                        .terminalGroupName(terminalGroupName)
+                        .operationType("NO_CHANGE")
+                        .description("已有权限")
+                        .build();
+            }
         }
         
         // 检查是否通过父组已经有权限
@@ -193,7 +230,7 @@ public class UserGroupTerminalGroupBindingServiceImpl implements UserGroupTermin
         UserGroupTerminalGroupBinding newBinding = UserGroupTerminalGroupBinding.builder()
                 .ugid(ugid)
                 .tgid(tgid)
-                .includeSub(false)  // 默认不包含子组
+                .includeSub(includeChildren != null ? includeChildren : false)  // 使用请求中的包含子组设置
                 .bindingType(BindingType.INCLUDE)
                 .creatorId(operatorId)
                 .createTime(LocalDateTime.now())

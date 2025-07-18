@@ -36,6 +36,10 @@ public class UserGroupTerminalGroupBindingRepositoryImpl implements UserGroupTer
         bindingMapper.delete(wrapper);
     }
 
+    @Override
+    public void updateBinding(UserGroupTerminalGroupBinding binding) {
+
+    }
 
     @Override
     public List<UserGroupTerminalGroupBinding> getUserGroupBindings(Long ugid) {

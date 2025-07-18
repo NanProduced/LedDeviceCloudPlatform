@@ -15,14 +15,14 @@ public class BatchBindingOperationDTO {
     private Long ugid;
     
     /**
-     * 要绑定的终端组ID列表
+     * 要添加权限的终端组
      */
-    private List<Long> bindTgids;
+    private List<TerminalGroupPermissionDTO> grantPermissions;
     
     /**
-     * 要解绑的终端组ID列表
+     * 要移除权限的终端组ID列表
      */
-    private List<Long> unbindTgids;
+    private List<Long> revokeTerminalGroupIds;
     
     /**
      * 操作者ID
@@ -33,4 +33,23 @@ public class BatchBindingOperationDTO {
      * 操作说明
      */
     private String operationDescription;
+    
+    @Data
+    @Builder
+    public static class TerminalGroupPermissionDTO {
+        /**
+         * 终端组ID
+         */
+        private Long tgid;
+        
+        /**
+         * 是否包含子组
+         */
+        private Boolean includeChildren;
+        
+        /**
+         * 权限说明
+         */
+        private String description;
+    }
 }

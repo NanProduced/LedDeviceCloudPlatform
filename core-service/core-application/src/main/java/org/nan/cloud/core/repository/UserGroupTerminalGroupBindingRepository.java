@@ -18,6 +18,11 @@ public interface UserGroupTerminalGroupBindingRepository {
     void deleteBinding(Long tgid, Long ugid);
 
     /**
+     * 更新用户组-终端组绑定
+     */
+    void updateBinding(UserGroupTerminalGroupBinding binding);
+
+    /**
      * 获取用户组绑定的终端组列表
      */
     List<UserGroupTerminalGroupBinding> getUserGroupBindings(Long ugid);
