@@ -14,7 +14,6 @@ public class UpdateTerminalGroupRequest {
     private Long tgid;
 
     @Schema(description = "终端组名称")
-    @NotBlank
     private String terminalGroupName;
 
     @Schema(description = "终端组描述")

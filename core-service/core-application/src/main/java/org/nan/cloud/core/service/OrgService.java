@@ -7,7 +7,7 @@ public interface OrgService {
 
     Organization createOrg(CreateOrgDTO createOrgDTO, Long currentUid);
 
-    Organization getOrgById(Long oid);
+    Organization getOrgByOid(Long oid);
 
     Integer getSuffixById(Long oid);
 }

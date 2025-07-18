@@ -27,15 +27,15 @@ public class TerminalGroupDetailResponse {
     @Schema(description = "描述")
     private String description;
 
-    @Schema(description = "终端组类型")
-    private Integer tgType;
-
-    @Schema(description = "子终端组数量")
-    private Integer childrenCount;
-
     @Schema(description = "创建者ID")
     private Long creatorId;
 
     @Schema(description = "创建时间")
     private LocalDateTime createTime;
+
+    @Schema(description = "更新者ID")
+    private Long updaterId;
+
+    @Schema(description = "更新时间")
+    private LocalDateTime updateTime;
 }

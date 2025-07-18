@@ -29,52 +29,12 @@ public interface TerminalGroupService {
     void updateTerminalGroup(UpdateTerminalGroupDTO updateTerminalGroupDTO);
 
     /**
-     * 获取用户可访问的终端组列表
+     * 搜索用户可访问的终端组
      */
-    List<TerminalGroup> getAccessibleTerminalGroups(Long userId, Long oid);
+    PageVO<TerminalGroup> searchAccessibleTerminalGroups(Integer pageNum, Integer pageSize, SearchTerminalGroupDTO searchDTO);
 
     /**
-     * 分页查询终端组列表
+     * 获取终端组的所有子组
      */
-    PageVO<TerminalGroupListDTO> listTerminalGroup(Integer pageNum, Integer pageSize, QueryTerminalGroupListDTO queryDTO);
-
-    /**
-     * 搜索终端组
-     */
-    PageVO<TerminalGroupListDTO> searchTerminalGroup(Integer pageNum, Integer pageSize, SearchTerminalGroupDTO searchDTO);
-
-    /**
-     * 获取子终端组
-     */
-    List<TerminalGroup> getChildrenTerminalGroups(Long tgid);
-
-    /**
-     * 检查终端组权限
-     */
-    TerminalGroupPermissionDTO checkTerminalGroupPermission(Long userId, Long tgid);
-
-    /**
-     * 批量检查终端组权限
-     */
-    List<TerminalGroupPermissionDTO> batchCheckPermissions(Long userId, List<Long> tgids);
-
-    /**
-     * 获取终端组统计信息
-     */
-    TerminalGroupStatisticsDTO getTerminalGroupStatistics(Long tgid);
-
-    /**
-     * 批量操作终端组
-     */
-    BatchOperationDTO batchOperateTerminalGroups(BatchTerminalGroupOperationDTO operationDTO);
-
-    /**
-     * 获取终端组操作历史
-     */
-    PageVO<TerminalGroupHistoryDTO> getTerminalGroupHistory(Integer pageNum, Integer pageSize, QueryTerminalGroupHistoryDTO queryDTO);
-
-    /**
-     * 查询组下所有终端组（包含当前组）
-     */
-    List<TerminalGroupRelDTO> getAllTerminalGroupsByParent(Long tgid);
+    List<TerminalGroup> getChildGroups(Long parentTgid);
 }

@@ -9,9 +9,7 @@ public class SearchTerminalGroupDTO {
     
     private String keyword;
     
-    private Integer tgType;
-    
     private Long oid;
     
-    private Long userId;
+    private Long ugid;
 }

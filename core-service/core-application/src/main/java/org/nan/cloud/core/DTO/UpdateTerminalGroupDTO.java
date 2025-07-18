@@ -13,5 +13,6 @@ public class UpdateTerminalGroupDTO {
     
     private String description;
     
-    private Long updatorId;
+    private Long updaterId;
+
 }

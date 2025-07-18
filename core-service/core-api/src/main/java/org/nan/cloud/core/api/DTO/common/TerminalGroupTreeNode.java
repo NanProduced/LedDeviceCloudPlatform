@@ -27,4 +27,8 @@ public class TerminalGroupTreeNode {
     private Integer childrenCount;
 
     private String description;
+    
+    @Schema(description = "用户是否有权限")
+    @Builder.Default
+    private Boolean hasPermission = false;
 }

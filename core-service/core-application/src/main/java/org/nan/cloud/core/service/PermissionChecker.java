@@ -20,9 +20,26 @@ public interface PermissionChecker {
 
     boolean ifHasPermissionOnTargetPermissions(Long uid, List<Long> permissionIds);
 
+    boolean ifHasPermissionOnTargetTerminalGroup(Long ugid, Long targetTgid);
+
     boolean ifRolesExist(List<Long> roles);
 
     boolean ifTargetUserIsTheSameOrg(Long oid, Long targetUid);
 
     boolean ifTargetRoleIsTheSameOrg(Long oid, Long targetRid);
+
+    boolean ifTargetTerminalGroupTheSameOrg(Long oid, Long targetTgid);
+
+    /**
+     * 检查用户是否有终端组访问权限
+     * 需要通过用户的用户组来检查权限
+     */
+    boolean hasTerminalGroupAccessPermission(Long uid, Long tgid);
+    
+    /**
+     * 检查操作用户是否有权限修改目标用户组的终端组绑定
+     * 包含双重校验：层级校验、终端组权限校验
+     */
+    void canModifyUserGroupTerminalGroupBinding(Long operatorUid, Long operatorUgid, Long targetUgid, Long targetTgid);
+
 }

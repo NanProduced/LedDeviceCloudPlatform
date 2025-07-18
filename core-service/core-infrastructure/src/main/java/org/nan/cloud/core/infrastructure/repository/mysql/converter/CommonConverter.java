@@ -18,6 +18,8 @@ public interface CommonConverter {
 
     TerminalGroup terminalGroupDO2TerminalGroup(TerminalGroupDO terminalGroupDO);
 
+    List<TerminalGroup>  terminalGroupDO2TerminalGroup(List<TerminalGroupDO> terminalGroupDOS);
+
     UserGroupDO userGroup2UserGroupDO(UserGroup userGroup);
 
     UserGroup userGroupDO2UserGroup(UserGroupDO userGroupDO);
@@ -39,4 +41,11 @@ public interface CommonConverter {
     Role roleDO2Role(RoleDO roleDO);
 
     List<Role> roleDO2Role(List<RoleDO> roleDOS);
+
+    UserGroupTerminalGroupBindingDO toUserGroupTerminalGroupBindingDO(UserGroupTerminalGroupBinding binding);
+
+    UserGroupTerminalGroupBinding toUserGroupTerminalGroupBinding(UserGroupTerminalGroupBindingDO bindingDO);
+
+    List<UserGroupTerminalGroupBinding> toUserGroupTerminalGroupBinding(List<UserGroupTerminalGroupBindingDO> bindingDOs);
+
 }

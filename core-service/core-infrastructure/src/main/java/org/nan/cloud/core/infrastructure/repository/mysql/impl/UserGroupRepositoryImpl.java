@@ -59,6 +59,7 @@ public class UserGroupRepositoryImpl implements UserGroupRepository {
         return commonConverter.userGroupDO2UserGroup(userGroupDOS);
     }
 
+    @Override
     public List<Long> getAllUgidsByParent(Long ugid) {
         return userGroupMapper.selectList(new LambdaQueryWrapper<UserGroupDO>()
                 .select(UserGroupDO::getUgid)

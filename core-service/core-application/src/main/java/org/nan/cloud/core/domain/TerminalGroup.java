@@ -30,4 +30,8 @@ public class TerminalGroup {
     private Long creatorId;
 
     private LocalDateTime createTime;
+
+    private Long updaterId;
+
+    private LocalDateTime updateTime;
 }

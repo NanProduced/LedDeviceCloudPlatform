@@ -70,7 +70,7 @@ public class OrgServiceImpl implements OrgService {
     }
 
     @Override
-    public Organization getOrgById(Long oid) {
+    public Organization getOrgByOid(Long oid) {
         return orgRepository.getOrganizationById(oid);
     }
 

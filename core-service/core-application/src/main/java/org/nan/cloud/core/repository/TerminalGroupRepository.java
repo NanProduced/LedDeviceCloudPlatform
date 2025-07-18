@@ -1,8 +1,54 @@
 package org.nan.cloud.core.repository;
 
+import org.nan.cloud.common.basic.model.PageVO;
+import org.nan.cloud.core.DTO.SearchTerminalGroupDTO;
+import org.nan.cloud.core.DTO.TerminalGroupListDTO;
 import org.nan.cloud.core.domain.TerminalGroup;
+
+import java.util.List;
 
 public interface TerminalGroupRepository {
 
+    /**
+     * 创建终端组
+     */
     TerminalGroup createTerminalGroup(TerminalGroup terminalGroup);
+
+    /**
+     * 根据ID获取终端组
+     */
+    TerminalGroup getTerminalGroupById(Long tgid);
+
+    /**
+     * 更新终端组
+     */
+    void updateTerminalGroup(TerminalGroup terminalGroup);
+
+    /**
+     * 删除终端组
+     */
+    void deleteTerminalGroup(Long tgid);
+
+
+
+
+
+
+
+
+
+
+
+    /**
+     * 是否为同一组织
+     * @param oid
+     * @param tgid
+     * @return
+     */
+    boolean ifTheSameOrg(Long oid, Long tgid);
+    
+    /**
+     * 根据权限和关键词搜索终端组
+     */
+    PageVO<TerminalGroup> searchAccessibleTerminalGroups(Integer pageNum, Integer pageSize, SearchTerminalGroupDTO searchDTO, List<Long> accessibleTerminalGroupIds);
 }

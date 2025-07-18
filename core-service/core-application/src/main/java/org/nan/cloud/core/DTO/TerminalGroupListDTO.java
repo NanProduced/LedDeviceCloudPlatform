@@ -19,9 +19,5 @@ public class TerminalGroupListDTO {
     
     private String description;
     
-    private Integer tgType;
-    
-    private Integer childrenCount;
-    
     private LocalDateTime createTime;
 }

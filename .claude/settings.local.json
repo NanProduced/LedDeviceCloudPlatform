@@ -10,7 +10,15 @@
       "Bash(claude config --help)",
       "Bash(claude config list)",
       "Bash(echo $env:APPDATA)",
-      "Bash(where claude)"
+      "Bash(where claude)",
+      "Bash(npx @openmemory/install:*)",
+      "Bash(set OPENMEMORY_API_KEY=om-zguyyra6phuz44oam1kqgp5kwxgxhse2)",
+      "Bash(npx openmemory:*)",
+      "mcp__mem0-mcp__get_all_coding_preferences",
+      "Bash(mvn compile:*)",
+      "Bash(dir srcmainjavaorgnancloudcoreapiDTO)",
+      "mcp__mem0-mcp__add_coding_preference",
+      "mcp__mem0-mcp__search_coding_preferences"
     ],
     "deny": []
   }

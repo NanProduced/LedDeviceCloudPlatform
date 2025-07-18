@@ -11,7 +11,4 @@ public class SearchTerminalGroupRequest {
     @Schema(description = "搜索关键词")
     @NotBlank
     private String keyword;
-
-    @Schema(description = "终端组类型（可选）")
-    private Integer tgType;
 }

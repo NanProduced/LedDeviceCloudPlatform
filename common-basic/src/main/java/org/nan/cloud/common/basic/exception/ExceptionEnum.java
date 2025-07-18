@@ -37,7 +37,8 @@ public enum ExceptionEnum {
     ROLE_PERMISSION_DENIED(5008, "Doesn't have enough role permissions"),
     NAME_DUPLICATE_ERROR(5009, "Already has the same name"),
     HAS_USER_WITH_ONLY_ROLE(5010, "There are users with only role"),
-    HAS_USER_IN_TARGET_GROUP(5011, "There are users in target group");
+    HAS_USER_IN_TARGET_GROUP(5011, "There are users in target group"),
+    TERMINAL_GROUP_PERMISSION_DENIED(5012, "terminal group permission denied");
 
     private final Integer code;
     private final String message;

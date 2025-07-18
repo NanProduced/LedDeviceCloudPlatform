@@ -13,7 +13,7 @@ public class BindUserGroupDTO {
     
     private List<Long> ugids;
     
-    private Boolean includeChildren;
+    private Boolean includeSub;
     
     private Long operatorId;
 }

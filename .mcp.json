@@ -1,0 +1,48 @@
+{
+  "mcpServers": {
+    "filesystem": {
+      "command": "npx",
+      "args": [
+        "-y",
+        "@modelcontextprotocol/server-filesystem",
+        "C:\\Users\\nanpr"
+      ]
+    },
+    "mem0-mcp": {
+      "url": "http://localhost:8080/sse"
+    },
+    "memory": {
+      "command": "npx",
+      "args": ["-y", "@modelcontextprotocol/server-memory"]
+    },
+    "sequential-thinking": {
+      "command": "npx",
+      "args": ["-y", "@modelcontextprotocol/server-sequential-thinking"]
+    },
+    "context7": {
+      "url": "https://mcp.context7.com/mcp"
+    },
+    "Notion": {
+      "url": "https://mcp.notion.com/mcp"
+    },
+    "Playwright": {
+      "command": "npx @playwright/mcp@latest",
+      "env": {}
+    },
+    "Browserbase": {
+      "command": "npx @browserbasehq/mcp",
+      "env": {
+        "BROWSERBASE_API_KEY": "bb_live_VMfJiB8uR8PX9GR8Sw7osWgvm30",
+        "BROWSERBASE_PROJECT_ID": "9cd091ca-4173-4c81-8f21-7d31f6764615"
+      }
+    },
+    "openmemory": {
+      "command": "npx",
+      "args": ["-y", "openmemory"],
+      "env": {
+        "OPENMEMORY_API_KEY": "om-zguyyra6phuz44oam1kqgp5kwxgxhse2",
+        "CLIENT_NAME": "claude"
+      }
+    }
+  }
+}

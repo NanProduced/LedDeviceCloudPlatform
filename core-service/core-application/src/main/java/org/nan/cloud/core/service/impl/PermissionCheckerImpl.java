@@ -1,11 +1,9 @@
 package org.nan.cloud.core.service.impl;
 
 import lombok.RequiredArgsConstructor;
+import org.nan.cloud.common.basic.exception.ExceptionEnum;
 import org.nan.cloud.core.manager.PermissionCheckSkipContext;
-import org.nan.cloud.core.repository.PermissionRepository;
-import org.nan.cloud.core.repository.RoleRepository;
-import org.nan.cloud.core.repository.UserGroupRepository;
-import org.nan.cloud.core.repository.UserRepository;
+import org.nan.cloud.core.repository.*;
 import org.nan.cloud.core.service.PermissionChecker;
 import org.springframework.stereotype.Service;
 
@@ -23,6 +21,10 @@ public class PermissionCheckerImpl implements PermissionChecker {
     private final PermissionRepository permissionRepository;
 
     private final RoleRepository roleRepository;
+
+    private final TerminalGroupRepository terminalGroupRepository;
+    
+    private final UserGroupTerminalGroupBindingRepository bindingRepository;
 
     /**
      * 检查当前用户组是否对指定的目标用户组拥有权限。
@@ -64,6 +66,14 @@ public class PermissionCheckerImpl implements PermissionChecker {
         return curPermissions.containsAll(permissionIds);
     }
 
+    @Override
+    public boolean ifHasPermissionOnTargetTerminalGroup(Long ugid, Long targetTgid) {
+        if (PermissionCheckSkipContext.isSkip()) return true;
+        // 检查用户组是否对目标终端组有权限
+        // 权限检查逻辑：用户组需要直接绑定目标终端组，或者绑定了目标终端组的父组且includeChildren=true
+        return bindingRepository.hasTerminalGroupPermission(ugid, targetTgid);
+    }
+
 
     @Override
     public boolean ifRolesExist(List<Long> roles) {
@@ -78,5 +88,30 @@ public class PermissionCheckerImpl implements PermissionChecker {
     @Override
     public boolean ifTargetRoleIsTheSameOrg(Long oid, Long targetRid) {
         return roleRepository.ifTheSameOrg(oid, targetRid);
+    }
+
+    @Override
+    public boolean ifTargetTerminalGroupTheSameOrg(Long oid, Long targetTgid) {
+        return terminalGroupRepository.ifTheSameOrg(oid, targetTgid);
+    }
+    
+    @Override
+    public boolean hasTerminalGroupAccessPermission(Long uid, Long tgid) {
+        if (PermissionCheckSkipContext.isSkip()) return true;
+        
+        // 获取用户的用户组ID
+        Long ugid = userRepository.getUserById(uid).getUgid();
+        
+        // 检查用户组是否对目标终端组有权限
+        return bindingRepository.hasTerminalGroupPermission(ugid, tgid);
+    }
+    
+    @Override
+    public void canModifyUserGroupTerminalGroupBinding(Long operatorUid, Long operatorUgid, Long targetUgid, Long targetTgid) {
+        if (PermissionCheckSkipContext.isSkip()) return;
+        // 1. 操作用户层级校验：操作用户所属的用户组必须是目标用户组的上级用户组
+        ExceptionEnum.USER_GROUP_PERMISSION_DENIED.throwIf(!userGroupRepository.isAncestorOrSibling(operatorUgid, targetUgid));
+        // 2. 操作用户对目标终端组的权限校验：操作用户所属的用户组必须拥有目标终端组的权限
+        ExceptionEnum.TERMINAL_GROUP_PERMISSION_DENIED.throwIf(!bindingRepository.hasTerminalGroupPermission(operatorUgid, targetTgid));
     }
 }

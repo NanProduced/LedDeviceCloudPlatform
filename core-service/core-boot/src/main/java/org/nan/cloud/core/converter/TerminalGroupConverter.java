@@ -4,6 +4,7 @@ import org.mapstruct.Mapper;
 import org.mapstruct.Mapping;
 import org.mapstruct.NullValueCheckStrategy;
 import org.nan.cloud.core.api.DTO.common.OrganizationDTO;
+import org.nan.cloud.core.api.DTO.common.TerminalGroupTreeNode;
 import org.nan.cloud.core.api.DTO.res.TerminalGroupDetailResponse;
 import org.nan.cloud.core.api.DTO.res.TerminalGroupListResponse;
 import org.nan.cloud.core.domain.Organization;
@@ -20,4 +21,7 @@ public interface TerminalGroupConverter {
 
     @Mapping(source = "name", target = "organizationName")
     OrganizationDTO organization2OrganizationDTO(Organization organization);
+    
+    @Mapping(source = "name", target = "tgName")
+    TerminalGroupTreeNode terminalGroup2TreeNode(TerminalGroup terminalGroup);
 }

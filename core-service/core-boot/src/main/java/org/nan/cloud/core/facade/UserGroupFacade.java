@@ -44,7 +44,7 @@ public class UserGroupFacade {
     public UserGroupTreeResponse getUserGroupTree() {
         RequestUserInfo requestUser = InvocationContextHolder.getContext().getRequestUser();
 
-        Organization organization = orgService.getOrgById(requestUser.getOid());
+        Organization organization = orgService.getOrgByOid(requestUser.getOid());
         List<UserGroupRelDTO> userGroupRel = userGroupService.getAllUserGroupsByParent(requestUser.getUgid());
         UserGroupTreeNode rootNode = generateRootNode(requestUser.getUgid(), userGroupRel);
 
