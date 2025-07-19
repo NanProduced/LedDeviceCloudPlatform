@@ -47,9 +47,8 @@ public class CacheConfig {
         RedisTemplate<String, Object> template = new RedisTemplate<>();
         template.setConnectionFactory(connectionFactory);
         
-        // 使用Jackson序列化
-        Jackson2JsonRedisSerializer<Object> serializer = new Jackson2JsonRedisSerializer<>(Object.class);
-        serializer.setObjectMapper(objectMapper);
+        // 使用Jackson序列化 - Spring Boot 3.x兼容写法
+        Jackson2JsonRedisSerializer<Object> serializer = new Jackson2JsonRedisSerializer<>(objectMapper, Object.class);
         
         template.setKeySerializer(new StringRedisSerializer());
         template.setValueSerializer(serializer);
