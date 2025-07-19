@@ -12,12 +12,15 @@ org\nan\cloud\core\controller\RoleController.class
 org\nan\cloud\core\facade\UserFacade.class
 org\nan\cloud\core\casbin\CasbinRbacPolicyHandler.class
 org\nan\cloud\core\facade\PermissionFacade.class
+org\nan\cloud\core\config\CacheConfig.class
 org\nan\cloud\core\controller\TerminalGroupController.class
+org\nan\cloud\core\casbin\PermissionDenyController.class
 org\nan\cloud\core\converter\OrgConverter.class
 org\nan\cloud\core\converter\TerminalGroupConverterImpl.class
 org\nan\cloud\core\openapi\CoreServiceOpenApiConfig.class
 org\nan\cloud\core\facade\RoleFacade.class
 org\nan\cloud\core\facade\TerminalGroupFacade.class
+org\nan\cloud\core\service\PermissionDenyService.class
 org\nan\cloud\core\facade\OrgFacade.class
 org\nan\cloud\core\controller\UserGroupController.class
 org\nan\cloud\core\converter\UserTerminalGroupBindingConverter.class

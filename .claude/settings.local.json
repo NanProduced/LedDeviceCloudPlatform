@@ -31,7 +31,9 @@
       "Bash(\"/c/Program Files/JetBrains/IntelliJ IDEA 2025.1.1.1/plugins/maven/lib/maven3/bin/mvn\" clean compile -q)",
       "Bash(git add:*)",
       "Bash(\"/c/Program Files/JetBrains/IntelliJ IDEA 2025.1.1.1/plugins/maven/lib/maven3/bin/mvn\" clean compile -pl core-service/core-boot -q)",
-      "Bash(\"/c/Program Files/JetBrains/IntelliJ IDEA 2025.1.1.1/plugins/maven/lib/maven3/bin/mvn\" clean install -DskipTests -q)"
+      "Bash(\"/c/Program Files/JetBrains/IntelliJ IDEA 2025.1.1.1/plugins/maven/lib/maven3/bin/mvn\" clean install -DskipTests -q)",
+      "Bash(\"/c/Program Files/JetBrains/IntelliJ IDEA 2025.1.1.1/plugins/maven/lib/maven3/bin/mvn\" clean install -pl common-basic,common-web,core-service -DskipTests -q)",
+      "Bash(git commit:*)"
     ],
     "deny": []
   }
