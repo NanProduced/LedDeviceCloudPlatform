@@ -1,0 +1,35 @@
+# 测试环境配置
+spring:
+  data:
+    redis:
+      # 使用内存Redis进行测试
+      host: localhost
+      port: 6379
+      database: 15  # 使用测试数据库
+      timeout: 3000ms
+      password:
+      
+cache:
+  local:
+    enabled: true
+    maximum-size: 1000
+    expire-after-write: 5m
+    expire-after-access: 2m
+    refresh-after-write: 3m
+    record-stats: true
+  
+  redis:
+    enabled: true
+    key-prefix: "test:cache:"
+    default-ttl: 5m
+    enable-keyspace-notifications: false  # 测试环境关闭通知
+  
+  sync:
+    enabled: false  # 测试环境关闭同步
+
+# 日志配置
+logging:
+  level:
+    org.nan.cloud.core.cache: DEBUG
+    org.springframework.cache: DEBUG
+    root: WARN
