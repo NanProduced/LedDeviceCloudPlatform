@@ -33,7 +33,8 @@ public class CasbinRbacPolicyHandler {
                     rid.toString(),
                     oid.toString(),
                     um.getUrl(),
-                    um.getMethod()
+                    um.getMethod(),
+                    "allow"
             );
             if (!added) duplicatePolicyWarn(um, rid, oid);
         }
@@ -84,7 +85,8 @@ public class CasbinRbacPolicyHandler {
                     rid.toString(),
                     oid.toString(),
                     um.getUrl(),
-                    um.getMethod()
+                    um.getMethod(),
+                    "allow"
             );
             if (!added) duplicatePolicyWarn(um, rid, oid);
         }
