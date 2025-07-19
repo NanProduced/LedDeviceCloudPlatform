@@ -62,7 +62,6 @@ public class TerminalGroupServiceImpl implements TerminalGroupService {
         if (StringUtils.isNotBlank(updateTerminalGroupDTO.getDescription())) {
             existingGroup.setDescription(updateTerminalGroupDTO.getDescription());
         }
-        existingGroup.setDescription(updateTerminalGroupDTO.getDescription());
         terminalGroupRepository.updateTerminalGroup(existingGroup);
     }
 

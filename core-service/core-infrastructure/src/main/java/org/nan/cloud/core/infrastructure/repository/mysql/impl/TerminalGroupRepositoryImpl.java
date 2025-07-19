@@ -48,7 +48,9 @@ public class TerminalGroupRepositoryImpl implements TerminalGroupRepository {
 
     @Override
     public void deleteTerminalGroup(Long tgid) {
-
+        // TODO: 暂时不实现删除功能，因为这涉及到终端模块的依赖检查
+        // 需要检查是否有子终端组和绑定的设备
+        throw new UnsupportedOperationException("删除终端组功能暂未实现，涉及终端模块依赖");
     }
 
 
