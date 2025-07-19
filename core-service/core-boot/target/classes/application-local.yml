@@ -1,0 +1,76 @@
+server:
+  port: 8083
+spring:
+  application:
+    name: core-service
+  cloud:
+    nacos:
+      discovery:
+        server-addr: 192.168.1.185:8848
+        service: core-service
+        namespace: 1e90921e-70cf-4745-87ed-dd165319ff3a
+        group: DEFAULT_GROUP
+        username: Nan
+        password: Nan12091209
+        access-key: nan_nacos
+        secret-key: nanproduced
+        register-enabled: true
+        # 类似长连接监听服务端信息变化的功能
+        watch:
+          enabled: true
+        heart-beat-interval: 5000
+        heart-beat-timeout: 15000
+  datasource:
+    username: root
+    password: Nan12091209
+    url: jdbc:mysql://192.168.1.185:3306/nan_test?zeroDateTimeBehavior=convertToNull&characterEncoding=utf-8&allowPublicKeyRetrieval=true
+  data:
+    redis:
+      host: 192.168.1.185
+      port: 6379
+      database: 1
+      password: Nan12091209
+      timeout: 3000
+      lettuce:
+        pool:
+          max-active: 50
+          max-idle: 48
+          min-idle: 0
+          max-wait: 5s
+    mongodb:
+      host: 192.168.1.185
+      port: 27017
+      database: nan_test
+      username: root
+      password: Nan12091209
+      authentication-database: admin
+      auto-index-creation: true
+
+management:
+  tracing:
+    enabled: true
+    sampling:
+      probability: 1.0
+
+  # Zipkin Reporter 的专属配置
+  zipkin:
+    tracing:
+      # 默认 auto-config 会把 span 发到这个端点
+      endpoint: http://localhost:9411/api/v2/spans
+
+mybatis-plus:
+  # xml文件位置
+  mapper-locations: classpath:org.nan.cloud.core.mapper/*.xml
+
+springdoc:
+  api-docs:
+    path: /v3/api-docs
+  swagger-ui:
+    enabled: true
+
+logging:
+  level:
+    com.alibaba.nacos: DEBUG
+  file:
+    name: core-service
+    path:

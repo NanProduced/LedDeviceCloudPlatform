@@ -41,12 +41,35 @@ public enum CacheType {
     private final boolean useDistributedCache; // 是否使用分布式缓存
     
     /**
-     * 构建完整的缓存键
+     * 构建完整的缓存键（不包含组织隔离）
      */
     public String buildKey(String... keyParts) {
         if (keyParts == null || keyParts.length == 0) {
             return keyPrefix;
         }
         return keyPrefix + ":" + String.join(":", keyParts);
+    }
+    
+    /**
+     * 构建组织隔离的缓存键
+     * @param orgId 组织ID
+     * @param keyParts 其他键部分
+     * @return 带组织隔离的缓存键
+     */
+    public String buildOrgKey(Long orgId, String... keyParts) {
+        String baseKey = "org:" + orgId + ":" + keyPrefix;
+        if (keyParts == null || keyParts.length == 0) {
+            return baseKey;
+        }
+        return baseKey + ":" + String.join(":", keyParts);
+    }
+    
+    /**
+     * 构建组织级别的缓存键模式（用于批量清理）
+     * @param orgId 组织ID
+     * @return 组织缓存键模式
+     */
+    public String buildOrgPattern(Long orgId) {
+        return "org:" + orgId + ":" + keyPrefix + ":*";
     }
 }

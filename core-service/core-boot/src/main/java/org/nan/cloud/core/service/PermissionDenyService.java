@@ -1,4 +1,4 @@
-package org.nan.cloud.core.casbin;
+package org.nan.cloud.core.service;
 
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;

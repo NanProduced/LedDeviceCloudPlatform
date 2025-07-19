@@ -1,0 +1,47 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project version="4">
+  <component name="CompilerConfiguration">
+    <annotationProcessing>
+      <profile default="true" name="Default" enabled="true" />
+      <profile name="Annotation profile for LedDeviceCloudPlatform" enabled="true">
+        <sourceOutputDir name="target/generated-sources/annotations" />
+        <sourceTestOutputDir name="target/generated-test-sources/test-annotations" />
+        <outputRelativeToContentRoot value="true" />
+        <processorPath useClasspath="false">
+          <entry name="$MAVEN_REPOSITORY$/org/mapstruct/mapstruct-processor/1.6.3/mapstruct-processor-1.6.3.jar" />
+          <entry name="$MAVEN_REPOSITORY$/org/mapstruct/mapstruct/1.6.3/mapstruct-1.6.3.jar" />
+          <entry name="$MAVEN_REPOSITORY$/org/projectlombok/lombok/1.18.38/lombok-1.18.38.jar" />
+          <entry name="$MAVEN_REPOSITORY$/org/projectlombok/lombok-mapstruct-binding/0.2.0/lombok-mapstruct-binding-0.2.0.jar" />
+        </processorPath>
+        <module name="core-boot" />
+        <module name="auth-infrastructure" />
+        <module name="auth-api" />
+        <module name="core-api" />
+        <module name="common-web" />
+        <module name="auth-common" />
+        <module name="auth-boot" />
+        <module name="common-basic" />
+        <module name="core-application" />
+        <module name="core-infrastructure" />
+        <module name="gateway" />
+        <module name="auth-application" />
+      </profile>
+    </annotationProcessing>
+  </component>
+  <component name="JavacSettings">
+    <option name="ADDITIONAL_OPTIONS_OVERRIDE">
+      <module name="auth-api" options="-parameters" />
+      <module name="auth-application" options="-parameters" />
+      <module name="auth-boot" options="-parameters" />
+      <module name="auth-common" options="-parameters" />
+      <module name="auth-infrastructure" options="-parameters" />
+      <module name="common-basic" options="-parameters" />
+      <module name="common-web" options="-parameters" />
+      <module name="core-api" options="-parameters" />
+      <module name="core-application" options="-parameters" />
+      <module name="core-boot" options="-parameters" />
+      <module name="core-infrastructure" options="-parameters" />
+      <module name="gateway" options="-parameters" />
+    </option>
+  </component>
+</project>

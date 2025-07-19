@@ -1,0 +1,2 @@
+org\nan\cloud\auth\application\model\User.class
+org\nan\cloud\auth\application\repository\UserRepository.class

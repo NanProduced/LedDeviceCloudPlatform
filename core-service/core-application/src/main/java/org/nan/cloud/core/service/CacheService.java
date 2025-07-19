@@ -109,15 +109,3 @@ public interface CacheService {
      */
     CacheStatistics getStatistics();
 }
-
-/**
- * 缓存统计信息接口
- */
-interface CacheStatistics {
-    long getHitCount();
-    long getMissCount();
-    double getHitRate();
-    long getEvictionCount();
-    long getLoadCount();
-    double getAverageLoadTime();
-}
