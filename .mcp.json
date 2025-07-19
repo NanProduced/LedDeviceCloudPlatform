@@ -25,8 +25,9 @@
     "Notion": {
       "url": "https://mcp.notion.com/mcp"
     },
-    "Playwright": {
-      "command": "npx @playwright/mcp@latest",
+    "playwright": {
+      "command": "npx",
+      "args": ["@playwright/mcp"],
       "env": {}
     },
     "Browserbase": {

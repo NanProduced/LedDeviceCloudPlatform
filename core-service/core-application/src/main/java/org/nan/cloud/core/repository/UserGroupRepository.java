@@ -18,6 +18,8 @@ public interface UserGroupRepository {
 
     List<UserGroup> getDirectUserGroupsByParent(Long ugid);
 
+    boolean ifTheSameOrg(Long oid, Long targetTgid);
+
     boolean isAncestor(Long aUgid, Long bUgid);
 
     boolean isSibling(Long aUgid, Long bUgid);

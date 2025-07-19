@@ -2,7 +2,7 @@ package org.nan.cloud.core.domain;
 
 import lombok.Builder;
 import lombok.Data;
-import org.nan.cloud.core.DTO.BindingType;
+import org.nan.cloud.common.basic.model.BindingType;
 
 import java.time.LocalDateTime;
 

@@ -11,6 +11,7 @@ import org.nan.cloud.core.infrastructure.repository.mysql.converter.CommonConver
 import org.nan.cloud.core.infrastructure.repository.mysql.mapper.UserGroupTerminalGroupBindingMapper;
 import org.nan.cloud.core.repository.UserGroupTerminalGroupBindingRepository;
 import org.springframework.stereotype.Repository;
+import org.springframework.util.CollectionUtils;
 
 import java.util.List;
 import java.util.stream.Collectors;
@@ -22,24 +23,6 @@ public class UserGroupTerminalGroupBindingRepositoryImpl implements UserGroupTer
     private final UserGroupTerminalGroupBindingMapper bindingMapper;
     private final CommonConverter commonConverter;
 
-    @Override
-    public void createBinding(UserGroupTerminalGroupBinding binding) {
-        UserGroupTerminalGroupBindingDO bindingDO = commonConverter.toUserGroupTerminalGroupBindingDO(binding);
-        bindingMapper.insert(bindingDO);
-    }
-
-    @Override
-    public void deleteBinding(Long tgid, Long ugid) {
-        LambdaQueryWrapper<UserGroupTerminalGroupBindingDO> wrapper = new LambdaQueryWrapper<>();
-        wrapper.eq(UserGroupTerminalGroupBindingDO::getTgid, tgid)
-               .eq(UserGroupTerminalGroupBindingDO::getUgid, ugid);
-        bindingMapper.delete(wrapper);
-    }
-
-    @Override
-    public void updateBinding(UserGroupTerminalGroupBinding binding) {
-
-    }
 
     @Override
     public List<UserGroupTerminalGroupBinding> getUserGroupBindings(Long ugid) {
@@ -56,5 +39,44 @@ public class UserGroupTerminalGroupBindingRepositoryImpl implements UserGroupTer
     @Override
     public List<Long> getAccessibleTerminalGroupIds(Long ugid) {
         return bindingMapper.selectAccessibleTerminalGroupIds(ugid);
+    }
+
+    @Override
+    public void replaceUserGroupPermissions(Long ugid, List<UserGroupTerminalGroupBinding> newBindings) {
+        // 使用事务保证原子性
+        // 1. 删除现有绑定
+        deleteUserGroupBindings(ugid);
+        
+        // 2. 批量插入新绑定
+        if (!CollectionUtils.isEmpty(newBindings)) {
+            batchCreateBindings(newBindings);
+        }
+    }
+
+    @Override
+    public void deleteUserGroupBindings(Long ugid) {
+        LambdaQueryWrapper<UserGroupTerminalGroupBindingDO> wrapper = new LambdaQueryWrapper<>();
+        wrapper.eq(UserGroupTerminalGroupBindingDO::getUgid, ugid);
+        bindingMapper.delete(wrapper);
+    }
+
+    @Override
+    public void batchCreateBindings(List<UserGroupTerminalGroupBinding> bindings) {
+        if (CollectionUtils.isEmpty(bindings)) return;
+
+        
+        List<UserGroupTerminalGroupBindingDO> bindingDOs = bindings.stream()
+                .map(commonConverter::toUserGroupTerminalGroupBindingDO)
+                .collect(Collectors.toList());
+        
+        // 使用自定义的批量插入方法
+        bindingMapper.insertBatchSomeColumn(bindingDOs);
+    }
+
+    @Override
+    public List<UserGroupTerminalGroupBinding> getUserGroupPermissionDetails(Long ugid) {
+        // 调用Mapper的联表查询方法获取详细信息
+        List<UserGroupTerminalGroupBindingDO> bindingDOs = bindingMapper.selectUserGroupPermissionDetails(ugid);
+        return commonConverter.toUserGroupTerminalGroupBinding(bindingDOs);
     }
 }

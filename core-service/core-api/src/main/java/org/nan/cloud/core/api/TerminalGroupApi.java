@@ -31,7 +31,10 @@ public interface TerminalGroupApi {
     @GetMapping(prefix + "/detail")
     TerminalGroupDetailResponse getTerminalGroupDetail(@RequestParam("tgid") Long tgid);
 
-    @PostMapping(prefix + "/bind/batch-update")
-    BatchBindingOperationResponse updateUserGroupPermissions(@Validated @RequestBody BatchBindingOperationRequest request);
+    @PostMapping(prefix + "/permission/expression/update")
+    PermissionExpressionResponse updatePermissionExpression(@Validated @RequestBody PermissionExpressionRequest request);
+
+    @GetMapping(prefix + "/permission/status")
+    UserGroupPermissionStatusResponse getUserGroupPermissionStatus(@RequestParam("ugid") Long ugid);
 
 }

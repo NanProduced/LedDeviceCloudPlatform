@@ -77,6 +77,13 @@ public class UserGroupRepositoryImpl implements UserGroupRepository {
     }
 
     @Override
+    public boolean ifTheSameOrg(Long oid, Long targetTgid) {
+        return userGroupMapper.exists(new LambdaQueryWrapper<UserGroupDO>()
+                .eq(UserGroupDO::getOid, oid)
+                .eq(UserGroupDO::getUgid, targetTgid));
+    }
+
+    @Override
     public boolean isAncestor(Long aUgid, Long bUgid) {
         return userGroupMapper.isAncestor(aUgid, bUgid);
     }

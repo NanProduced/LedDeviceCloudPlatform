@@ -1,0 +1,1220 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>强健版权限选择器 - 多层权限覆盖</title>
+  <style>
+    :root {
+      --green-solid: #52c41a;
+      --red-solid: #ff4d4f;
+      --green-bg: rgba(230, 247, 230, 0.7);
+      --red-bg: rgba(255, 242, 240, 0.7);
+      --blue: #1890ff;
+      --orange: #fa8c16;
+      --gray: #8c8c8c;
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      font-family: 'Segoe UI', 'Microsoft YaHei', sans-serif;
+      background: linear-gradient(135deg, #f5f7fa 0%, #e4efe9 100%);
+      min-height: 100vh;
+      padding: 20px;
+      color: #333;
+    }
+
+    .container {
+      max-width: 1400px;
+      margin: 0 auto;
+      display: grid;
+      grid-template-columns: 1fr 450px;
+      gap: 20px;
+    }
+
+    header {
+      grid-column: 1 / -1;
+      text-align: center;
+      padding: 20px 0;
+      margin-bottom: 20px;
+      border-bottom: 2px solid var(--green-solid);
+    }
+
+    h1 {
+      color: #2c3e50;
+      margin-bottom: 10px;
+      font-size: 2.5rem;
+    }
+
+    .subtitle {
+      color: #7f8c8d;
+      font-size: 1.2rem;
+      max-width: 900px;
+      margin: 0 auto;
+      line-height: 1.6;
+    }
+
+    .card {
+      background: white;
+      border-radius: 12px;
+      box-shadow: 0 8px 30px rgba(0, 0, 0, 0.08);
+      padding: 25px;
+      transition: transform 0.3s ease, box-shadow 0.3s ease;
+    }
+
+    .card:hover {
+      transform: translateY(-5px);
+      box-shadow: 0 12px 40px rgba(0, 0, 0, 0.12);
+    }
+
+    .card-title {
+      display: flex;
+      align-items: center;
+      margin-bottom: 20px;
+      padding-bottom: 15px;
+      border-bottom: 1px solid #eee;
+      color: #2c3e50;
+      font-size: 1.5rem;
+    }
+
+    .card-title i {
+      margin-right: 10px;
+      font-size: 1.8rem;
+    }
+
+    .tree-container {
+      height: 600px;
+      overflow-y: auto;
+      padding-right: 10px;
+    }
+
+    /* 树形结构样式 */
+    .node {
+      margin: 8px 0;
+      padding: 8px;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      border-radius: 6px;
+      transition: background 0.2s, transform 0.2s;
+      position: relative;
+    }
+
+    .node:hover {
+      background: rgba(245, 245, 245, 0.8);
+      transform: translateX(3px);
+    }
+
+    .node.final-included {
+      background: rgba(82, 196, 26, 0.1);
+      border-left: 3px solid var(--green-solid);
+    }
+
+    .node.final-excluded {
+      background: rgba(255, 77, 79, 0.1);
+      border-left: 3px solid var(--red-solid);
+    }
+
+    .toggle {
+      margin-right: 8px;
+      cursor: pointer;
+      width: 24px;
+      height: 24px;
+      text-align: center;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      border-radius: 4px;
+      background: #f0f2f5;
+      font-weight: bold;
+    }
+
+    .selector {
+      width: 28px;
+      height: 28px;
+      border-radius: 5px;
+      margin-right: 12px;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 18px;
+      box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+      transition: all 0.2s ease;
+      position: relative;
+    }
+
+    .selector:hover {
+      transform: scale(1.1);
+    }
+
+    .selector.green-solid {
+      border: 2px solid var(--green-solid);
+      background: var(--green-bg);
+    }
+
+    .selector.green-hollow {
+      border: 1px dashed var(--green-solid);
+      background: white;
+    }
+
+    .selector.red-solid {
+      border: 2px solid var(--red-solid);
+      background: var(--red-bg);
+    }
+
+    .selector.red-hollow {
+      border: 1px dashed var(--red-solid);
+      background: white;
+    }
+
+    .priority-indicator {
+      position: absolute;
+      top: -5px;
+      right: -5px;
+      width: 16px;
+      height: 16px;
+      background: var(--blue);
+      border-radius: 50%;
+      color: white;
+      font-size: 10px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-weight: bold;
+    }
+
+    .children {
+      margin-left: 36px;
+      display: none;
+    }
+
+    .expanded > .children {
+      display: block;
+    }
+
+    .node-label {
+      display: flex;
+      align-items: center;
+      font-size: 1.1rem;
+      font-weight: 500;
+      flex: 1;
+    }
+
+    .final-permission {
+      margin-left: 12px;
+      font-size: 0.9rem;
+      padding: 3px 8px;
+      border-radius: 4px;
+      font-weight: 600;
+    }
+
+    .final-permission.included {
+      background: rgba(82, 196, 26, 0.15);
+      color: var(--green-solid);
+    }
+
+    .final-permission.excluded {
+      background: rgba(255, 77, 79, 0.15);
+      color: var(--red-solid);
+    }
+
+    .calculation-path {
+      font-size: 0.8rem;
+      color: var(--gray);
+      margin-left: 10px;
+      font-family: 'Courier New', monospace;
+    }
+
+    /* 侧边栏样式 */
+    .controls {
+      display: flex;
+      flex-direction: column;
+      gap: 20px;
+    }
+
+    .rules-panel {
+      background: #f0f8ff;
+      padding: 20px;
+      border-radius: 8px;
+      border-left: 4px solid var(--blue);
+    }
+
+    .rule-item {
+      margin: 10px 0;
+      padding: 10px;
+      background: white;
+      border-radius: 6px;
+      font-size: 0.9rem;
+    }
+
+    .rule-title {
+      font-weight: 600;
+      color: var(--blue);
+      margin-bottom: 5px;
+    }
+
+    .calculation-demo {
+      background: #fff7e6;
+      padding: 15px;
+      border-radius: 8px;
+      border-left: 4px solid var(--orange);
+    }
+
+    .calculation-step {
+      margin: 8px 0;
+      padding: 8px;
+      background: white;
+      border-radius: 4px;
+      font-family: 'Courier New', monospace;
+      font-size: 0.8rem;
+    }
+
+    .legend {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 15px;
+    }
+
+    .legend-item {
+      display: flex;
+      align-items: center;
+    }
+
+    .legend-box {
+      width: 24px;
+      height: 24px;
+      margin-right: 10px;
+      border-radius: 4px;
+      flex-shrink: 0;
+    }
+
+    .legend-box.green-solid {
+      border: 2px solid var(--green-solid);
+      background: var(--green-bg);
+    }
+
+    .legend-box.green-hollow {
+      border: 1px dashed var(--green-solid);
+      background: white;
+    }
+
+    .legend-box.red-solid {
+      border: 2px solid var(--red-solid);
+      background: var(--red-bg);
+    }
+
+    .legend-box.red-hollow {
+      border: 1px dashed var(--red-solid);
+      background: white;
+    }
+
+    .actions {
+      display: flex;
+      flex-direction: column;
+      gap: 15px;
+    }
+
+    button {
+      padding: 14px 20px;
+      border: none;
+      border-radius: 8px;
+      cursor: pointer;
+      font-weight: 600;
+      font-size: 1.1rem;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 10px;
+      transition: all 0.3s ease;
+    }
+
+    .btn-calculate {
+      background: var(--blue);
+      color: white;
+    }
+
+    .btn-calculate:hover {
+      background: #0c7bda;
+      box-shadow: 0 4px 15px rgba(24, 144, 255, 0.3);
+    }
+
+    .btn-reset {
+      background: #f5f5f5;
+      color: #666;
+      border: 1px solid #ddd;
+    }
+
+    .btn-reset:hover {
+      background: #e9ecef;
+      box-shadow: 0 4px 10px rgba(0, 0, 0, 0.08);
+    }
+
+    .output {
+      height: 300px;
+      padding: 15px;
+      background: #f9f9f9;
+      border-radius: 8px;
+      font-family: 'Fira Code', 'Courier New', monospace;
+      white-space: pre-wrap;
+      overflow: auto;
+      border: 1px solid #eee;
+      font-size: 0.9rem;
+      line-height: 1.5;
+    }
+
+    .feedback {
+      position: fixed;
+      bottom: 20px;
+      right: 20px;
+      padding: 15px 25px;
+      background: white;
+      border-radius: 8px;
+      box-shadow: 0 5px 20px rgba(0, 0, 0, 0.15);
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      transform: translateY(100px);
+      opacity: 0;
+      transition: all 0.4s ease;
+      z-index: 1000;
+      max-width: 300px;
+    }
+
+    .feedback.show {
+      transform: translateY(0);
+      opacity: 1;
+    }
+
+    .feedback.success {
+      border-left: 4px solid var(--green-solid);
+    }
+
+    .feedback.info {
+      border-left: 4px solid var(--blue);
+    }
+
+    @media (max-width: 1200px) {
+      .container {
+        grid-template-columns: 1fr;
+      }
+    }
+  </style>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+</head>
+<body>
+<div class="container">
+  <header>
+    <h1><i class="fas fa-layer-group"></i> 强健版权限选择器</h1>
+    <p class="subtitle">支持多层权限覆盖，基于深度优先和范围作用的强健计算模型</p>
+  </header>
+
+  <main class="card">
+    <div class="card-title">
+      <i class="fas fa-tree"></i>
+      <h2>终端组权限设置</h2>
+    </div>
+    <div class="tree-container" id="tree-root"></div>
+  </main>
+
+  <aside class="controls">
+    <!-- 核心规则说明 -->
+    <div class="card">
+      <div class="card-title">
+        <i class="fas fa-balance-scale"></i>
+        <h2>核心规则</h2>
+      </div>
+      <div class="rules-panel">
+        <div class="rule-item">
+          <div class="rule-title">深度优先原则</div>
+          <div>路径上更深层的设置覆盖浅层设置</div>
+        </div>
+        <div class="rule-item">
+          <div class="rule-title">范围作用原则</div>
+          <div>实心影响子树，空心仅影响自身</div>
+        </div>
+        <div class="rule-item">
+          <div class="rule-title">默认继承原则</div>
+          <div>无设置时继承最近的有效祖先</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 计算演示 -->
+    <div class="card">
+      <div class="card-title">
+        <i class="fas fa-calculator"></i>
+        <h2>计算演示</h2>
+      </div>
+      <div class="calculation-demo" id="calculation-demo">
+        <div>点击节点查看权限计算过程</div>
+      </div>
+    </div>
+
+    <!-- 图例说明 -->
+    <div class="card">
+      <div class="card-title">
+        <i class="fas fa-palette"></i>
+        <h2>图例说明</h2>
+      </div>
+      <div class="legend">
+        <div class="legend-item">
+          <div class="legend-box green-solid"></div>
+          <span>包含本组及子组</span>
+        </div>
+        <div class="legend-item">
+          <div class="legend-box green-hollow"></div>
+          <span>仅包含本组</span>
+        </div>
+        <div class="legend-item">
+          <div class="legend-box red-solid"></div>
+          <span>排除本组及子组</span>
+        </div>
+        <div class="legend-item">
+          <div class="legend-box red-hollow"></div>
+          <span>仅排除本组</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- 操作面板 -->
+    <div class="card">
+      <div class="card-title">
+        <i class="fas fa-cogs"></i>
+        <h2>操作面板</h2>
+      </div>
+      <div class="actions">
+        <button class="btn-calculate" id="calculateBtn">
+          <i class="fas fa-play"></i>
+          重新计算权限
+        </button>
+        <button class="btn-calculate" id="optimizeBtn" style="background: var(--orange);">
+          <i class="fas fa-compress-alt"></i>
+          优化冗余配置
+        </button>
+        <button class="btn-reset" id="resetBtn">
+          <i class="fas fa-undo"></i>
+          重置设置
+        </button>
+      </div>
+    </div>
+
+    <!-- 输出面板 -->
+    <div class="card">
+      <div class="card-title">
+        <i class="fas fa-list"></i>
+        <h2>最终权限结果</h2>
+      </div>
+      <div class="output" id="output">权限计算结果将在此处显示...</div>
+    </div>
+  </aside>
+</div>
+
+<div class="feedback" id="feedback">
+  <i class="fas fa-check-circle"></i>
+  <span id="feedback-message">操作成功完成</span>
+</div>
+
+<script>
+  // 树形结构数据
+  const treeData = {
+    id: 'root',
+    name: '总部',
+    children: [
+      {
+        id: 'dev',
+        name: '研发中心',
+        children: [
+          {
+            id: 'dev1',
+            name: '研发一部',
+            children: [
+              { id: 'dev1-1', name: '前端组' },
+              { id: 'dev1-2', name: '后端组' }
+            ]
+          },
+          {
+            id: 'dev2',
+            name: '研发二部',
+            children: [
+              { id: 'dev2-1', name: '算法组' },
+              { id: 'dev2-2', name: '测试组' }
+            ]
+          }
+        ]
+      },
+      {
+        id: 'market',
+        name: '营销中心',
+        children: [
+          {
+            id: 'market1',
+            name: '市场一部',
+            children: [
+              { id: 'market1-1', name: '推广组' },
+              { id: 'market1-2', name: '策划组' }
+            ]
+          },
+          {
+            id: 'market2',
+            name: '市场二部',
+            children: [
+              { id: 'market2-1', name: '渠道组' },
+              { id: 'market2-2', name: '品牌组' }
+            ]
+          }
+        ]
+      }
+    ]
+  };
+
+  // 状态管理
+  const nodeStates = {};
+  const treeStructure = {};
+  let contextMenu = null;
+  let selectedNodeForDemo = null;
+
+  // 🎯 核心权限计算逻辑
+  function calculateFinalPermission(nodeId) {
+    const pathToRoot = [nodeId, ...getAncestors(nodeId)].reverse(); // root -> ... -> nodeId
+    let finalPermission = 'EXCLUDE'; // 默认排除
+    let calculationSteps = [];
+    let effectiveRule = null;
+    
+    calculationSteps.push(`节点 ${nodeId} 的权限计算路径: ${pathToRoot.join(' -> ')}`);
+    calculationSteps.push(`初始状态: EXCLUDE (默认)`);
+    
+    // 按路径顺序应用权限规则（后者覆盖前者）
+    for (let i = 0; i < pathToRoot.length; i++) {
+      const ancestorId = pathToRoot[i];
+      const state = nodeStates[ancestorId];
+      
+      if (state?.explicit) {
+        // 检查当前节点是否在ancestor的影响范围内
+        if (isNodeInScope(nodeId, ancestorId, state.explicit)) {
+          finalPermission = state.explicit.type;
+          effectiveRule = {
+            nodeId: ancestorId,
+            rule: state.explicit,
+            priority: i + 1
+          };
+          
+          const scopeDesc = state.explicit.includeChildren ? '(包含子组)' : '(仅本组)';
+          calculationSteps.push(`Step ${i + 1}: ${ancestorId}${scopeDesc} -> ${state.explicit.type}`);
+        }
+      }
+    }
+    
+    calculationSteps.push(`最终结果: ${finalPermission}`);
+    
+    return {
+      permission: finalPermission,
+      effectiveRule,
+      calculationSteps
+    };
+  }
+
+  // 检查节点是否在权限设置的影响范围内
+  function isNodeInScope(targetNodeId, ruleNodeId, rule) {
+    if (targetNodeId === ruleNodeId) {
+      return true; // 规则作用于自身
+    }
+    
+    if (rule.includeChildren) {
+      // 实心规则：检查target是否是rule的后代
+      return isDescendant(targetNodeId, ruleNodeId);
+    }
+    
+    return false; // 空心规则：仅作用于自身
+  }
+
+  // 检查是否为后代节点
+  function isDescendant(nodeId, ancestorId) {
+    return getAncestors(nodeId).includes(ancestorId);
+  }
+
+  // 计算所有节点的最终权限
+  function calculateAllPermissions() {
+    const results = {};
+    
+    for (const nodeId in nodeStates) {
+      results[nodeId] = calculateFinalPermission(nodeId);
+    }
+    
+    return results;
+  }
+
+  // 获取最终绑定配置（智能清理冗余）
+  function getFinalBindings() {
+    const rawBindings = [];
+    
+    // 收集所有显式设置
+    for (const nodeId in nodeStates) {
+      const state = nodeStates[nodeId];
+      if (state?.explicit) {
+        rawBindings.push({
+          terminal_group_id: nodeId,
+          terminal_group_name: treeStructure[nodeId].name,
+          type: state.explicit.type,
+          include_children: state.explicit.includeChildren
+        });
+      }
+    }
+    
+    // 智能清理冗余
+    return removeRedundantBindings(rawBindings);
+  }
+
+  // 🎯 核心算法：智能冗余清理
+  function removeRedundantBindings(bindings) {
+    const optimizedBindings = [];
+    
+    for (const binding of bindings) {
+      let isRedundant = false;
+      
+      // 检查是否被祖先规则覆盖
+      const ancestors = getAncestors(binding.terminal_group_id);
+      
+      for (const ancestorId of ancestors) {
+        // 查找祖先中的显式设置
+        const ancestorBinding = bindings.find(b => b.terminal_group_id === ancestorId);
+        
+        if (ancestorBinding && isBindingRedundant(binding, ancestorBinding, ancestorId)) {
+          isRedundant = true;
+          break;
+        }
+      }
+      
+      if (!isRedundant) {
+        optimizedBindings.push(binding);
+      }
+    }
+    
+    return optimizedBindings;
+  }
+
+  // 判断binding是否被ancestorBinding覆盖
+  function isBindingRedundant(binding, ancestorBinding, ancestorId) {
+    // 只有当祖先包含子组时才可能产生覆盖
+    if (!ancestorBinding.include_children) {
+      return false;
+    }
+    
+    // 检查当前节点是否在祖先的作用域内
+    const isInAncestorScope = ancestorId === binding.terminal_group_id || 
+                              isDescendant(binding.terminal_group_id, ancestorId);
+    
+    if (!isInAncestorScope) {
+      return false;
+    }
+    
+    // 计算如果没有当前binding，节点的权限是什么
+    const permissionWithoutBinding = calculatePermissionWithoutBinding(
+      binding.terminal_group_id, 
+      binding.terminal_group_id
+    );
+    
+    // 计算有当前binding时节点的权限  
+    const permissionWithBinding = binding.type;
+    
+    // 如果权限结果相同，则当前binding是冗余的
+    return permissionWithoutBinding === permissionWithBinding;
+  }
+
+  // 计算移除特定binding后节点的权限
+  function calculatePermissionWithoutBinding(nodeId, excludeBindingNodeId) {
+    const pathToRoot = [nodeId, ...getAncestors(nodeId)].reverse();
+    let finalPermission = 'EXCLUDE'; // 默认排除
+    
+    for (const ancestorId of pathToRoot) {
+      // 跳过要排除的binding
+      if (ancestorId === excludeBindingNodeId) {
+        continue;
+      }
+      
+      const state = nodeStates[ancestorId];
+      if (state?.explicit && isNodeInScope(nodeId, ancestorId, state.explicit)) {
+        finalPermission = state.explicit.type;
+      }
+    }
+    
+    return finalPermission;
+  }
+
+  // 构建树形结构映射
+  function buildTreeStructure(node, parentId = null) {
+    treeStructure[node.id] = {
+      parentId,
+      children: node.children ? node.children.map(child => child.id) : [],
+      name: node.name
+    };
+
+    if (node.children) {
+      node.children.forEach(child => buildTreeStructure(child, node.id));
+    }
+  }
+
+  // 获取祖先节点
+  function getAncestors(nodeId) {
+    const ancestors = [];
+    let currentId = treeStructure[nodeId]?.parentId;
+    
+    while (currentId) {
+      ancestors.push(currentId);
+      currentId = treeStructure[currentId]?.parentId;
+    }
+    
+    return ancestors;
+  }
+
+  // 获取所有后代节点
+  function getAllDescendants(nodeId) {
+    const descendants = [];
+    const queue = [nodeId];
+    
+    while (queue.length > 0) {
+      const currentId = queue.shift();
+      const children = treeStructure[currentId]?.children || [];
+      descendants.push(...children);
+      queue.push(...children);
+    }
+    
+    return descendants;
+  }
+
+  // 初始化状态
+  function initializeStates(node) {
+    nodeStates[node.id] = {
+      explicit: null
+    };
+
+    if (node.children) {
+      node.children.forEach(child => initializeStates(child));
+    }
+  }
+
+  // 显示选择菜单
+  function showSelectorMenu(nodeId, x, y) {
+    if (contextMenu) {
+      document.body.removeChild(contextMenu);
+    }
+
+    contextMenu = document.createElement('div');
+    contextMenu.className = 'selector-menu';
+    contextMenu.style.cssText = `
+      position: fixed;
+      left: ${x}px;
+      top: ${y}px;
+      background: white;
+      border: 1px solid #ddd;
+      border-radius: 8px;
+      box-shadow: 0 5px 20px rgba(0,0,0,0.15);
+      z-index: 1000;
+      padding: 10px 0;
+      min-width: 300px;
+    `;
+
+    const title = document.createElement('div');
+    title.textContent = `设置节点: ${treeStructure[nodeId].name}`;
+    title.style.cssText = `
+      padding: 10px 15px;
+      font-weight: 600;
+      border-bottom: 1px solid #eee;
+    `;
+    contextMenu.appendChild(title);
+
+    const options = [
+      { text: '包含本组及所有子组', action: 'include-all', color: 'green', style: 'solid' },
+      { text: '仅包含本组', action: 'include-self', color: 'green', style: 'hollow' },
+      { text: '排除本组及所有子组', action: 'exclude-all', color: 'red', style: 'solid' },
+      { text: '仅排除本组', action: 'exclude-self', color: 'red', style: 'hollow' },
+      { text: '清除设置', action: 'clear' }
+    ];
+
+    options.forEach((opt, index) => {
+      if (index === 2) {
+        const divider = document.createElement('div');
+        divider.style.cssText = 'height: 1px; background: #eee; margin: 5px 0;';
+        contextMenu.appendChild(divider);
+      }
+
+      const option = document.createElement('div');
+      option.className = 'menu-option';
+      option.style.cssText = `
+        padding: 12px 15px;
+        cursor: pointer;
+        display: flex;
+        align-items: center;
+        transition: background 0.2s;
+      `;
+
+      if (opt.color) {
+        const colorBox = document.createElement('div');
+        colorBox.style.cssText = `
+          width: 18px;
+          height: 18px;
+          margin-right: 12px;
+          border-radius: 4px;
+          border: ${opt.style === 'solid' ? '2px solid' : '1px dashed'} var(--${opt.color}-solid);
+          background: ${opt.style === 'solid' ? `var(--${opt.color}-bg)` : 'white'};
+        `;
+        option.appendChild(colorBox);
+      }
+
+      const text = document.createElement('span');
+      text.textContent = opt.text;
+      text.style.flex = '1';
+      option.appendChild(text);
+
+      option.addEventListener('mouseenter', () => option.style.background = '#f8f9fa');
+      option.addEventListener('mouseleave', () => option.style.background = 'transparent');
+      option.addEventListener('click', () => {
+        handleSelection(nodeId, opt.action);
+        document.body.removeChild(contextMenu);
+        contextMenu = null;
+      });
+
+      contextMenu.appendChild(option);
+    });
+
+    document.body.appendChild(contextMenu);
+
+    const closeMenu = (e) => {
+      if (contextMenu && !contextMenu.contains(e.target)) {
+        document.body.removeChild(contextMenu);
+        contextMenu = null;
+        document.removeEventListener('click', closeMenu);
+      }
+    };
+
+    setTimeout(() => document.addEventListener('click', closeMenu), 100);
+  }
+
+  // 处理选择操作
+  function handleSelection(nodeId, action) {
+    const state = nodeStates[nodeId];
+    
+    switch (action) {
+      case 'include-all':
+        state.explicit = { type: 'INCLUDE', includeChildren: true };
+        break;
+      case 'include-self':
+        state.explicit = { type: 'INCLUDE', includeChildren: false };
+        break;
+      case 'exclude-all':
+        state.explicit = { type: 'EXCLUDE', includeChildren: true };
+        break;
+      case 'exclude-self':
+        state.explicit = { type: 'EXCLUDE', includeChildren: false };
+        break;
+      case 'clear':
+        state.explicit = null;
+        break;
+    }
+    
+    // 重新计算和渲染
+    updateAllNodesAppearance();
+    updateOutput();
+    showFeedback(`${getActionName(action)}操作已应用`, 'success');
+  }
+
+  // 获取操作名称
+  function getActionName(action) {
+    const names = {
+      'include-all': '包含本组及所有子组',
+      'include-self': '仅包含本组',
+      'exclude-all': '排除本组及所有子组',
+      'exclude-self': '仅排除本组',
+      'clear': '清除设置'
+    };
+    return names[action] || action;
+  }
+
+  // 更新节点外观
+  function updateNodeAppearance(nodeId) {
+    const state = nodeStates[nodeId];
+    const selector = document.querySelector(`.selector[data-id="${nodeId}"]`);
+    const nodeElement = document.querySelector(`.node[data-id="${nodeId}"]`);
+    const finalPermissionElement = nodeElement.querySelector('.final-permission');
+    
+    if (!selector || !nodeElement) return;
+
+    // 清除样式
+    selector.className = 'selector';
+    nodeElement.classList.remove('final-included', 'final-excluded');
+    
+    // 移除优先级指示器
+    const existingIndicator = selector.querySelector('.priority-indicator');
+    if (existingIndicator) {
+      existingIndicator.remove();
+    }
+
+    // 显示显式设置
+    if (state.explicit) {
+      if (state.explicit.type === 'INCLUDE') {
+        selector.classList.add(state.explicit.includeChildren ? 'green-solid' : 'green-hollow');
+      } else {
+        selector.classList.add(state.explicit.includeChildren ? 'red-solid' : 'red-hollow');
+      }
+    } else {
+      selector.style.border = '1px solid #ddd';
+      selector.style.background = '#f9f9f9';
+    }
+
+    // 计算并显示最终权限
+    const result = calculateFinalPermission(nodeId);
+    finalPermissionElement.textContent = result.permission === 'INCLUDE' ? '✓ 有权限' : '✗ 无权限';
+    finalPermissionElement.className = `final-permission ${result.permission === 'INCLUDE' ? 'included' : 'excluded'}`;
+    
+    // 设置节点背景色
+    nodeElement.classList.add(result.permission === 'INCLUDE' ? 'final-included' : 'final-excluded');
+    
+    // 显示优先级
+    if (result.effectiveRule) {
+      const priorityIndicator = document.createElement('div');
+      priorityIndicator.className = 'priority-indicator';
+      priorityIndicator.textContent = result.effectiveRule.priority;
+      priorityIndicator.title = `优先级 ${result.effectiveRule.priority}，来源: ${result.effectiveRule.nodeId}`;
+      selector.appendChild(priorityIndicator);
+    }
+  }
+
+  // 更新所有节点外观
+  function updateAllNodesAppearance() {
+    for (const nodeId in nodeStates) {
+      updateNodeAppearance(nodeId);
+    }
+  }
+
+  // 更新计算演示
+  function updateCalculationDemo(nodeId) {
+    const demo = document.getElementById('calculation-demo');
+    if (!nodeId) {
+      demo.innerHTML = '<div>点击节点查看权限计算过程</div>';
+      return;
+    }
+    
+    const result = calculateFinalPermission(nodeId);
+    
+    demo.innerHTML = `
+      <div style="font-weight: 600; margin-bottom: 10px;">
+        节点: ${treeStructure[nodeId].name} 的权限计算
+      </div>
+      ${result.calculationSteps.map(step => 
+        `<div class="calculation-step">${step}</div>`
+      ).join('')}
+    `;
+  }
+
+  // 更新输出
+  function updateOutput() {
+    const rawBindings = [];
+    
+    // 收集原始绑定
+    for (const nodeId in nodeStates) {
+      const state = nodeStates[nodeId];
+      if (state?.explicit) {
+        rawBindings.push({
+          terminal_group_id: nodeId,
+          terminal_group_name: treeStructure[nodeId].name,
+          type: state.explicit.type,
+          include_children: state.explicit.includeChildren
+        });
+      }
+    }
+    
+    const optimizedBindings = getFinalBindings();
+    const allPermissions = calculateAllPermissions();
+    
+    const output = {
+      // 显示优化统计
+      optimization: {
+        rawCount: rawBindings.length,
+        optimizedCount: optimizedBindings.length,
+        redundantCount: rawBindings.length - optimizedBindings.length,
+        compressionRatio: rawBindings.length > 0 ? 
+          `${Math.round((1 - optimizedBindings.length / rawBindings.length) * 100)}%` : '0%'
+      },
+      
+      // 原始设置（优化前）
+      rawSettings: rawBindings,
+      
+      // 优化后的设置（推荐传给后端）
+      optimizedSettings: optimizedBindings,
+      
+      // 最终权限结果（验证正确性）
+      finalPermissions: Object.fromEntries(
+        Object.entries(allPermissions).map(([nodeId, result]) => [
+          `${nodeId}(${treeStructure[nodeId].name})`,
+          result.permission
+        ])
+      )
+    };
+    
+    document.getElementById('output').textContent = JSON.stringify(output, null, 2);
+  }
+
+  // 渲染树形结构
+  function renderTree(node, parentElement) {
+    const nodeElement = document.createElement('div');
+    nodeElement.className = 'node';
+    nodeElement.dataset.id = node.id;
+
+    const nodeContent = document.createElement('div');
+    nodeContent.style.cssText = 'display: flex; align-items: center; width: 100%;';
+
+    const toggle = document.createElement('div');
+    toggle.className = 'toggle';
+    if (node.children && node.children.length > 0) {
+      toggle.textContent = '▶';
+      toggle.addEventListener('click', (e) => {
+        e.stopPropagation();
+        toggleChildren(nodeElement);
+      });
+    } else {
+      toggle.textContent = '•';
+      toggle.style.cssText = 'color: #aaa; font-size: 1.5rem; line-height: 1;';
+    }
+
+    const selector = document.createElement('div');
+    selector.className = 'selector';
+    selector.dataset.id = node.id;
+    selector.addEventListener('click', (e) => {
+      e.stopPropagation();
+      showSelectorMenu(node.id, e.clientX, e.clientY);
+    });
+
+    const label = document.createElement('div');
+    label.className = 'node-label';
+    label.textContent = node.name;
+    
+    // 点击节点显示计算过程
+    label.addEventListener('click', (e) => {
+      e.stopPropagation();
+      selectedNodeForDemo = node.id;
+      updateCalculationDemo(node.id);
+      
+      // 高亮选中节点
+      document.querySelectorAll('.node').forEach(n => n.style.outline = 'none');
+      nodeElement.style.outline = '2px solid var(--blue)';
+    });
+
+    const finalPermission = document.createElement('span');
+    finalPermission.className = 'final-permission';
+
+    nodeContent.appendChild(toggle);
+    nodeContent.appendChild(selector);
+    nodeContent.appendChild(label);
+    nodeContent.appendChild(finalPermission);
+    nodeElement.appendChild(nodeContent);
+    parentElement.appendChild(nodeElement);
+
+    if (node.children) {
+      const childrenContainer = document.createElement('div');
+      childrenContainer.className = 'children';
+      nodeElement.appendChild(childrenContainer);
+
+      node.children.forEach(child => {
+        renderTree(child, childrenContainer);
+      });
+    }
+  }
+
+  // 切换子节点显示
+  function toggleChildren(nodeElement) {
+    const children = nodeElement.querySelector('.children');
+    if (children) {
+      nodeElement.classList.toggle('expanded');
+      const toggle = nodeElement.querySelector('.toggle');
+      toggle.textContent = nodeElement.classList.contains('expanded') ? '▼' : '▶';
+    }
+  }
+
+  // 显示反馈消息
+  function showFeedback(message, type) {
+    const feedback = document.getElementById('feedback');
+    const messageEl = document.getElementById('feedback-message');
+
+    messageEl.textContent = message;
+    feedback.className = 'feedback ' + type;
+    feedback.classList.add('show');
+
+    setTimeout(() => {
+      feedback.classList.remove('show');
+    }, 3000);
+  }
+
+  // 初始化
+  document.addEventListener('DOMContentLoaded', () => {
+    const treeRoot = document.getElementById('tree-root');
+
+    // 构建树形结构映射
+    buildTreeStructure(treeData);
+    
+    // 初始化状态
+    initializeStates(treeData);
+
+    // 设置示例状态（您提到的场景）
+    nodeStates['root'].explicit = { type: 'INCLUDE', includeChildren: true };
+    nodeStates['dev'].explicit = { type: 'EXCLUDE', includeChildren: true };
+    // 用户可以继续设置 dev2 为包含，这是完全合理的
+
+    // 渲染树
+    renderTree(treeData, treeRoot);
+
+    // 展开根节点
+    document.querySelector(`.node[data-id="root"]`).classList.add('expanded');
+
+    // 初始化显示
+    updateAllNodesAppearance();
+    updateOutput();
+
+    // 事件监听
+    document.getElementById('calculateBtn').addEventListener('click', () => {
+      updateAllNodesAppearance();
+      updateOutput();
+      if (selectedNodeForDemo) {
+        updateCalculationDemo(selectedNodeForDemo);
+      }
+      showFeedback('权限重新计算完成', 'info');
+    });
+
+    document.getElementById('optimizeBtn').addEventListener('click', () => {
+      const rawCount = Object.values(nodeStates).filter(s => s.explicit).length;
+      const optimized = getFinalBindings();
+      const savedCount = rawCount - optimized.length;
+      
+      if (savedCount > 0) {
+        showFeedback(`优化完成！清理了 ${savedCount} 个冗余配置`, 'success');
+      } else {
+        showFeedback('当前配置已是最优，无冗余项', 'info');
+      }
+      
+      updateOutput();
+    });
+
+    document.getElementById('resetBtn').addEventListener('click', () => {
+      for (const nodeId in nodeStates) {
+        nodeStates[nodeId].explicit = null;
+      }
+      
+      // 设置默认状态
+      nodeStates['root'].explicit = { type: 'INCLUDE', includeChildren: true };
+      
+      updateAllNodesAppearance();
+      updateOutput();
+      updateCalculationDemo(null);
+      selectedNodeForDemo = null;
+      
+      document.querySelectorAll('.node').forEach(n => n.style.outline = 'none');
+      showFeedback('所有设置已重置', 'info');
+    });
+  });
+</script>
+</body>
+</html>

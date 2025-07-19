@@ -91,6 +91,11 @@ public class PermissionCheckerImpl implements PermissionChecker {
     }
 
     @Override
+    public boolean ifTargetUserGroupIsTheSameOrg(Long oid, Long targetUgid) {
+        return false;
+    }
+
+    @Override
     public boolean ifTargetTerminalGroupTheSameOrg(Long oid, Long targetTgid) {
         return terminalGroupRepository.ifTheSameOrg(oid, targetTgid);
     }
@@ -107,11 +112,23 @@ public class PermissionCheckerImpl implements PermissionChecker {
     }
     
     @Override
-    public void canModifyUserGroupTerminalGroupBinding(Long operatorUid, Long operatorUgid, Long targetUgid, Long targetTgid) {
+    public void canModifyUserGroupTerminalGroupBinding(Long operatorUid, Long operatorUgid, Long targetUgid, List<Long> targetTgids) {
+        // 组织管理员验证操作的终端组是否是自己组织的
+        if (PermissionCheckSkipContext.isSkip()) {
+            ExceptionEnum.ORG_PERMISSION_DENIED.throwIf(!terminalGroupRepository.ifTheSameOrg(operatorUid, targetTgids));
+        }
+        else {
+            // 1. 操作用户层级校验：操作用户所属的用户组必须是目标用户组的上级用户组
+            ExceptionEnum.USER_GROUP_PERMISSION_DENIED.throwIf(!userGroupRepository.isAncestor(operatorUgid, targetUgid));
+            // 2. 操作用户对目标终端组的权限校验：操作用户所属的用户组必须拥有目标终端组的权限
+            // todo:
+        }
+    }
+
+    @Override
+    public void canViewUserGroupTerminalGroupBinding(Long operatorUid, Long operatorUgid, Long targetUgid) {
         if (PermissionCheckSkipContext.isSkip()) return;
-        // 1. 操作用户层级校验：操作用户所属的用户组必须是目标用户组的上级用户组
+        // 操作用户层级校验：操作用户所属的用户组必须是目标用户组的上级用户组或同级用户组
         ExceptionEnum.USER_GROUP_PERMISSION_DENIED.throwIf(!userGroupRepository.isAncestorOrSibling(operatorUgid, targetUgid));
-        // 2. 操作用户对目标终端组的权限校验：操作用户所属的用户组必须拥有目标终端组的权限
-        ExceptionEnum.TERMINAL_GROUP_PERMISSION_DENIED.throwIf(!bindingRepository.hasTerminalGroupPermission(operatorUgid, targetTgid));
     }
 }

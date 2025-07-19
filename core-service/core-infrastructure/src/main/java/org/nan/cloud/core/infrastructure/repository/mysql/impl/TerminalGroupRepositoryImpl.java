@@ -59,6 +59,13 @@ public class TerminalGroupRepositoryImpl implements TerminalGroupRepository {
                 .eq(TerminalGroupDO::getOid, oid)
                 .eq(TerminalGroupDO::getTgid, tgid));
     }
+
+    @Override
+    public boolean ifTheSameOrg(Long oid, List<Long> tgids) {
+        return terminalGroupMapper.selectCount(new LambdaQueryWrapper<TerminalGroupDO>()
+                .eq(TerminalGroupDO::getOid, oid)
+                .in(TerminalGroupDO::getTgid, tgids)) == tgids.size();
+    }
     
     @Override
     public PageVO<TerminalGroup> searchAccessibleTerminalGroups(Integer pageNum, Integer pageSize, SearchTerminalGroupDTO searchDTO, List<Long> accessibleTerminalGroupIds) {

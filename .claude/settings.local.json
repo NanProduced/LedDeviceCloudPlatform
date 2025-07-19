@@ -18,7 +18,9 @@
       "Bash(mvn compile:*)",
       "Bash(dir srcmainjavaorgnancloudcoreapiDTO)",
       "mcp__mem0-mcp__add_coding_preference",
-      "mcp__mem0-mcp__search_coding_preferences"
+      "mcp__mem0-mcp__search_coding_preferences",
+      "Bash(grep:*)",
+      "Bash(rm:*)"
     ],
     "deny": []
   }

@@ -1,4 +1,4 @@
-package org.nan.cloud.core.DTO;
+package org.nan.cloud.common.basic.model;
 
 /**
  * 绑定类型枚举

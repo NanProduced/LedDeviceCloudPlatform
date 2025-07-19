@@ -28,6 +28,8 @@ public interface PermissionChecker {
 
     boolean ifTargetRoleIsTheSameOrg(Long oid, Long targetRid);
 
+    boolean ifTargetUserGroupIsTheSameOrg(Long oid, Long targetUgid);
+
     boolean ifTargetTerminalGroupTheSameOrg(Long oid, Long targetTgid);
 
     /**
@@ -40,6 +42,12 @@ public interface PermissionChecker {
      * 检查操作用户是否有权限修改目标用户组的终端组绑定
      * 包含双重校验：层级校验、终端组权限校验
      */
-    void canModifyUserGroupTerminalGroupBinding(Long operatorUid, Long operatorUgid, Long targetUgid, Long targetTgid);
+    void canModifyUserGroupTerminalGroupBinding(Long operatorUid, Long operatorUgid, Long targetUgid, List<Long> targetTgid);
+
+    /**
+     * 检查操作用户是否有权限查看目标用户组的终端组绑定
+     * 包含基本的层级校验
+     */
+    void canViewUserGroupTerminalGroupBinding(Long operatorUid, Long operatorUgid, Long targetUgid);
 
 }

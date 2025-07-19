@@ -29,16 +29,6 @@ public interface TerminalGroupRepository {
      */
     void deleteTerminalGroup(Long tgid);
 
-
-
-
-
-
-
-
-
-
-
     /**
      * 是否为同一组织
      * @param oid
@@ -46,6 +36,8 @@ public interface TerminalGroupRepository {
      * @return
      */
     boolean ifTheSameOrg(Long oid, Long tgid);
+
+    boolean ifTheSameOrg(Long oid, List<Long> tgids);
     
     /**
      * 根据权限和关键词搜索终端组

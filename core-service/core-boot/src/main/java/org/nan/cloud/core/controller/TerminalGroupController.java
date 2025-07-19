@@ -80,15 +80,24 @@ public class TerminalGroupController implements TerminalGroupApi {
     }
 
 
-
     @Operation(
-            summary = "批量更新用户组权限",
-            description = "批量为用户组添加或移除终端组权限，系统自动处理复杂的绑定关系",
+            summary = "更新权限表达式",
+            description = "全量替换用户组的权限绑定，支持INCLUDE/EXCLUDE权限类型和智能冗余清理",
             tags = {"权限管理"}
     )
     @Override
-    public BatchBindingOperationResponse updateUserGroupPermissions(BatchBindingOperationRequest request) {
-        return terminalGroupFacade.updateUserGroupPermissions(request);
+    public PermissionExpressionResponse updatePermissionExpression(PermissionExpressionRequest request) {
+        return terminalGroupFacade.updatePermissionExpression(request);
+    }
+
+    @Operation(
+            summary = "获取用户组权限状态",
+            description = "获取用户组当前的权限绑定状态和统计信息，用于前端权限树展示",
+            tags = {"权限管理"}
+    )
+    @Override
+    public UserGroupPermissionStatusResponse getUserGroupPermissionStatus(Long ugid) {
+        return terminalGroupFacade.getUserGroupPermissionStatus(ugid);
     }
 
 }

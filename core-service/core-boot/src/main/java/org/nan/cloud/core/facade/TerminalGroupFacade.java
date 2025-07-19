@@ -129,40 +129,6 @@ public class TerminalGroupFacade {
         return terminalGroupConverter.terminalGroup2DetailResponse(terminalGroup);
     }
 
-    
-    @Transactional
-    @SkipOrgManagerPermissionCheck
-    public BatchBindingOperationResponse updateUserGroupPermissions(BatchBindingOperationRequest request) {
-        RequestUserInfo userInfo = InvocationContextHolder.getContext().getRequestUser();
-        
-        // 权限检查：确保操作用户有权限修改目标用户组的绑定
-        permissionChecker.canModifyUserGroupTerminalGroupBinding(
-                userInfo.getUid(), userInfo.getUgid(), request.getUgid(), null);
-        
-        // 转换为内部DTO
-        List<BatchBindingOperationDTO.TerminalGroupPermissionDTO> grantPermissions = null;
-        if (request.getGrantPermissions() != null) {
-            grantPermissions = request.getGrantPermissions().stream()
-                    .map(permission -> BatchBindingOperationDTO.TerminalGroupPermissionDTO.builder()
-                            .tgid(permission.getTgid())
-                            .includeChildren(permission.getIncludeChildren())
-                            .description(permission.getDescription())
-                            .build())
-                    .collect(Collectors.toList());
-        }
-        
-        BatchBindingOperationDTO internalRequest = BatchBindingOperationDTO.builder()
-                .ugid(request.getUgid())
-                .grantPermissions(grantPermissions)
-                .revokeTerminalGroupIds(request.getRevokeTerminalGroupIds())
-                .operatorId(userInfo.getUid())
-                .operationDescription(request.getDescription())
-                .build();
-        
-        BatchBindingOperationResultDTO result = bindingService.executeBatchBindingOperation(internalRequest);
-        
-        return convertToBatchBindingOperationResponse(result);
-    }
 
     /**
      * 构建用户可访问的终端组树列表
@@ -244,41 +210,176 @@ public class TerminalGroupFacade {
             }
         }
     }
-    
+
+    @Transactional
+    @SkipOrgManagerPermissionCheck
+    public PermissionExpressionResponse updatePermissionExpression(PermissionExpressionRequest request) {
+        RequestUserInfo userInfo = InvocationContextHolder.getContext().getRequestUser();
+        ExceptionEnum.ORG_PERMISSION_DENIED.throwIf(!permissionChecker.ifTargetUserGroupIsTheSameOrg(userInfo.getUgid(), request.getUgid()));
+        // 权限检查：确保操作用户有权限修改目标用户组的绑定
+        permissionChecker.canModifyUserGroupTerminalGroupBinding(
+                userInfo.getUid(), userInfo.getUgid(), request.getUgid(), null);
+        
+        // 转换为内部DTO
+        PermissionExpressionDTO internalRequest = convertToPermissionExpressionDTO(request, userInfo);
+        
+        // 执行权限表达式更新
+        PermissionExpressionResultDTO result = bindingService.updatePermissionExpression(internalRequest);
+        
+        // 转换为响应对象
+        return convertToPermissionExpressionResponse(result);
+    }
+
+    public UserGroupPermissionStatusResponse getUserGroupPermissionStatus(Long ugid) {
+        RequestUserInfo userInfo = InvocationContextHolder.getContext().getRequestUser();
+        
+        // 权限检查：确保操作用户有权限查看目标用户组的权限状态
+        permissionChecker.canViewUserGroupTerminalGroupBinding(
+                userInfo.getUid(), userInfo.getUgid(), ugid);
+        
+        // 获取权限状态
+        UserGroupPermissionStatusDTO result = bindingService.getUserGroupPermissionStatus(ugid);
+        
+        // 转换为响应对象
+        return convertToUserGroupPermissionStatusResponse(result);
+    }
+
     /**
-     * 转换批量绑定操作结果为响应对象
+     * 转换权限表达式请求为内部DTO
      */
-    private BatchBindingOperationResponse convertToBatchBindingOperationResponse(BatchBindingOperationResultDTO result) {
-        BatchBindingOperationResponse response = new BatchBindingOperationResponse();
+    private PermissionExpressionDTO convertToPermissionExpressionDTO(PermissionExpressionRequest request, RequestUserInfo userInfo) {
+        List<PermissionExpressionDTO.PermissionBindingDTO> permissionBindings = request.getPermissionBindings().stream()
+                .map(binding -> {
+                    PermissionExpressionDTO.PermissionBindingDTO bindingDTO = new PermissionExpressionDTO.PermissionBindingDTO();
+                    bindingDTO.setTgid(binding.getTgid());
+                    bindingDTO.setBindingType(binding.getBindingType());
+                    bindingDTO.setIncludeChildren(binding.getIncludeChildren());
+                    bindingDTO.setRemarks(binding.getRemarks());
+                    return bindingDTO;
+                })
+                .collect(Collectors.toList());
+        
+        PermissionExpressionDTO internalRequest = new PermissionExpressionDTO();
+        internalRequest.setUgid(request.getUgid());
+        internalRequest.setPermissionBindings(permissionBindings);
+        internalRequest.setDescription(request.getDescription());
+        internalRequest.setEnableRedundancyOptimization(request.getEnableRedundancyOptimization());
+        internalRequest.setOperatorId(userInfo.getUid());
+        internalRequest.setOid(userInfo.getOid());
+        
+        return internalRequest;
+    }
+
+    /**
+     * 转换权限表达式结果为响应对象
+     */
+    private PermissionExpressionResponse convertToPermissionExpressionResponse(PermissionExpressionResultDTO result) {
+        PermissionExpressionResponse response = new PermissionExpressionResponse();
         response.setSuccess(result.getSuccess());
         response.setMessage(result.getMessage());
+        response.setUgid(result.getUgid());
+        response.setOperationTime(result.getOperationTime());
         
-        // 构建统计信息
-        BatchBindingOperationResponse.OperationStatistics statistics = new BatchBindingOperationResponse.OperationStatistics();
-        statistics.setGrantedCount(result.getCreatedBindings());
-        statistics.setRevokedCount(result.getDeletedBindings());
-        
-        if (result.getOperationDetails() != null) {
-            int noChangeCount = (int) result.getOperationDetails().stream()
-                    .filter(detail -> "NO_CHANGE".equals(detail.getOperationType()))
-                    .count();
-            statistics.setNoChangeCount(noChangeCount);
-            
-            // 转换操作详情
-            List<BatchBindingOperationResponse.OperationDetail> details = result.getOperationDetails().stream()
-                    .map(detail -> {
-                        BatchBindingOperationResponse.OperationDetail responseDetail = new BatchBindingOperationResponse.OperationDetail();
-                        responseDetail.setTgid(detail.getTgid());
-                        responseDetail.setTerminalGroupName(detail.getTerminalGroupName());
-                        responseDetail.setResult(detail.getOperationType());
-                        responseDetail.setDescription(detail.getDescription());
-                        return responseDetail;
-                    })
-                    .collect(Collectors.toList());
-            response.setDetails(details);
+        // 转换统计信息
+        if (result.getStatistics() != null) {
+            PermissionExpressionResponse.OperationStatistics statistics = new PermissionExpressionResponse.OperationStatistics();
+            statistics.setOriginalCount(result.getStatistics().getOriginalCount());
+            statistics.setOptimizedCount(result.getStatistics().getOptimizedCount());
+            statistics.setRedundancyRemoved(result.getStatistics().getRedundancyRemoved());
+            statistics.setAddedCount(result.getStatistics().getAddedCount());
+            statistics.setUpdatedCount(result.getStatistics().getUpdatedCount());
+            statistics.setDeletedCount(result.getStatistics().getDeletedCount());
+            statistics.setOptimizationRatio(result.getStatistics().getOptimizationRatio());
+            response.setStatistics(statistics);
         }
         
-        response.setStatistics(statistics);
+        // 转换优化后的绑定列表
+        if (result.getOptimizedBindings() != null) {
+            List<PermissionExpressionResponse.OptimizedBinding> optimizedBindings = result.getOptimizedBindings().stream()
+                    .map(binding -> {
+                        PermissionExpressionResponse.OptimizedBinding optimizedBinding = new PermissionExpressionResponse.OptimizedBinding();
+                        optimizedBinding.setTgid(binding.getTgid());
+                        optimizedBinding.setTerminalGroupName(binding.getTerminalGroupName());
+                        optimizedBinding.setBindingType(binding.getBindingType());
+                        optimizedBinding.setIncludeChildren(binding.getIncludeChildren());
+                        optimizedBinding.setDepth(binding.getDepth());
+                        optimizedBinding.setParentTgid(binding.getParentTgid());
+                        optimizedBinding.setOptimized(binding.getOptimized());
+                        return optimizedBinding;
+                    })
+                    .collect(Collectors.toList());
+            response.setOptimizedBindings(optimizedBindings);
+        }
+        
+        // 转换操作详情
+        if (result.getOperationDetails() != null) {
+            List<PermissionExpressionResponse.OperationDetail> operationDetails = result.getOperationDetails().stream()
+                    .map(detail -> {
+                        PermissionExpressionResponse.OperationDetail operationDetail = new PermissionExpressionResponse.OperationDetail();
+                        operationDetail.setTgid(detail.getTgid());
+                        operationDetail.setTerminalGroupName(detail.getTerminalGroupName());
+                        operationDetail.setOperationType(detail.getOperationType());
+                        operationDetail.setOldBinding(detail.getOldBinding());
+                        operationDetail.setNewBinding(detail.getNewBinding());
+                        operationDetail.setReason(detail.getReason());
+                        operationDetail.setSuccess(detail.getSuccess());
+                        operationDetail.setErrorMessage(detail.getErrorMessage());
+                        return operationDetail;
+                    })
+                    .collect(Collectors.toList());
+            response.setOperationDetails(operationDetails);
+        }
+        
+        return response;
+    }
+
+    /**
+     * 转换用户组权限状态为响应对象
+     */
+    private UserGroupPermissionStatusResponse convertToUserGroupPermissionStatusResponse(UserGroupPermissionStatusDTO result) {
+        UserGroupPermissionStatusResponse response = new UserGroupPermissionStatusResponse();
+        response.setUgid(result.getUgid());
+        response.setUserGroupName(result.getUserGroupName());
+        response.setLastUpdateTime(result.getLastUpdateTime());
+        
+        // 转换权限绑定状态列表
+        if (result.getPermissionBindings() != null) {
+            List<UserGroupPermissionStatusResponse.PermissionBindingStatus> permissionBindings = result.getPermissionBindings().stream()
+                    .map(binding -> {
+                        UserGroupPermissionStatusResponse.PermissionBindingStatus bindingStatus = new UserGroupPermissionStatusResponse.PermissionBindingStatus();
+                        bindingStatus.setBindingId(binding.getBindingId());
+                        bindingStatus.setTgid(binding.getTgid());
+                        bindingStatus.setTerminalGroupName(binding.getTerminalGroupName());
+                        bindingStatus.setTerminalGroupPath(binding.getTerminalGroupPath());
+                        bindingStatus.setBindingType(binding.getBindingType());
+                        bindingStatus.setIncludeChildren(binding.getIncludeChildren());
+                        bindingStatus.setDepth(binding.getDepth());
+                        bindingStatus.setParentTgid(binding.getParentTgid());
+                        bindingStatus.setChildCount(binding.getChildCount());
+                        bindingStatus.setEffectiveStatus(binding.getEffectiveStatus());
+                        bindingStatus.setCreateTime(binding.getCreateTime());
+                        bindingStatus.setUpdateTime(binding.getUpdateTime());
+                        bindingStatus.setCreator(binding.getCreator());
+                        bindingStatus.setRemarks(binding.getRemarks());
+                        return bindingStatus;
+                    })
+                    .collect(Collectors.toList());
+            response.setPermissionBindings(permissionBindings);
+        }
+        
+        // 转换统计信息
+        if (result.getStatistics() != null) {
+            UserGroupPermissionStatusResponse.BindingStatistics statistics = new UserGroupPermissionStatusResponse.BindingStatistics();
+            statistics.setTotalBindings(result.getStatistics().getTotalBindings());
+            statistics.setIncludeBindings(result.getStatistics().getIncludeBindings());
+            statistics.setExcludeBindings(result.getStatistics().getExcludeBindings());
+            statistics.setIncludeChildrenBindings(result.getStatistics().getIncludeChildrenBindings());
+            statistics.setTotalCoveredTerminalGroups(result.getStatistics().getTotalCoveredTerminalGroups());
+            statistics.setMaxDepth(result.getStatistics().getMaxDepth());
+            statistics.setCoveragePercentage(result.getStatistics().getCoveragePercentage());
+            response.setStatistics(statistics);
+        }
+        
         return response;
     }
 }

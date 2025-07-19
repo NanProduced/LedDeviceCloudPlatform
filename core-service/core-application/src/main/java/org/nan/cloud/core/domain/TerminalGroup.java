@@ -16,8 +16,12 @@ public class TerminalGroup {
     private Long oid;
 
     private Long parent;
+    
+    private Long parentTgid; // 父终端组ID，与parent字段保持同步
 
     private String path;
+    
+    private Integer depth; // 层级深度
 
     private String description;
 

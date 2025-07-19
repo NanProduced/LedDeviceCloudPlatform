@@ -5,6 +5,8 @@ import com.baomidou.mybatisplus.annotation.TableField;
 import com.baomidou.mybatisplus.annotation.TableId;
 import com.baomidou.mybatisplus.annotation.TableName;
 import lombok.Data;
+import org.nan.cloud.common.basic.model.BindingType;
+import org.nan.cloud.core.infrastructure.config.BindingTypeHandler;
 
 import java.time.LocalDateTime;
 
@@ -24,6 +26,9 @@ public class UserGroupTerminalGroupBindingDO {
     @TableField("include_sub")
     private Boolean includeSub;
 
+    @TableField(value = "binding_type", typeHandler = BindingTypeHandler.class)
+    private BindingType bindingType;
+
     @TableField("oid")
     private Long oid;
 
@@ -38,4 +43,20 @@ public class UserGroupTerminalGroupBindingDO {
 
     @TableField("update_time")
     private LocalDateTime updateTime;
+    
+    // 以下字段用于联表查询，不存储到数据库
+    @TableField(exist = false)
+    private String terminalGroupName;
+    
+    @TableField(exist = false)
+    private String terminalGroupPath;
+    
+    @TableField(exist = false)
+    private Long parentTgid;
+    
+    @TableField(exist = false)
+    private Integer depth;
+    
+    @TableField(exist = false)
+    private Integer childCount;
 }
