@@ -12,7 +12,7 @@ import static org.junit.jupiter.api.Assertions.*;
 /**
  * 缓存配置测试
  */
-@SpringBootTest
+@SpringBootTest(classes = org.nan.cloud.core.TestApplication.class)
 @ActiveProfiles("test")
 class CacheConfigTest {
     

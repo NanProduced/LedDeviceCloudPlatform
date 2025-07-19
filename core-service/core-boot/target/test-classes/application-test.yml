@@ -3,11 +3,11 @@ spring:
   data:
     redis:
       # 使用内存Redis进行测试
-      host: localhost
+      host: 192.168.1.185
       port: 6379
       database: 15  # 使用测试数据库
       timeout: 3000ms
-      password:
+      password: Nan12091209
       
 cache:
   local:
