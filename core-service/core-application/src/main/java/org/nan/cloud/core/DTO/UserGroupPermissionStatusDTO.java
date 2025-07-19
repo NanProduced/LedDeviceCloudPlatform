@@ -103,8 +103,6 @@ public class UserGroupPermissionStatusDTO {
         
         /** 最大层级深度 */
         private Integer maxDepth;
-        
-        /** 权限覆盖率 */
-        private Double coveragePercentage;
+
     }
 }

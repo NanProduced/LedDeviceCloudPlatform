@@ -29,11 +29,6 @@ public interface TerminalGroupService {
     void updateTerminalGroup(UpdateTerminalGroupDTO updateTerminalGroupDTO);
 
     /**
-     * 搜索用户可访问的终端组
-     */
-    PageVO<TerminalGroup> searchAccessibleTerminalGroups(Integer pageNum, Integer pageSize, SearchTerminalGroupDTO searchDTO);
-
-    /**
      * 获取终端组的所有子组
      */
     List<TerminalGroup> getChildGroups(Long parentTgid);

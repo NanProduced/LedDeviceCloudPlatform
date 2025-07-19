@@ -54,20 +54,11 @@ public class UserGroupPermissionStatusResponse {
         @Schema(description = "父终端组ID")
         private Long parentTgid;
         
-        @Schema(description = "子终端组数量")
-        private Integer childCount;
-        
-        @Schema(description = "实际生效状态", example = "EFFECTIVE")
-        private String effectiveStatus;
-        
         @Schema(description = "创建时间")
         private LocalDateTime createTime;
         
         @Schema(description = "更新时间")
         private LocalDateTime updateTime;
-        
-        @Schema(description = "创建者")
-        private String creator;
         
         @Schema(description = "备注")
         private String remarks;
@@ -94,8 +85,5 @@ public class UserGroupPermissionStatusResponse {
         
         @Schema(description = "最大层级深度")
         private Integer maxDepth;
-        
-        @Schema(description = "权限覆盖率", example = "85.5")
-        private Double coveragePercentage;
     }
 }

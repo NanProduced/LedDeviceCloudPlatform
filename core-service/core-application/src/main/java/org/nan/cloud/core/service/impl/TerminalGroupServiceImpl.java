@@ -9,6 +9,7 @@ import org.nan.cloud.core.enums.TerminalGroupTypeEnum;
 import org.nan.cloud.core.repository.TerminalGroupRepository;
 import org.nan.cloud.core.repository.UserGroupTerminalGroupBindingRepository;
 import org.nan.cloud.core.service.TerminalGroupService;
+import org.nan.cloud.core.service.UserGroupTerminalGroupBindingService;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -21,7 +22,6 @@ import java.util.List;
 public class TerminalGroupServiceImpl implements TerminalGroupService {
 
     private final TerminalGroupRepository terminalGroupRepository;
-    private final UserGroupTerminalGroupBindingRepository bindingRepository;
 
     @Override
     public TerminalGroup getTerminalGroupById(Long tgid) {
@@ -66,22 +66,9 @@ public class TerminalGroupServiceImpl implements TerminalGroupService {
         terminalGroupRepository.updateTerminalGroup(existingGroup);
     }
 
-    @Override
-    public PageVO<TerminalGroup> searchAccessibleTerminalGroups(Integer pageNum, Integer pageSize, SearchTerminalGroupDTO searchDTO) {
-        // 获取用户组可访问的终端组ID列表
-        List<Long> accessibleTerminalGroupIds = bindingRepository.getAccessibleTerminalGroupIds(searchDTO.getUgid());
-        
-        // 如果没有可访问的终端组，直接返回空结果
-        if (accessibleTerminalGroupIds.isEmpty()) {
-            return PageVO.empty();
-        }
-        
-        // 根据关键词和权限过滤终端组
-        return terminalGroupRepository.searchAccessibleTerminalGroups(pageNum, pageSize, searchDTO, accessibleTerminalGroupIds);
-    }
 
     @Override
     public List<TerminalGroup> getChildGroups(Long parentTgid) {
-        return List.of();
+        return terminalGroupRepository.getChildTerminalGroups(parentTgid);
     }
 }

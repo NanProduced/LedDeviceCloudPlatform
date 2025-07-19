@@ -43,4 +43,6 @@ public interface TerminalGroupRepository {
      * 根据权限和关键词搜索终端组
      */
     PageVO<TerminalGroup> searchAccessibleTerminalGroups(Integer pageNum, Integer pageSize, SearchTerminalGroupDTO searchDTO, List<Long> accessibleTerminalGroupIds);
+
+    List<TerminalGroup> getChildTerminalGroups(Long parentTgid);
 }

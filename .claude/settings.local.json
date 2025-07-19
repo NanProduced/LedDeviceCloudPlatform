@@ -20,7 +20,8 @@
       "mcp__mem0-mcp__add_coding_preference",
       "mcp__mem0-mcp__search_coding_preferences",
       "Bash(grep:*)",
-      "Bash(rm:*)"
+      "Bash(rm:*)",
+      "Bash(mvn clean:*)"
     ],
     "deny": []
   }

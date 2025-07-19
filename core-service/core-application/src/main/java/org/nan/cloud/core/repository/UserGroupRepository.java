@@ -16,6 +16,8 @@ public interface UserGroupRepository {
 
     List<Long> getAllUgidsByParent(Long ugid);
 
+    String getPathByUgid(Long ugid);
+
     List<UserGroup> getDirectUserGroupsByParent(Long ugid);
 
     boolean ifTheSameOrg(Long oid, Long targetTgid);

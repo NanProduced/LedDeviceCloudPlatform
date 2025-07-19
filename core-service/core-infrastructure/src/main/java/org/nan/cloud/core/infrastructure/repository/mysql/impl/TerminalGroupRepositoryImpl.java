@@ -6,7 +6,6 @@ import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import lombok.RequiredArgsConstructor;
 import org.nan.cloud.common.basic.model.PageVO;
 import org.nan.cloud.core.DTO.SearchTerminalGroupDTO;
-import org.nan.cloud.core.DTO.TerminalGroupListDTO;
 import org.nan.cloud.core.domain.TerminalGroup;
 import org.nan.cloud.core.infrastructure.repository.mysql.DO.TerminalGroupDO;
 import org.nan.cloud.core.infrastructure.repository.mysql.converter.CommonConverter;
@@ -38,7 +37,7 @@ public class TerminalGroupRepositoryImpl implements TerminalGroupRepository {
 
     @Override
     public TerminalGroup getTerminalGroupById(Long tgid) {
-        return null;
+        return commonConverter.terminalGroupDO2TerminalGroup(terminalGroupMapper.selectById(tgid));
     }
 
     @Override
@@ -86,4 +85,20 @@ public class TerminalGroupRepositoryImpl implements TerminalGroupRepository {
         pageVO.calculate();
         return pageVO;
     }
+
+    @Override
+    public List<TerminalGroup> getChildTerminalGroups(Long parentTgid) {
+        // 获取父终端组信息以获取其path
+        TerminalGroupDO parentGroup = terminalGroupMapper.selectOne(new LambdaQueryWrapper<TerminalGroupDO>()
+                .select(TerminalGroupDO::getPath)
+                .eq(TerminalGroupDO::getTgid, parentTgid));
+        // 查询所有path包含此前缀的终端组
+        LambdaQueryWrapper<TerminalGroupDO> queryWrapper = new LambdaQueryWrapper<TerminalGroupDO>()
+                .like(TerminalGroupDO::getPath, parentGroup.getPath() + "|")
+                .orderByAsc(TerminalGroupDO::getPath); // 按路径排序，保证层级顺序
+        
+        List<TerminalGroupDO> childGroupDOs = terminalGroupMapper.selectList(queryWrapper);
+        return commonConverter.terminalGroupDO2TerminalGroup(childGroupDOs);
+    }
+
 }

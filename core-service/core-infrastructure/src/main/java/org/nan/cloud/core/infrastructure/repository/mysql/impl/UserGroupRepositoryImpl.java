@@ -51,9 +51,10 @@ public class UserGroupRepositoryImpl implements UserGroupRepository {
      */
     @Override
     public List<UserGroup> getAllUserGroupsByParent(Long ugid) {
+
         List<UserGroupDO> userGroupDOS = userGroupMapper.selectList(new LambdaQueryWrapper<UserGroupDO>()
                 .select(UserGroupDO::getUgid, UserGroupDO::getName, UserGroupDO::getParent, UserGroupDO::getPath)
-                .likeRight(UserGroupDO::getPath, ugid + "|")
+                .likeRight(UserGroupDO::getPath, getPathByUgid(ugid) + "|")
                 .or()
                 .eq(UserGroupDO::getUgid, ugid));
         return commonConverter.userGroupDO2UserGroup(userGroupDOS);
@@ -63,10 +64,17 @@ public class UserGroupRepositoryImpl implements UserGroupRepository {
     public List<Long> getAllUgidsByParent(Long ugid) {
         return userGroupMapper.selectList(new LambdaQueryWrapper<UserGroupDO>()
                 .select(UserGroupDO::getUgid)
-                .likeRight(UserGroupDO::getPath, ugid + "|")
+                .likeRight(UserGroupDO::getPath, getPathByUgid(ugid) + "|")
                 .or()
                 .eq(UserGroupDO::getUgid, ugid)).stream()
                 .map(UserGroupDO::getUgid).toList();
+    }
+
+    @Override
+    public String getPathByUgid(Long ugid) {
+        return userGroupMapper.selectOne(new LambdaQueryWrapper<UserGroupDO>()
+                .select(UserGroupDO::getPath)
+                .eq(UserGroupDO::getUgid, ugid)).getPath();
     }
 
     @Override

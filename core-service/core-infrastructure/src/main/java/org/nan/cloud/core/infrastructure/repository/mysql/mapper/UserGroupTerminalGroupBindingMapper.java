@@ -12,42 +12,109 @@ import java.util.List;
 public interface UserGroupTerminalGroupBindingMapper extends BaseMapper<UserGroupTerminalGroupBindingDO> {
 
     /**
-     * 检查用户组是否有终端组权限（包含子组）
+     * 检查用户组是否有终端组权限（基于INCLUDE/EXCLUDE绑定类型精确计算）
+     * 使用CTE优化的完整权限计算逻辑
      */
     @Select({
-            "SELECT COUNT(*) > 0",
-            "FROM user_group_terminal_group_rel b",
-            "JOIN terminal_group tg ON (",
-            "  (b.include_sub = 1 AND (",
-            "    tg.path LIKE CONCAT(",
-            "      (SELECT path FROM terminal_group WHERE tgid = b.tgid), '|%'",
-            "    )",
-            "    OR tg.tgid = b.tgid",
-            "  ))",
-            "  OR tg.tgid = b.tgid",
+            "WITH included_terminals AS (",
+            "  SELECT DISTINCT tg.tgid",
+            "  FROM user_group_terminal_group_rel b",
+            "  JOIN terminal_group tg ON (",
+            "    (b.include_sub = 1 AND (",
+            "      tg.path LIKE CONCAT(",
+            "        (SELECT path FROM terminal_group WHERE tgid = b.tgid), '|%'",
+            "      )",
+            "      OR tg.tgid = b.tgid",
+            "    ))",
+            "    OR (b.include_sub = 0 AND tg.tgid = b.tgid)",
+            "  )",
+            "  WHERE b.ugid = #{ugid} AND b.binding_type = 'INCLUDE'",
+            "),",
+            "excluded_terminals AS (",
+            "  SELECT DISTINCT tg.tgid",
+            "  FROM user_group_terminal_group_rel b",
+            "  JOIN terminal_group tg ON (",
+            "    (b.include_sub = 1 AND (",
+            "      tg.path LIKE CONCAT(",
+            "        (SELECT path FROM terminal_group WHERE tgid = b.tgid), '|%'",
+            "      )",
+            "      OR tg.tgid = b.tgid",
+            "    ))",
+            "    OR (b.include_sub = 0 AND tg.tgid = b.tgid)",
+            "  )",
+            "  WHERE b.ugid = #{ugid} AND b.binding_type = 'EXCLUDE'",
             ")",
-            "WHERE b.ugid = #{ugid} AND tg.tgid = #{tgid}"
+            "SELECT CASE ",
+            "  WHEN EXISTS(SELECT 1 FROM included_terminals WHERE tgid = #{tgid})",
+            "   AND NOT EXISTS(SELECT 1 FROM excluded_terminals WHERE tgid = #{tgid})",
+            "  THEN 1 ELSE 0 END"
     })
     boolean hasTerminalGroupPermission(@Param("ugid") Long ugid, @Param("tgid") Long tgid);
 
     /**
-     * 获取用户组可访问的终端组ID列表
+     * 批量权限校验（高性能版本）
+     * 一次查询返回多个终端组的权限状态
      */
     @Select({
-            "SELECT DISTINCT tg.tgid",
-            "FROM user_group_terminal_group_rel b",
-            "JOIN terminal_group tg ON (",
-            "  (b.include_sub = 1 AND (",
-            "    tg.path LIKE CONCAT(",
-            "      (SELECT path FROM terminal_group WHERE tgid = b.tgid), '|%'",
-            "    )",
-            "    OR tg.tgid = b.tgid",
-            "  ))",
-            "  OR tg.tgid = b.tgid",
+            "<script>",
+            "WITH included_terminals AS (",
+            "  SELECT DISTINCT tg.tgid",
+            "  FROM user_group_terminal_group_rel b",
+            "  JOIN terminal_group tg ON (",
+            "    (b.include_sub = 1 AND (",
+            "      tg.path LIKE CONCAT(",
+            "        (SELECT path FROM terminal_group WHERE tgid = b.tgid), '|%'",
+            "      )",
+            "      OR tg.tgid = b.tgid",
+            "    ))",
+            "    OR (b.include_sub = 0 AND tg.tgid = b.tgid)",
+            "  )",
+            "  WHERE b.ugid = #{ugid} AND b.binding_type = 'INCLUDE'",
+            "),",
+            "excluded_terminals AS (",
+            "  SELECT DISTINCT tg.tgid",
+            "  FROM user_group_terminal_group_rel b",
+            "  JOIN terminal_group tg ON (",
+            "    (b.include_sub = 1 AND (",
+            "      tg.path LIKE CONCAT(",
+            "        (SELECT path FROM terminal_group WHERE tgid = b.tgid), '|%'",
+            "      )",
+            "      OR tg.tgid = b.tgid",
+            "    ))",
+            "    OR (b.include_sub = 0 AND tg.tgid = b.tgid)",
+            "  )",
+            "  WHERE b.ugid = #{ugid} AND b.binding_type = 'EXCLUDE'",
             ")",
-            "WHERE b.ugid = #{ugid}"
+            "SELECT tgid, ",
+            "  CASE ",
+            "    WHEN EXISTS(SELECT 1 FROM included_terminals i WHERE i.tgid = t.tgid)",
+            "     AND NOT EXISTS(SELECT 1 FROM excluded_terminals e WHERE e.tgid = t.tgid)",
+            "    THEN 1 ELSE 0 END as has_permission",
+            "FROM (",
+            "  <foreach collection='tgids' item='tgid' separator=' UNION ALL '>",
+            "    SELECT #{tgid} as tgid",
+            "  </foreach>",
+            ") t",
+            "</script>"
     })
-    List<Long> selectAccessibleTerminalGroupIds(@Param("ugid") Long ugid);
+    @Results({
+            @Result(property = "tgid", column = "tgid"),
+            @Result(property = "hasPermission", column = "has_permission")
+    })
+    List<TerminalGroupPermissionResult> batchCheckPermissions(@Param("ugid") Long ugid, @Param("tgids") List<Long> tgids);
+    
+    /**
+     * 权限校验结果
+     */
+    class TerminalGroupPermissionResult {
+        private Long tgid;
+        private Boolean hasPermission;
+        
+        public Long getTgid() { return tgid; }
+        public void setTgid(Long tgid) { this.tgid = tgid; }
+        public Boolean getHasPermission() { return hasPermission; }
+        public void setHasPermission(Boolean hasPermission) { this.hasPermission = hasPermission; }
+    }
 
     /**
      * 批量插入绑定（支持新的binding_type字段）
@@ -64,7 +131,7 @@ public interface UserGroupTerminalGroupBindingMapper extends BaseMapper<UserGrou
     int insertBatchSomeColumn(@Param("bindings") List<UserGroupTerminalGroupBindingDO> bindings);
 
     /**
-     * 获取用户组权限绑定详细信息（包含终端组信息）
+     * 获取用户组权限绑定详细信息（包含终端组信息和binding_type）
      */
     @Select({
             "SELECT b.*, tg.name as terminal_group_name, tg.path as terminal_group_path,",
@@ -73,7 +140,7 @@ public interface UserGroupTerminalGroupBindingMapper extends BaseMapper<UserGrou
             "FROM user_group_terminal_group_rel b",
             "LEFT JOIN terminal_group tg ON b.tgid = tg.tgid",
             "WHERE b.ugid = #{ugid}",
-            "ORDER BY tg.depth, tg.path"
+            "ORDER BY b.binding_type DESC, tg.depth, tg.path"
     })
     @Results({
             @Result(property = "bindingId", column = "binding_id"),

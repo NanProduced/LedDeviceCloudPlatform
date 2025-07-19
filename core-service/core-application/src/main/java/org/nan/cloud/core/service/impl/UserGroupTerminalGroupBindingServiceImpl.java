@@ -28,8 +28,8 @@ public class UserGroupTerminalGroupBindingServiceImpl implements UserGroupTermin
 
     @Override
     public List<Long> getAccessibleTerminalGroupIds(Long ugid) {
-        // 获取用户组的所有绑定关系
-        List<UserGroupTerminalGroupBinding> allBindings = bindingRepository.getUserGroupBindings(ugid);
+        // 获取用户组的所有原始绑定关系（包含INCLUDE/EXCLUDE类型）
+        List<UserGroupTerminalGroupBinding> allBindings = bindingRepository.getRawUserGroupBindings(ugid);
         
         // 计算包含的终端组ID集合
         Set<Long> includedTerminalGroupIds = new HashSet<>();
@@ -100,8 +100,8 @@ public class UserGroupTerminalGroupBindingServiceImpl implements UserGroupTermin
                 request.getPermissionBindings() != null ? request.getPermissionBindings().size() : 0,
                 request.getEnableRedundancyOptimization());
         
-        // 获取当前用户组的所有绑定关系
-        List<UserGroupTerminalGroupBinding> currentBindings = bindingRepository.getUserGroupBindings(request.getUgid());
+        // 获取当前用户组的所有绑定关系（包含INCLUDE/EXCLUDE类型）
+        List<UserGroupTerminalGroupBinding> currentBindings = bindingRepository.getRawUserGroupBindings(request.getUgid());
         int originalCount = currentBindings.size();
         
         log.info("[权限表达式更新] 当前用户组绑定状态 - 用户组ID: {}, 现有绑定数量: {}", 
@@ -484,11 +484,8 @@ public class UserGroupTerminalGroupBindingServiceImpl implements UserGroupTermin
                             .includeChildren(binding.getIncludeSub())
                             .depth(terminalGroup != null ? calculateDepth(terminalGroup.getPath()) : 0)
                             .parentTgid(terminalGroup != null ? terminalGroup.getParent() : null)
-                            .childCount(0) // TODO: 计算子组数量
-                            .effectiveStatus("EFFECTIVE")
                             .createTime(binding.getCreateTime())
                             .updateTime(binding.getUpdateTime())
-                            .creator("系统") // TODO: 从用户信息获取
                             .build();
                 })
                 .collect(Collectors.toList());
@@ -508,8 +505,7 @@ public class UserGroupTerminalGroupBindingServiceImpl implements UserGroupTermin
         int includeChildrenBindings = (int) bindings.stream()
                 .filter(UserGroupTerminalGroupBinding::getIncludeSub)
                 .count();
-        
-        // TODO: 实现更复杂的统计逻辑
+
         // 简化实现
         int maxDepth = bindings.stream()
                 .map(UserGroupTerminalGroupBinding::getTgid)
@@ -526,7 +522,6 @@ public class UserGroupTerminalGroupBindingServiceImpl implements UserGroupTermin
                 .includeChildrenBindings(includeChildrenBindings)
                 .totalCoveredTerminalGroups(totalBindings)
                 .maxDepth(maxDepth)
-                .coveragePercentage(85.5) // TODO: 实现真实的覆盖率计算
                 .build();
     }
 

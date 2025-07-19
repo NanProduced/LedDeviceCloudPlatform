@@ -3,6 +3,7 @@ package org.nan.cloud.core.facade;
 import lombok.RequiredArgsConstructor;
 import org.apache.commons.collections4.CollectionUtils;
 import org.nan.cloud.common.basic.exception.ExceptionEnum;
+import org.nan.cloud.common.basic.model.BindingType;
 import org.nan.cloud.common.basic.model.PageRequestDTO;
 import org.nan.cloud.common.basic.model.PageVO;
 import org.nan.cloud.common.web.context.InvocationContextHolder;
@@ -13,18 +14,20 @@ import org.nan.cloud.core.api.DTO.req.*;
 import org.nan.cloud.core.api.DTO.res.*;
 import org.nan.cloud.core.aspect.SkipOrgManagerPermissionCheck;
 import org.nan.cloud.core.converter.TerminalGroupConverter;
+import org.nan.cloud.core.converter.UserTerminalGroupBindingConverter;
 import org.nan.cloud.core.domain.Organization;
 import org.nan.cloud.core.domain.TerminalGroup;
-import org.nan.cloud.core.exception.BusinessException;
 import org.nan.cloud.core.service.*;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
+import lombok.extern.slf4j.Slf4j;
 
 import java.util.*;
 import java.util.stream.Collectors;
 
 @Component
 @RequiredArgsConstructor
+@Slf4j
 public class TerminalGroupFacade {
 
     private final TerminalGroupService terminalGroupService;
@@ -32,6 +35,7 @@ public class TerminalGroupFacade {
     private final OrgService orgService;
     private final PermissionChecker permissionChecker;
     private final TerminalGroupConverter terminalGroupConverter;
+    private final UserTerminalGroupBindingConverter  userTerminalGroupBindingConverter;
 
     public TerminalGroupTreeResponse getTerminalGroupTree() {
         RequestUserInfo userInfo = InvocationContextHolder.getContext().getRequestUser();
@@ -40,7 +44,7 @@ public class TerminalGroupFacade {
         // 获取组织信息
         Organization organization = orgService.getOrgByOid(oid);
         
-        // 获取用户可访问的终端组ID列表（已去重）
+        // 获取用户可访问的终端组ID列表（通过Service层计算INCLUDE/EXCLUDE权限）
         List<Long> accessibleTerminalGroupIds = bindingService.getAccessibleTerminalGroupIds(userInfo.getUgid());
         
         // 构建终端组树列表
@@ -97,28 +101,6 @@ public class TerminalGroupFacade {
                 .build();
         
         terminalGroupService.updateTerminalGroup(updateDTO);
-    }
-
-    public PageVO<TerminalGroupListResponse> searchTerminalGroup(PageRequestDTO<SearchTerminalGroupRequest> requestDTO) {
-        RequestUserInfo userInfo = InvocationContextHolder.getContext().getRequestUser();
-        // 根据终端组名关键词搜索当前用户有权限的终端组
-        SearchTerminalGroupDTO searchDTO = SearchTerminalGroupDTO.builder()
-                .keyword(requestDTO.getParams().getKeyword())
-                .oid(userInfo.getOid())
-                .ugid(userInfo.getUgid())
-                .build();
-        
-        PageVO<TerminalGroup> terminalGroupPage = terminalGroupService.searchAccessibleTerminalGroups(requestDTO.getPageNum(), requestDTO.getPageSize(), searchDTO);
-        if (CollectionUtils.isEmpty(terminalGroupPage.getRecords())) {
-            return PageVO.empty();
-        }
-        return terminalGroupPage.map(e -> TerminalGroupListResponse.builder()
-                .tgid(e.getTgid())
-                .terminalGroupName(e.getName())
-                .parent(e.getParent())
-                .description(e.getDescription())
-                .createTime(e.getCreateTime())
-                .build());
     }
 
     public TerminalGroupDetailResponse getTerminalGroupDetail(Long tgid) {
@@ -217,169 +199,305 @@ public class TerminalGroupFacade {
         RequestUserInfo userInfo = InvocationContextHolder.getContext().getRequestUser();
         ExceptionEnum.ORG_PERMISSION_DENIED.throwIf(!permissionChecker.ifTargetUserGroupIsTheSameOrg(userInfo.getUgid(), request.getUgid()));
         // 权限检查：确保操作用户有权限修改目标用户组的绑定
-        permissionChecker.canModifyUserGroupTerminalGroupBinding(
-                userInfo.getUid(), userInfo.getUgid(), request.getUgid(), null);
+        List<Long> targetTgids = request.getPermissionBindings().stream().map(PermissionExpressionRequest.PermissionBinding::getTgid).toList();
+        permissionChecker.canModifyUserGroupTerminalGroupBinding(userInfo.getOid(), userInfo.getUgid(), request.getUgid(), targetTgids);
         
         // 转换为内部DTO
-        PermissionExpressionDTO internalRequest = convertToPermissionExpressionDTO(request, userInfo);
+        PermissionExpressionDTO internalRequest = userTerminalGroupBindingConverter.convertToPermissionExpressionDTO(request, userInfo);
         
         // 执行权限表达式更新
         PermissionExpressionResultDTO result = bindingService.updatePermissionExpression(internalRequest);
         
         // 转换为响应对象
-        return convertToPermissionExpressionResponse(result);
+        return userTerminalGroupBindingConverter.convertToPermissionExpressionResponse(result);
     }
 
-    public UserGroupPermissionStatusResponse getUserGroupPermissionStatus(Long ugid) {
+
+    public UserGroupPermissionStatusResponse getUserGroupPermissionStatus(Long targetUgid) {
         RequestUserInfo userInfo = InvocationContextHolder.getContext().getRequestUser();
+        boolean ifSelfUgid = userInfo.getUgid().equals(targetUgid);
+        boolean isOrgManager = InvocationContextHolder.ifOrgManager();
         
         // 权限检查：确保操作用户有权限查看目标用户组的权限状态
-        permissionChecker.canViewUserGroupTerminalGroupBinding(
-                userInfo.getUid(), userInfo.getUgid(), ugid);
-        
-        // 获取权限状态
-        UserGroupPermissionStatusDTO result = bindingService.getUserGroupPermissionStatus(ugid);
-        
-        // 转换为响应对象
-        return convertToUserGroupPermissionStatusResponse(result);
-    }
-
-    /**
-     * 转换权限表达式请求为内部DTO
-     */
-    private PermissionExpressionDTO convertToPermissionExpressionDTO(PermissionExpressionRequest request, RequestUserInfo userInfo) {
-        List<PermissionExpressionDTO.PermissionBindingDTO> permissionBindings = request.getPermissionBindings().stream()
-                .map(binding -> {
-                    PermissionExpressionDTO.PermissionBindingDTO bindingDTO = new PermissionExpressionDTO.PermissionBindingDTO();
-                    bindingDTO.setTgid(binding.getTgid());
-                    bindingDTO.setBindingType(binding.getBindingType());
-                    bindingDTO.setIncludeChildren(binding.getIncludeChildren());
-                    bindingDTO.setRemarks(binding.getRemarks());
-                    return bindingDTO;
-                })
-                .collect(Collectors.toList());
-        
-        PermissionExpressionDTO internalRequest = new PermissionExpressionDTO();
-        internalRequest.setUgid(request.getUgid());
-        internalRequest.setPermissionBindings(permissionBindings);
-        internalRequest.setDescription(request.getDescription());
-        internalRequest.setEnableRedundancyOptimization(request.getEnableRedundancyOptimization());
-        internalRequest.setOperatorId(userInfo.getUid());
-        internalRequest.setOid(userInfo.getOid());
-        
-        return internalRequest;
-    }
-
-    /**
-     * 转换权限表达式结果为响应对象
-     */
-    private PermissionExpressionResponse convertToPermissionExpressionResponse(PermissionExpressionResultDTO result) {
-        PermissionExpressionResponse response = new PermissionExpressionResponse();
-        response.setSuccess(result.getSuccess());
-        response.setMessage(result.getMessage());
-        response.setUgid(result.getUgid());
-        response.setOperationTime(result.getOperationTime());
-        
-        // 转换统计信息
-        if (result.getStatistics() != null) {
-            PermissionExpressionResponse.OperationStatistics statistics = new PermissionExpressionResponse.OperationStatistics();
-            statistics.setOriginalCount(result.getStatistics().getOriginalCount());
-            statistics.setOptimizedCount(result.getStatistics().getOptimizedCount());
-            statistics.setRedundancyRemoved(result.getStatistics().getRedundancyRemoved());
-            statistics.setAddedCount(result.getStatistics().getAddedCount());
-            statistics.setUpdatedCount(result.getStatistics().getUpdatedCount());
-            statistics.setDeletedCount(result.getStatistics().getDeletedCount());
-            statistics.setOptimizationRatio(result.getStatistics().getOptimizationRatio());
-            response.setStatistics(statistics);
+        if (!ifSelfUgid) {
+            permissionChecker.canViewUserGroupTerminalGroupBinding(userInfo.getOid(), userInfo.getUgid(), targetUgid);
         }
         
-        // 转换优化后的绑定列表
-        if (result.getOptimizedBindings() != null) {
-            List<PermissionExpressionResponse.OptimizedBinding> optimizedBindings = result.getOptimizedBindings().stream()
-                    .map(binding -> {
-                        PermissionExpressionResponse.OptimizedBinding optimizedBinding = new PermissionExpressionResponse.OptimizedBinding();
-                        optimizedBinding.setTgid(binding.getTgid());
-                        optimizedBinding.setTerminalGroupName(binding.getTerminalGroupName());
-                        optimizedBinding.setBindingType(binding.getBindingType());
-                        optimizedBinding.setIncludeChildren(binding.getIncludeChildren());
-                        optimizedBinding.setDepth(binding.getDepth());
-                        optimizedBinding.setParentTgid(binding.getParentTgid());
-                        optimizedBinding.setOptimized(binding.getOptimized());
-                        return optimizedBinding;
-                    })
+        // 高效策略：先计算可见权限范围，再获取和构造响应
+        Set<Long> visibleTgids = null;
+        if (!ifSelfUgid && !isOrgManager) {
+            // 非本人且非组织管理员：需要计算可见权限范围
+            log.debug("[权限继承] 开始计算可见权限范围 - 操作者: {}, 目标: {}", userInfo.getUgid(), targetUgid);
+            
+            UserGroupPermissionStatusDTO operatorUgStatus = bindingService.getUserGroupPermissionStatus(userInfo.getUgid());
+            visibleTgids = getVisibleTerminalGroupIds(operatorUgStatus);
+            
+            log.debug("[权限继承] 操作者可见权限 - 操作者: {}, 可见数量: {}", userInfo.getUgid(), visibleTgids.size());
+            
+            if (visibleTgids.isEmpty()) {
+                // 操作者无任何可见权限，直接返回空结果
+                log.warn("[权限继承] 操作者无可见权限 - 操作者: {}, 目标: {}", userInfo.getUgid(), targetUgid);
+                return createEmptyPermissionStatusResponse(targetUgid);
+            }
+        }
+        
+        // 获取目标用户组的权限状态
+        UserGroupPermissionStatusDTO targetUgStatus = bindingService.getUserGroupPermissionStatus(targetUgid);
+        
+        // 高效过滤：在DTO转换前先过滤数据
+        if (visibleTgids != null) {
+            targetUgStatus = filterPermissionStatusByVisibleScope(targetUgStatus, visibleTgids, userInfo.getUgid(), targetUgid);
+        }
+        
+        // 转换为响应对象（只需转换一次）
+        return userTerminalGroupBindingConverter.convertToUserGroupPermissionStatusResponse(targetUgStatus);
+    }
+    
+    /**
+     * 高效权限过滤：按可见权限范围过滤目标用户组的权限状态
+     * 优化策略：先过滤数据，再进行统计计算，减少不必要的计算开销
+     * 
+     * @param targetUgStatus 目标用户组的权限状态
+     * @param visibleTgids 操作者可见的终端组ID集合
+     * @param operatorUgid 操作者用户组ID
+     * @param targetUgid 目标用户组ID
+     * @return 过滤后的权限状态
+     */
+    private UserGroupPermissionStatusDTO filterPermissionStatusByVisibleScope(
+            UserGroupPermissionStatusDTO targetUgStatus, 
+            Set<Long> visibleTgids,
+            Long operatorUgid,
+            Long targetUgid) {
+        
+        try {
+            List<UserGroupPermissionStatusDTO.PermissionBindingStatusDTO> originalBindings = 
+                    targetUgStatus.getPermissionBindings() != null ? targetUgStatus.getPermissionBindings() : Collections.emptyList();
+            
+            // 高效过滤：只保留可见的终端组绑定
+            List<UserGroupPermissionStatusDTO.PermissionBindingStatusDTO> filteredBindings = 
+                    originalBindings.stream()
+                    .filter(binding -> visibleTgids.contains(binding.getTgid()))
                     .collect(Collectors.toList());
-            response.setOptimizedBindings(optimizedBindings);
+            
+            log.debug("[权限过滤] 绑定过滤结果 - 操作者: {}, 目标: {}, 原始: {}, 过滤后: {}", 
+                    operatorUgid, targetUgid, originalBindings.size(), filteredBindings.size());
+            
+            // 一次性计算过滤后的统计信息
+            UserGroupPermissionStatusDTO.BindingStatisticsDTO filteredStatistics = 
+                    calculateStatisticsEfficiently(filteredBindings);
+            
+            // 构建过滤后的权限状态
+            return UserGroupPermissionStatusDTO.builder()
+                    .ugid(targetUgStatus.getUgid())
+                    .userGroupName(targetUgStatus.getUserGroupName())
+                    .permissionBindings(filteredBindings)
+                    .statistics(filteredStatistics)
+                    .lastUpdateTime(targetUgStatus.getLastUpdateTime())
+                    .build();
+            
+        } catch (Exception e) {
+            log.error("[权限过滤] 权限过滤失败 - 操作者: {}, 目标: {}, 错误: {}", 
+                    operatorUgid, targetUgid, e.getMessage(), e);
+            // 异常情况下返回空结果，保证安全
+            return createEmptyPermissionStatus(targetUgStatus.getUgid());
         }
-        
-        // 转换操作详情
-        if (result.getOperationDetails() != null) {
-            List<PermissionExpressionResponse.OperationDetail> operationDetails = result.getOperationDetails().stream()
-                    .map(detail -> {
-                        PermissionExpressionResponse.OperationDetail operationDetail = new PermissionExpressionResponse.OperationDetail();
-                        operationDetail.setTgid(detail.getTgid());
-                        operationDetail.setTerminalGroupName(detail.getTerminalGroupName());
-                        operationDetail.setOperationType(detail.getOperationType());
-                        operationDetail.setOldBinding(detail.getOldBinding());
-                        operationDetail.setNewBinding(detail.getNewBinding());
-                        operationDetail.setReason(detail.getReason());
-                        operationDetail.setSuccess(detail.getSuccess());
-                        operationDetail.setErrorMessage(detail.getErrorMessage());
-                        return operationDetail;
-                    })
-                    .collect(Collectors.toList());
-            response.setOperationDetails(operationDetails);
-        }
-        
-        return response;
     }
-
+    
     /**
-     * 转换用户组权限状态为响应对象
+     * 获取用户组的可见终端组ID集合
+     * 基于INCLUDE/EXCLUDE绑定类型计算最终的可见权限
      */
-    private UserGroupPermissionStatusResponse convertToUserGroupPermissionStatusResponse(UserGroupPermissionStatusDTO result) {
+    private Set<Long> getVisibleTerminalGroupIds(UserGroupPermissionStatusDTO ugStatus) {
+        if (ugStatus.getPermissionBindings() == null) {
+            return Collections.emptySet();
+        }
+        
+        Set<Long> includedTgids = new HashSet<>();
+        Set<Long> excludedTgids = new HashSet<>();
+        
+        // 处理INCLUDE绑定
+        for (UserGroupPermissionStatusDTO.PermissionBindingStatusDTO binding : ugStatus.getPermissionBindings()) {
+            if (binding.getBindingType() == BindingType.INCLUDE) {
+                includedTgids.add(binding.getTgid());
+                
+                // 处理包含子组的情况
+                if (binding.getIncludeChildren()) {
+                    Set<Long> childTgids = getChildTerminalGroupIds(binding.getTgid());
+                    includedTgids.addAll(childTgids);
+                }
+            }
+        }
+        
+        // 处理EXCLUDE绑定
+        for (UserGroupPermissionStatusDTO.PermissionBindingStatusDTO binding : ugStatus.getPermissionBindings()) {
+            if (binding.getBindingType() == BindingType.EXCLUDE) {
+                excludedTgids.add(binding.getTgid());
+                
+                // 处理包含子组的情况
+                if (binding.getIncludeChildren()) {
+                    Set<Long> childTgids = getChildTerminalGroupIds(binding.getTgid());
+                    excludedTgids.addAll(childTgids);
+                }
+            }
+        }
+        
+        // 计算最终可见权限：INCLUDE - EXCLUDE
+        includedTgids.removeAll(excludedTgids);
+        
+        return includedTgids;
+    }
+    
+    /**
+     * 获取终端组的所有子组ID
+     */
+    private Set<Long> getChildTerminalGroupIds(Long parentTgid) {
+        try {
+            List<TerminalGroup> childGroups = terminalGroupService.getChildGroups(parentTgid);
+            return childGroups.stream()
+                    .map(TerminalGroup::getTgid)
+                    .collect(Collectors.toSet());
+        } catch (Exception e) {
+            log.warn("[权限过滤] 获取子终端组失败 - 父组ID: {}, 错误: {}", parentTgid, e.getMessage());
+            return Collections.emptySet();
+        }
+    }
+    
+    /**
+     * 重新计算过滤后的统计信息
+     */
+    private UserGroupPermissionStatusDTO.BindingStatisticsDTO recalculateStatistics(
+            List<UserGroupPermissionStatusDTO.PermissionBindingStatusDTO> filteredBindings) {
+        
+        int totalBindings = filteredBindings.size();
+        int includeBindings = (int) filteredBindings.stream()
+                .filter(b -> b.getBindingType() == BindingType.INCLUDE)
+                .count();
+        int excludeBindings = totalBindings - includeBindings;
+        int includeChildrenBindings = (int) filteredBindings.stream()
+                .filter(UserGroupPermissionStatusDTO.PermissionBindingStatusDTO::getIncludeChildren)
+                .count();
+        
+        int maxDepth = filteredBindings.stream()
+                .mapToInt(UserGroupPermissionStatusDTO.PermissionBindingStatusDTO::getDepth)
+                .max()
+                .orElse(0);
+        
+        // 计算实际覆盖的终端组数量（简化版）
+        int totalCoveredTerminalGroups = totalBindings;
+        
+        return UserGroupPermissionStatusDTO.BindingStatisticsDTO.builder()
+                .totalBindings(totalBindings)
+                .includeBindings(includeBindings)
+                .excludeBindings(excludeBindings)
+                .includeChildrenBindings(includeChildrenBindings)
+                .totalCoveredTerminalGroups(totalCoveredTerminalGroups)
+                .maxDepth(maxDepth)
+                .build();
+    }
+    
+    /**
+     * 创建空的权限状态（当操作者无任何可见权限时）
+     */
+    private UserGroupPermissionStatusDTO createEmptyPermissionStatus(Long ugid) {
+        UserGroupPermissionStatusDTO.BindingStatisticsDTO emptyStatistics = 
+                UserGroupPermissionStatusDTO.BindingStatisticsDTO.builder()
+                .totalBindings(0)
+                .includeBindings(0)
+                .excludeBindings(0)
+                .includeChildrenBindings(0)
+                .totalCoveredTerminalGroups(0)
+                .maxDepth(0)
+                .build();
+        
+        return UserGroupPermissionStatusDTO.builder()
+                .ugid(ugid)
+                .userGroupName("用户组")
+                .permissionBindings(Collections.emptyList())
+                .statistics(emptyStatistics)
+                .lastUpdateTime(null)
+                .build();
+    }
+    
+    /**
+     * 高效计算统计信息（一次遍历完成所有计算）
+     */
+    private UserGroupPermissionStatusDTO.BindingStatisticsDTO calculateStatisticsEfficiently(
+            List<UserGroupPermissionStatusDTO.PermissionBindingStatusDTO> filteredBindings) {
+        
+        if (filteredBindings.isEmpty()) {
+            return createEmptyStatistics();
+        }
+        
+        // 一次遍历计算所有统计数据
+        int totalBindings = filteredBindings.size();
+        int includeBindings = 0;
+        int includeChildrenBindings = 0;
+        int maxDepth = 0;
+        
+        for (UserGroupPermissionStatusDTO.PermissionBindingStatusDTO binding : filteredBindings) {
+            // 统计INCLUDE绑定
+            if (binding.getBindingType() == BindingType.INCLUDE) {
+                includeBindings++;
+            }
+            
+            // 统计包含子组的绑定
+            if (binding.getIncludeChildren() != null && binding.getIncludeChildren()) {
+                includeChildrenBindings++;
+            }
+            
+            // 计算最大深度
+            if (binding.getDepth() != null && binding.getDepth() > maxDepth) {
+                maxDepth = binding.getDepth();
+            }
+        }
+        
+        int excludeBindings = totalBindings - includeBindings;
+        
+        return UserGroupPermissionStatusDTO.BindingStatisticsDTO.builder()
+                .totalBindings(totalBindings)
+                .includeBindings(includeBindings)
+                .excludeBindings(excludeBindings)
+                .includeChildrenBindings(includeChildrenBindings)
+                .totalCoveredTerminalGroups(totalBindings) // 简化计算
+                .maxDepth(maxDepth)
+                .build();
+    }
+    
+    /**
+     * 创建空的权限状态响应（直接返回Response对象，避免DTO转换）
+     */
+    private UserGroupPermissionStatusResponse createEmptyPermissionStatusResponse(Long ugid) {
         UserGroupPermissionStatusResponse response = new UserGroupPermissionStatusResponse();
-        response.setUgid(result.getUgid());
-        response.setUserGroupName(result.getUserGroupName());
-        response.setLastUpdateTime(result.getLastUpdateTime());
+        response.setUgid(ugid);
+        response.setUserGroupName("用户组");
+        response.setPermissionBindings(Collections.emptyList());
+        response.setLastUpdateTime(null);
         
-        // 转换权限绑定状态列表
-        if (result.getPermissionBindings() != null) {
-            List<UserGroupPermissionStatusResponse.PermissionBindingStatus> permissionBindings = result.getPermissionBindings().stream()
-                    .map(binding -> {
-                        UserGroupPermissionStatusResponse.PermissionBindingStatus bindingStatus = new UserGroupPermissionStatusResponse.PermissionBindingStatus();
-                        bindingStatus.setBindingId(binding.getBindingId());
-                        bindingStatus.setTgid(binding.getTgid());
-                        bindingStatus.setTerminalGroupName(binding.getTerminalGroupName());
-                        bindingStatus.setTerminalGroupPath(binding.getTerminalGroupPath());
-                        bindingStatus.setBindingType(binding.getBindingType());
-                        bindingStatus.setIncludeChildren(binding.getIncludeChildren());
-                        bindingStatus.setDepth(binding.getDepth());
-                        bindingStatus.setParentTgid(binding.getParentTgid());
-                        bindingStatus.setChildCount(binding.getChildCount());
-                        bindingStatus.setEffectiveStatus(binding.getEffectiveStatus());
-                        bindingStatus.setCreateTime(binding.getCreateTime());
-                        bindingStatus.setUpdateTime(binding.getUpdateTime());
-                        bindingStatus.setCreator(binding.getCreator());
-                        bindingStatus.setRemarks(binding.getRemarks());
-                        return bindingStatus;
-                    })
-                    .collect(Collectors.toList());
-            response.setPermissionBindings(permissionBindings);
-        }
-        
-        // 转换统计信息
-        if (result.getStatistics() != null) {
-            UserGroupPermissionStatusResponse.BindingStatistics statistics = new UserGroupPermissionStatusResponse.BindingStatistics();
-            statistics.setTotalBindings(result.getStatistics().getTotalBindings());
-            statistics.setIncludeBindings(result.getStatistics().getIncludeBindings());
-            statistics.setExcludeBindings(result.getStatistics().getExcludeBindings());
-            statistics.setIncludeChildrenBindings(result.getStatistics().getIncludeChildrenBindings());
-            statistics.setTotalCoveredTerminalGroups(result.getStatistics().getTotalCoveredTerminalGroups());
-            statistics.setMaxDepth(result.getStatistics().getMaxDepth());
-            statistics.setCoveragePercentage(result.getStatistics().getCoveragePercentage());
-            response.setStatistics(statistics);
-        }
+        // 直接创建空统计信息
+        UserGroupPermissionStatusResponse.BindingStatistics emptyStats = new UserGroupPermissionStatusResponse.BindingStatistics();
+        emptyStats.setTotalBindings(0);
+        emptyStats.setIncludeBindings(0);
+        emptyStats.setExcludeBindings(0);
+        emptyStats.setIncludeChildrenBindings(0);
+        emptyStats.setTotalCoveredTerminalGroups(0);
+        emptyStats.setMaxDepth(0);
+        response.setStatistics(emptyStats);
         
         return response;
     }
+    
+    /**
+     * 创建空的统计信息
+     */
+    private UserGroupPermissionStatusDTO.BindingStatisticsDTO createEmptyStatistics() {
+        return UserGroupPermissionStatusDTO.BindingStatisticsDTO.builder()
+                .totalBindings(0)
+                .includeBindings(0)
+                .excludeBindings(0)
+                .includeChildrenBindings(0)
+                .totalCoveredTerminalGroups(0)
+                .maxDepth(0)
+                .build();
+    }
+
 }

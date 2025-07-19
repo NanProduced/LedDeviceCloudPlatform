@@ -60,16 +60,6 @@ public class TerminalGroupController implements TerminalGroupApi {
 
 
     @Operation(
-            summary = "搜索终端组",
-            description = "根据终端组名关键词搜索当前用户有权限的终端组",
-            tags = {"终端组管理"}
-    )
-    @Override
-    public PageVO<TerminalGroupListResponse> searchTerminalGroup(PageRequestDTO<SearchTerminalGroupRequest> requestDTO) {
-        return terminalGroupFacade.searchTerminalGroup(requestDTO);
-    }
-
-    @Operation(
             summary = "获取终端组详情",
             description = "根据终端组ID获取详细信息",
             tags = {"终端组管理"}

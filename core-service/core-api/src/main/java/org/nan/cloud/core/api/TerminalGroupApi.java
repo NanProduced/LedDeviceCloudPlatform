@@ -25,9 +25,6 @@ public interface TerminalGroupApi {
     @PostMapping(prefix + "/update")
     void updateTerminalGroup(@Validated @RequestBody UpdateTerminalGroupRequest updateTerminalGroupRequest);
 
-    @PostMapping(prefix + "/search")
-    PageVO<TerminalGroupListResponse> searchTerminalGroup(@Validated @RequestBody PageRequestDTO<SearchTerminalGroupRequest> requestDTO);
-
     @GetMapping(prefix + "/detail")
     TerminalGroupDetailResponse getTerminalGroupDetail(@RequestParam("tgid") Long tgid);
 

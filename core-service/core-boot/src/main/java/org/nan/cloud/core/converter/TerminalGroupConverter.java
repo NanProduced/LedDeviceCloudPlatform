@@ -19,7 +19,7 @@ public interface TerminalGroupConverter {
     @Mapping(source = "name", target = "terminalGroupName")
     TerminalGroupListResponse terminalGroup2ListResponse(TerminalGroup terminalGroup);
 
-    @Mapping(source = "name", target = "organizationName")
+    @Mapping(source = "name", target = "orgName")
     OrganizationDTO organization2OrganizationDTO(Organization organization);
     
     @Mapping(source = "name", target = "tgName")

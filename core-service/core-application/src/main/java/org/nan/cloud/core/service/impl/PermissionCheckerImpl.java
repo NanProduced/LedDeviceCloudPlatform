@@ -101,33 +101,24 @@ public class PermissionCheckerImpl implements PermissionChecker {
     }
     
     @Override
-    public boolean hasTerminalGroupAccessPermission(Long uid, Long tgid) {
-        if (PermissionCheckSkipContext.isSkip()) return true;
-        
-        // 获取用户的用户组ID
-        Long ugid = userRepository.getUserById(uid).getUgid();
-        
-        // 检查用户组是否对目标终端组有权限
-        return bindingRepository.hasTerminalGroupPermission(ugid, tgid);
-    }
-    
-    @Override
-    public void canModifyUserGroupTerminalGroupBinding(Long operatorUid, Long operatorUgid, Long targetUgid, List<Long> targetTgids) {
+    public void canModifyUserGroupTerminalGroupBinding(Long oid, Long operatorUgid, Long targetUgid, List<Long> targetTgids) {
         // 组织管理员验证操作的终端组是否是自己组织的
         if (PermissionCheckSkipContext.isSkip()) {
-            ExceptionEnum.ORG_PERMISSION_DENIED.throwIf(!terminalGroupRepository.ifTheSameOrg(operatorUid, targetTgids));
+            ExceptionEnum.ORG_PERMISSION_DENIED.throwIf(!terminalGroupRepository.ifTheSameOrg(oid, targetTgids));
         }
         else {
             // 1. 操作用户层级校验：操作用户所属的用户组必须是目标用户组的上级用户组
             ExceptionEnum.USER_GROUP_PERMISSION_DENIED.throwIf(!userGroupRepository.isAncestor(operatorUgid, targetUgid));
             // 2. 操作用户对目标终端组的权限校验：操作用户所属的用户组必须拥有目标终端组的权限
-            // todo:
+            bindingRepository.batchCheckPermissions(operatorUgid, targetTgids);
         }
     }
 
     @Override
-    public void canViewUserGroupTerminalGroupBinding(Long operatorUid, Long operatorUgid, Long targetUgid) {
-        if (PermissionCheckSkipContext.isSkip()) return;
+    public void canViewUserGroupTerminalGroupBinding(Long oid, Long operatorUgid, Long targetUgid) {
+        if (PermissionCheckSkipContext.isSkip()) {
+            ExceptionEnum.ORG_PERMISSION_DENIED.throwIf(!userGroupRepository.ifTheSameOrg(oid, targetUgid));
+        }
         // 操作用户层级校验：操作用户所属的用户组必须是目标用户组的上级用户组或同级用户组
         ExceptionEnum.USER_GROUP_PERMISSION_DENIED.throwIf(!userGroupRepository.isAncestorOrSibling(operatorUgid, targetUgid));
     }
