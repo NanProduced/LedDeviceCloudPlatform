@@ -1,0 +1,72 @@
+[
+  {
+    "source": "message.topic",
+    "destination": "message.realtime.queue",
+    "destinationType": "queue",
+    "routingKey": "message.realtime.#",
+    "description": "实时消息路由绑定"
+  },
+  {
+    "source": "device.topic", 
+    "destination": "device.event.queue",
+    "destinationType": "queue",
+    "routingKey": "device.#",
+    "description": "设备事件路由绑定"
+  },
+  {
+    "source": "user.topic",
+    "destination": "user.event.queue", 
+    "destinationType": "queue",
+    "routingKey": "user.#",
+    "description": "用户事件路由绑定"
+  },
+  {
+    "source": "business.topic",
+    "destination": "business.event.queue",
+    "destinationType": "queue", 
+    "routingKey": "business.#",
+    "description": "业务事件路由绑定"
+  },
+  {
+    "source": "system.topic",
+    "destination": "system.notification.queue",
+    "destinationType": "queue",
+    "routingKey": "system.#",
+    "description": "系统通知路由绑定"
+  },
+  {
+    "source": "dead.letter",
+    "destination": "message.failed.queue",
+    "destinationType": "queue", 
+    "routingKey": "message.failed",
+    "description": "消息失败处理绑定"
+  },
+  {
+    "source": "dead.letter",
+    "destination": "device.failed.queue",
+    "destinationType": "queue",
+    "routingKey": "device.failed",
+    "description": "设备事件失败处理绑定"
+  },
+  {
+    "source": "dead.letter",
+    "destination": "user.failed.queue",
+    "destinationType": "queue",
+    "routingKey": "user.failed", 
+    "description": "用户事件失败处理绑定"
+  },
+  {
+    "source": "dead.letter",
+    "destination": "business.failed.queue",
+    "destinationType": "queue",
+    "routingKey": "business.failed",
+    "description": "业务事件失败处理绑定"
+  },
+  {
+    "source": "dead.letter",
+    "destination": "system.failed.queue",
+    "destinationType": "queue",
+    "routingKey": "system.failed",
+    "description": "系统事件失败处理绑定"
+  }
+]

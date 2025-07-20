@@ -1,0 +1,86 @@
+server:
+  port: 8084
+  
+spring:
+  application:
+    name: message-service
+  profiles:
+    active: dev
+  
+  # MongoDB 配置
+  data:
+    mongodb:
+      host: 192.168.1.185
+      port: 27017
+      database: led-platform-messages
+      username: ${MONGODB_USERNAME:admin}
+      password: ${MONGODB_PASSWORD:admin123456}
+      
+  # Redis 配置  
+  redis:
+    host: 192.168.1.185
+    port: 6379
+    password: ${REDIS_PASSWORD:}
+    database: 2  # 使用数据库2专门存储消息相关数据
+    lettuce:
+      pool:
+        max-active: 20
+        max-idle: 8
+        min-idle: 0
+        
+  # RabbitMQ 配置
+  rabbitmq:
+    host: ${RABBITMQ_HOST:192.168.1.185}
+    port: ${RABBITMQ_PORT:5672}
+    username: ${RABBITMQ_USERNAME:admin}
+    password: ${RABBITMQ_PASSWORD:admin123456}
+    virtual-host: ${RABBITMQ_VHOST:/led-platform}
+    publisher-confirm-type: correlated
+    publisher-returns: true
+    listener:
+      simple:
+        acknowledge-mode: manual
+        retry:
+          enabled: true
+          initial-interval: 1000
+          max-attempts: 3
+          max-interval: 5000
+          multiplier: 2.0
+          
+  # Nacos 服务发现和配置中心
+  cloud:
+    nacos:
+      discovery:
+        server-addr: 192.168.1.185:8848
+        namespace: 1e90921e-70cf-4745-87ed-dd165319ff3a
+        group: DEFAULT_GROUP
+      config:
+        server-addr: 192.168.1.185:8848
+        namespace: 1e90921e-70cf-4745-87ed-dd165319ff3a
+        group: DEFAULT_GROUP
+        file-extension: yml
+        
+# 管理和监控配置
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,metrics,prometheus,websocket
+  endpoint:
+    health:
+      show-details: always
+  metrics:
+    export:
+      prometheus:
+        enabled: true
+        
+# 日志配置
+logging:
+  level:
+    org.nan.cloud.message: DEBUG
+    org.springframework.web.socket: DEBUG
+    org.springframework.amqp: INFO
+    org.springframework.data.mongodb: INFO
+  pattern:
+    console: "%d{yyyy-MM-dd HH:mm:ss} [%thread] %-5level [%logger{50}] - %msg%n"
+    file: "%d{yyyy-MM-dd HH:mm:ss} [%thread] %-5level [%logger{50}] - %msg%n"

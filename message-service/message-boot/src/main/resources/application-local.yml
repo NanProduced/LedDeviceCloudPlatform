@@ -1,0 +1,46 @@
+# 本地环境配置
+spring:
+  # MongoDB 本地配置
+  data:
+    mongodb:
+      host: localhost
+      port: 27017
+      database: led-platform-messages-local
+      
+  # Redis 本地配置
+  redis:
+    host: localhost
+    port: 6379
+    database: 4  # 本地环境使用数据库4
+    
+  # RabbitMQ 本地配置
+  rabbitmq:
+    host: localhost
+    port: 5672
+    username: admin
+    password: admin123456
+    virtual-host: /led-platform-local
+
+# WebSocket 本地环境配置
+websocket:
+  endpoint: /ws
+  allowed-origins: 
+    - "*"  # 本地开发允许所有源
+  heartbeat-interval: 30000
+  
+# 消息本地配置
+message:
+  default-ttl-days: 7  # 本地环境消息保留时间更短
+  batch-size: 50
+  max-retry-count: 1
+  template-cache-ttl: 600  # 本地环境缓存时间更短
+  
+# 日志配置（本地环境最详细）
+logging:
+  level:
+    org.nan.cloud.message: TRACE
+    org.springframework.web.socket: DEBUG
+    org.springframework.amqp: DEBUG
+    org.springframework.data.mongodb: DEBUG
+    org.springframework.data.redis: DEBUG
+    root: DEBUG
