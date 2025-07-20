@@ -83,7 +83,9 @@ public class TerminalGroupFacade {
         RequestUserInfo userInfo = InvocationContextHolder.getContext().getRequestUser();
         ExceptionEnum.ORG_PERMISSION_DENIED.throwIf(permissionChecker.ifTargetTerminalGroupTheSameOrg(userInfo.getOid(), tgid));
         ExceptionEnum.TERMINAL_GROUP_PERMISSION_DENIED.throwIf(permissionChecker.ifHasPermissionOnTargetTerminalGroup(userInfo.getUgid(), tgid));
-        terminalGroupService.deleteTerminalGroup(tgid, userInfo.getUid());
+        
+        // 使用带缓存清理的删除方法
+        terminalGroupService.deleteTerminalGroup(tgid, userInfo.getOid(), userInfo.getUid());
     }
 
     @Transactional
@@ -100,14 +102,17 @@ public class TerminalGroupFacade {
                 .updaterId(userInfo.getUid())
                 .build();
         
-        terminalGroupService.updateTerminalGroup(updateDTO);
+        // 使用带缓存更新的更新方法
+        terminalGroupService.updateTerminalGroup(updateDTO, userInfo.getOid());
     }
 
     public TerminalGroupDetailResponse getTerminalGroupDetail(Long tgid) {
         RequestUserInfo userInfo = InvocationContextHolder.getContext().getRequestUser();
         ExceptionEnum.ORG_PERMISSION_DENIED.throwIf(permissionChecker.ifTargetTerminalGroupTheSameOrg(userInfo.getOid(), tgid));
         ExceptionEnum.TERMINAL_GROUP_PERMISSION_DENIED.throwIf(permissionChecker.ifHasPermissionOnTargetTerminalGroup(userInfo.getUgid(), tgid));
-        TerminalGroup terminalGroup = terminalGroupService.getTerminalGroupById(tgid);
+        
+        // 使用带缓存的获取方法
+        TerminalGroup terminalGroup = terminalGroupService.getTerminalGroupById(tgid, userInfo.getOid());
         return terminalGroupConverter.terminalGroup2DetailResponse(terminalGroup);
     }
 
@@ -127,7 +132,7 @@ public class TerminalGroupFacade {
         
         // 获取所有终端组详情
         for (Long tgid : accessibleTerminalGroupIds) {
-            TerminalGroup terminalGroup = terminalGroupService.getTerminalGroupById(tgid);
+            TerminalGroup terminalGroup = terminalGroupService.getTerminalGroupById(tgid, oid);
             if (terminalGroup != null) {
                 terminalGroupMap.put(tgid, terminalGroup);
                 // 添加父组路径中的所有组ID
@@ -138,7 +143,7 @@ public class TerminalGroupFacade {
         // 获取所有相关终端组的详情
         for (Long tgid : allRelatedTerminalGroupIds) {
             if (!terminalGroupMap.containsKey(tgid)) {
-                TerminalGroup terminalGroup = terminalGroupService.getTerminalGroupById(tgid);
+                TerminalGroup terminalGroup = terminalGroupService.getTerminalGroupById(tgid, oid);
                 if (terminalGroup != null) {
                     terminalGroupMap.put(tgid, terminalGroup);
                 }

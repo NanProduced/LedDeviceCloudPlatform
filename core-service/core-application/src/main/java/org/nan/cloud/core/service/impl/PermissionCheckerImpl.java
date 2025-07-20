@@ -1,6 +1,7 @@
 package org.nan.cloud.core.service.impl;
 
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.nan.cloud.common.basic.exception.ExceptionEnum;
 import org.nan.cloud.core.manager.PermissionCheckSkipContext;
 import org.nan.cloud.core.repository.*;
@@ -10,6 +11,7 @@ import org.springframework.stereotype.Service;
 import java.util.List;
 import java.util.Set;
 
+@Slf4j
 @Service
 @RequiredArgsConstructor
 public class PermissionCheckerImpl implements PermissionChecker {
@@ -110,7 +112,10 @@ public class PermissionCheckerImpl implements PermissionChecker {
             // 1. 操作用户层级校验：操作用户所属的用户组必须是目标用户组的上级用户组
             ExceptionEnum.USER_GROUP_PERMISSION_DENIED.throwIf(!userGroupRepository.isAncestor(operatorUgid, targetUgid));
             // 2. 操作用户对目标终端组的权限校验：操作用户所属的用户组必须拥有目标终端组的权限
-            bindingRepository.batchCheckPermissions(operatorUgid, targetTgids);
+            boolean b = bindingRepository.batchCheckPermissions(operatorUgid, targetTgids).entrySet()
+                    .stream()
+                    .anyMatch(entry -> !entry.getValue());
+            ExceptionEnum.USER_GROUP_PERMISSION_DENIED.throwIf(b);
         }
     }
 

@@ -191,6 +191,8 @@ public class UserGroupTerminalGroupBindingServiceImpl implements UserGroupTermin
                 .filter(Objects::nonNull)
                 .max(LocalDateTime::compareTo)
                 .orElse(null);
+
+
         
         return UserGroupPermissionStatusDTO.builder()
                 .ugid(ugid)

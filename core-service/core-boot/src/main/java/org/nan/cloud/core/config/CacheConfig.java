@@ -1,6 +1,9 @@
 package org.nan.cloud.core.config;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.jsontype.impl.LaissezFaireSubTypeValidator;
+import com.fasterxml.jackson.databind.ObjectMapper.DefaultTyping;
+import com.fasterxml.jackson.annotation.JsonTypeInfo;
 import com.github.benmanes.caffeine.cache.AsyncCache;
 import com.github.benmanes.caffeine.cache.Caffeine;
 import org.nan.cloud.core.infrastructure.cache.CacheProperties;
@@ -55,8 +58,15 @@ public class CacheConfig {
         RedisTemplate<String, Object> template = new RedisTemplate<>();
         template.setConnectionFactory(connectionFactory);
         
-        // 使用Jackson序列化 - Spring Boot 3.x兼容写法
-        Jackson2JsonRedisSerializer<Object> serializer = new Jackson2JsonRedisSerializer<>(objectMapper, Object.class);
+        // 使用Jackson序列化 - Spring Boot 3.x兼容写法，启用类型信息
+        ObjectMapper cacheObjectMapper = objectMapper.copy();
+        cacheObjectMapper.activateDefaultTyping(
+            LaissezFaireSubTypeValidator.instance, 
+            DefaultTyping.NON_FINAL, 
+            JsonTypeInfo.As.PROPERTY
+        );
+        
+        Jackson2JsonRedisSerializer<Object> serializer = new Jackson2JsonRedisSerializer<>(cacheObjectMapper, Object.class);
         
         template.setKeySerializer(new StringRedisSerializer());
         template.setValueSerializer(serializer);
@@ -88,7 +98,8 @@ public class CacheConfig {
             .maximumSize(localConfig.getMaximumSize())
             .expireAfterWrite(localConfig.getExpireAfterWrite())
             .expireAfterAccess(localConfig.getExpireAfterAccess())
-            .refreshAfterWrite(localConfig.getRefreshAfterWrite())
+            // refreshAfterWrite 只能用于 LoadingCache，普通 AsyncCache 不支持
+            // .refreshAfterWrite(localConfig.getRefreshAfterWrite())
             .recordStats()
             .executor(cacheExecutor)
             .buildAsync();
@@ -102,7 +113,15 @@ public class CacheConfig {
     public CacheManager redisCacheManager(RedisConnectionFactory connectionFactory, 
                                          ObjectMapper objectMapper,
                                          CacheProperties cacheProperties) {
-        Jackson2JsonRedisSerializer<Object> serializer = new Jackson2JsonRedisSerializer<>(objectMapper, Object.class);
+        // 配置带类型信息的ObjectMapper
+        ObjectMapper cacheObjectMapper = objectMapper.copy();
+        cacheObjectMapper.activateDefaultTyping(
+            LaissezFaireSubTypeValidator.instance, 
+            DefaultTyping.NON_FINAL, 
+            JsonTypeInfo.As.PROPERTY
+        );
+        
+        Jackson2JsonRedisSerializer<Object> serializer = new Jackson2JsonRedisSerializer<>(cacheObjectMapper, Object.class);
         
         RedisCacheConfiguration config = RedisCacheConfiguration.defaultCacheConfig()
             .entryTtl(cacheProperties.getRedis().getDefaultTtl())

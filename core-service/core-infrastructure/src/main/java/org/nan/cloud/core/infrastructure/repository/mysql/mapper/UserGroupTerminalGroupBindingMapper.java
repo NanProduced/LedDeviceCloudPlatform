@@ -135,12 +135,13 @@ public interface UserGroupTerminalGroupBindingMapper extends BaseMapper<UserGrou
      */
     @Select({
             "SELECT b.*, tg.name as terminal_group_name, tg.path as terminal_group_path,",
-            "       tg.parent_tgid, tg.depth, ",
-            "       (SELECT COUNT(*) FROM terminal_group WHERE parent_tgid = b.tgid) as child_count",
+            "       tg.parent as parent_tgid, ",
+            "       LENGTH(tg.path) - LENGTH(REPLACE(tg.path, '|', '')) as depth,",
+            "       (SELECT COUNT(*) FROM terminal_group WHERE parent = b.tgid) as child_count",
             "FROM user_group_terminal_group_rel b",
             "LEFT JOIN terminal_group tg ON b.tgid = tg.tgid",
             "WHERE b.ugid = #{ugid}",
-            "ORDER BY b.binding_type DESC, tg.depth, tg.path"
+            "ORDER BY b.binding_type DESC, LENGTH(tg.path) - LENGTH(REPLACE(tg.path, '|', '')), tg.path"
     })
     @Results({
             @Result(property = "bindingId", column = "binding_id"),

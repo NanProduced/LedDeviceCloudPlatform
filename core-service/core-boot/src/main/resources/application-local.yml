@@ -46,6 +46,30 @@ spring:
       authentication-database: admin
       auto-index-creation: true
 
+# =================== 缓存配置 ===================
+cache:
+  # 本地缓存配置 (Caffeine)
+  local:
+    enabled: true                    # 是否启用本地缓存
+    maximum-size: 10000             # 最大缓存条目数
+    expire-after-write: 30m         # 写入后过期时间
+    expire-after-access: 10m        # 访问后过期时间
+    refresh-after-write: 20m        # 写入后刷新时间
+    record-stats: true              # 是否记录统计信息
+
+  # Redis分布式缓存配置
+  redis:
+    enabled: true                   # 是否启用Redis缓存
+    key-prefix: "core:cache:"       # 缓存键前缀
+    default-ttl: 30m               # 默认TTL
+    enable-keyspace-notifications: true  # 启用键空间通知
+
+  # 缓存同步配置
+  sync:
+    enabled: true                   # 是否启用缓存同步
+    topic: "cache:sync"            # 同步主题
+    timeout: 5s                    # 同步超时时间
+
 management:
   tracing:
     enabled: true

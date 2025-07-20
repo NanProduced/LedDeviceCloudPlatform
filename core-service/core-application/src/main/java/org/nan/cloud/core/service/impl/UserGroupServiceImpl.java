@@ -1,6 +1,7 @@
 package org.nan.cloud.core.service.impl;
 
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.nan.cloud.common.basic.exception.BusinessRefuseException;
 import org.nan.cloud.common.basic.exception.ExceptionEnum;
 import org.nan.cloud.common.basic.utils.JsonUtils;
@@ -11,31 +12,49 @@ import org.nan.cloud.core.domain.UserGroup;
 import org.nan.cloud.core.enums.UserGroupTypeEnum;
 import org.nan.cloud.core.repository.UserGroupRepository;
 import org.nan.cloud.core.repository.UserRepository;
+import org.nan.cloud.core.service.BusinessCacheService;
 import org.nan.cloud.core.service.UserGroupService;
+import org.springframework.cache.annotation.Cacheable;
+import org.springframework.cache.annotation.CacheEvict;
+import org.springframework.cache.annotation.CachePut;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.CollectionUtils;
 
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
 
+@Slf4j
 @Service
 @RequiredArgsConstructor
 public class UserGroupServiceImpl implements UserGroupService {
 
     private final UserGroupRepository userGroupRepository;
-
     private final UserRepository userRepository;
+    private final BusinessCacheService businessCacheService;
 
     @Override
     public UserGroup getUserGroupById(Long ugid) {
         return userGroupRepository.getUserGroupById(ugid);
     }
+    
+    /**
+     * 带缓存的用户组查询（需要组织ID进行缓存隔离）
+     */
+    @Override
+    @Cacheable(value = "usergroups", key = "'org:' + #oid + ':user-group:' + #ugid", unless = "#result == null")
+    public UserGroup getUserGroupById(Long oid, Long ugid) {
+        // 直接从数据库查询，缓存由Spring自动管理
+        return userGroupRepository.getUserGroupById(ugid);
+    }
 
     @Override
-    public void createUserGroup(CreateUserGroupDTO dto) {
+    @Transactional
+    public void createUserGroup(CreateUserGroupDTO dto, Long orgId) {
+        // 1. 创建用户组
         UserGroup parentGroup = userGroupRepository.getUserGroupById(dto.getParentUgid());
-        userGroupRepository.createUserGroup(UserGroup.builder()
+        UserGroup newUserGroup = userGroupRepository.createUserGroup(UserGroup.builder()
                 .oid(dto.getOid())
                 .parent(dto.getParentUgid())
                 .name(dto.getUgName())
@@ -44,10 +63,25 @@ public class UserGroupServiceImpl implements UserGroupService {
                 .ugType(UserGroupTypeEnum.NORMAL_GROUP.getType())
                 .creatorId(dto.getCreatorUid())
                 .build());
+        
+        // 2. 将新创建的用户组添加到缓存
+        this.cacheNewUserGroup(orgId, newUserGroup.getUgid(), newUserGroup);
+        
+        log.info("用户组创建: orgId={}, name={}, creatorId={}, ugid={}", orgId, dto.getUgName(), dto.getCreatorUid(), newUserGroup.getUgid());
+    }
+    
+    /**
+     * 将新创建的用户组添加到缓存
+     */
+    @CachePut(value = "usergroups", key = "'org:' + #oid + ':user-group:' + #ugid")
+    public UserGroup cacheNewUserGroup(Long oid, Long ugid, UserGroup userGroup) {
+        return userGroup;
     }
 
     @Override
-    public void deleteUserGroup(Long oid, Long ugid) {
+    @Transactional
+    public void deleteUserGroup(Long oid, Long ugid, Long orgId) {
+        // 1. 验证和删除用户组
         List<Long> allUserGroups = userGroupRepository.getAllUgidsByParent(ugid);
         List<User> users = userRepository.getUsersByUgids(oid, allUserGroups);
         if (!CollectionUtils.isEmpty(users)) {
@@ -55,7 +89,24 @@ public class UserGroupServiceImpl implements UserGroupService {
                     "refuse to delete user group",
                     JsonUtils.toJson(users.stream().map(User::getUsername).toList()));
         }
+        
+        // 2. 删除用户组前先清理缓存
+        for (Long deletedUgid : allUserGroups) {
+            this.evictUserGroupCache(orgId, deletedUgid);
+        }
+        
+        // 3. 删除用户组
         userGroupRepository.deleteUserGroupsByUgids(allUserGroups);
+        
+        log.info("用户组删除: orgId={}, ugid={}, deletedCount={}", orgId, ugid, allUserGroups.size());
+    }
+    
+    /**
+     * 清理指定用户组的缓存
+     */
+    @CacheEvict(value = "usergroups", key = "'org:' + #oid + ':user-group:' + #ugid")
+    public void evictUserGroupCache(Long oid, Long ugid) {
+        // 缓存清理由注解自动处理
     }
 
     @Override

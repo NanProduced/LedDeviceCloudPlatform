@@ -1,13 +1,30 @@
-# 测试环境配置
+# Test environment configuration
 spring:
+  # Disable Nacos configuration import
+  cloud:
+    nacos:
+      config:
+        import-check:
+          enabled: false
+        enabled: false
+      discovery:
+        enabled: false
+    openfeign:
+      enabled: false
+  config:
+    import: "optional:nacos:"
+  # Use embedded test Redis or mock
   data:
     redis:
-      # 使用内存Redis进行测试
-      host: 192.168.1.185
-      port: 6379
-      database: 15  # 使用测试数据库
-      timeout: 3000ms
-      password: Nan12091209
+      enabled: false
+  # Disable web features for unit tests
+  main:
+    web-application-type: none
+  autoconfigure:
+    exclude:
+      - org.springframework.boot.autoconfigure.data.redis.RedisAutoConfiguration
+      - org.springframework.boot.autoconfigure.data.redis.RedisRepositoriesAutoConfiguration
+      - org.springframework.cloud.openfeign.FeignAutoConfiguration
       
 cache:
   local:

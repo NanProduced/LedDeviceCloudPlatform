@@ -65,14 +65,17 @@ public class UserGroupFacade {
                 .ugName(createUserGroupRequest.getUserGroupName())
                 .description(createUserGroupRequest.getDescription())
                 .build();
-        userGroupService.createUserGroup(createUserGroupDTO);
+        
+        // 使用带缓存清理的创建方法
+        userGroupService.createUserGroup(createUserGroupDTO, requestUser.getOid());
     }
 
     @Transactional(rollbackFor = Exception.class)
     public void deleteUserGroup(Long ugid) {
         RequestUserInfo requestUser = InvocationContextHolder.getContext().getRequestUser();
         ExceptionEnum.USER_GROUP_PERMISSION_DENIED.throwIf(!permissionChecker.ifHasPermissionOnTargetUserGroup(requestUser.getUid(), ugid));
-        userGroupService.deleteUserGroup(requestUser.getOid(), ugid);
+
+        userGroupService.deleteUserGroup(requestUser.getOid(), ugid, requestUser.getOid());
     }
 
     public PageVO<UserListResponse> listUser(PageRequestDTO<QueryUserListRequest> requestDTO) {

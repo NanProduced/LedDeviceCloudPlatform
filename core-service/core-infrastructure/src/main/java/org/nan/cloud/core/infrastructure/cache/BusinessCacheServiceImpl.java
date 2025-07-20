@@ -20,35 +20,6 @@ public class BusinessCacheServiceImpl implements BusinessCacheService {
     
     private final CacheService cacheService;
     
-    // 权限相关缓存（按组织隔离）
-    @Override
-    public Boolean getUserPermission(Long userId, Long orgId, String url, String method) {
-        String key = CacheType.USER_PERMISSIONS.buildOrgKey(orgId, userId.toString(), url, method);
-        return cacheService.get(key, Boolean.class);
-    }
-    
-    @Override
-    public void cacheUserPermission(Long userId, Long orgId, String url, String method, Boolean hasPermission) {
-        String key = CacheType.USER_PERMISSIONS.buildOrgKey(orgId, userId.toString(), url, method);
-        cacheService.put(key, hasPermission, CacheType.USER_PERMISSIONS.getDefaultTtl());
-        log.debug("缓存用户权限: orgId={}, userId={}, url={}, method={}, permission={}", 
-            orgId, userId, url, method, hasPermission);
-    }
-    
-    @Override
-    public void evictUserPermissions(Long userId, Long orgId) {
-        String pattern = CacheType.USER_PERMISSIONS.buildOrgKey(orgId, userId.toString()) + ":*";
-        cacheService.evictByPattern(pattern);
-        log.debug("清理用户权限缓存: orgId={}, userId={}", orgId, userId);
-    }
-    
-    @Override
-    public void evictAllUserPermissions(Long orgId) {
-        String pattern = CacheType.USER_PERMISSIONS.buildOrgPattern(orgId);
-        cacheService.evictByPattern(pattern);
-        log.debug("清理组织内所有用户权限缓存: orgId={}", orgId);
-    }
-    
     // 用户组权限缓存
     @Override
     public <T> T getUserGroupPermissionStatus(Long ugid, Long orgId, Class<T> clazz) {
@@ -76,28 +47,37 @@ public class BusinessCacheServiceImpl implements BusinessCacheService {
         cacheService.evictByPattern(pattern);
         log.debug("清理组织内所有用户组权限缓存: orgId={}", orgId);
     }
-    
-    // 终端组缓存（按组织隔离）
+
+
+    // 用户组可见终端组列表缓存
     @Override
-    public <T> T getTerminalGroupTree(Long orgId, Class<T> clazz) {
-        String key = CacheType.TERMINAL_GROUP_TREE.buildOrgKey(orgId, "tree");
-        return cacheService.get(key, clazz);
+    @SuppressWarnings("unchecked")
+    public <T> List<T> getUserAccessibleTerminalGroupIds(Long ugid, Long orgId, Class<T> clazz) {
+        String key = CacheType.TERMINAL_GROUP_PERMISSIONS.buildOrgKey(orgId, "accessible", ugid.toString());
+        return cacheService.get(key, List.class);
     }
-    
+
     @Override
-    public void cacheTerminalGroupTree(Long orgId, Object tree) {
-        String key = CacheType.TERMINAL_GROUP_TREE.buildOrgKey(orgId, "tree");
-        cacheService.put(key, tree, CacheType.TERMINAL_GROUP_TREE.getDefaultTtl());
-        log.debug("缓存终端组树: orgId={}", orgId);
+    public void cacheUserAccessibleTerminalGroupIds(Long ugid, Long orgId, List<?> terminalGroupIds) {
+        String key = CacheType.TERMINAL_GROUP_PERMISSIONS.buildOrgKey(orgId, "accessible", ugid.toString());
+        cacheService.put(key, terminalGroupIds, CacheType.TERMINAL_GROUP_PERMISSIONS.getDefaultTtl());
+        log.debug("缓存用户组可见终端组列表: orgId={}, ugid={}, count={}", orgId, ugid, terminalGroupIds.size());
     }
-    
+
     @Override
-    public void evictTerminalGroupTree(Long orgId) {
-        String key = CacheType.TERMINAL_GROUP_TREE.buildOrgKey(orgId, "tree");
+    public void evictUserAccessibleTerminalGroupIds(Long ugid, Long orgId) {
+        String key = CacheType.TERMINAL_GROUP_PERMISSIONS.buildOrgKey(orgId, "accessible", ugid.toString());
         cacheService.evict(key);
-        log.debug("清理终端组树缓存: orgId={}", orgId);
+        log.debug("清理用户组可见终端组列表缓存: orgId={}, ugid={}", orgId, ugid);
     }
-    
+
+    @Override
+    public void evictAllUserAccessibleTerminalGroups(Long orgId) {
+        String pattern = CacheType.TERMINAL_GROUP_PERMISSIONS.buildOrgKey(orgId, "accessible") + ":*";
+        cacheService.evictByPattern(pattern);
+        log.debug("清理组织内所有用户组可见终端组缓存: orgId={}", orgId);
+    }
+
     @Override
     public <T> T getTerminalGroup(Long tgid, Long orgId, Class<T> clazz) {
         String key = CacheType.TERMINAL_GROUP_INFO.buildOrgKey(orgId, tgid.toString());
@@ -123,34 +103,6 @@ public class BusinessCacheServiceImpl implements BusinessCacheService {
         String pattern = CacheType.TERMINAL_GROUP_INFO.buildOrgPattern(orgId);
         cacheService.evictByPattern(pattern);
         log.debug("清理组织内所有终端组缓存: orgId={}", orgId);
-    }
-    
-    // 用户相关缓存（按组织隔离）
-    @Override
-    public <T> T getUser(Long userId, Long orgId, Class<T> clazz) {
-        String key = CacheType.USER_INFO.buildOrgKey(orgId, userId.toString());
-        return cacheService.get(key, clazz);
-    }
-    
-    @Override
-    public void cacheUser(Object user, Long userId, Long orgId) {
-        String key = CacheType.USER_INFO.buildOrgKey(orgId, userId.toString());
-        cacheService.put(key, user, CacheType.USER_INFO.getDefaultTtl());
-        log.debug("缓存用户信息: orgId={}, userId={}", orgId, userId);
-    }
-    
-    @Override
-    public void evictUser(Long userId, Long orgId) {
-        String key = CacheType.USER_INFO.buildOrgKey(orgId, userId.toString());
-        cacheService.evict(key);
-        log.debug("清理用户信息缓存: orgId={}, userId={}", orgId, userId);
-    }
-    
-    @Override
-    public void evictAllUsers(Long orgId) {
-        String pattern = CacheType.USER_INFO.buildOrgPattern(orgId);
-        cacheService.evictByPattern(pattern);
-        log.debug("清理组织内所有用户缓存: orgId={}", orgId);
     }
     
     @Override
@@ -180,12 +132,10 @@ public class BusinessCacheServiceImpl implements BusinessCacheService {
         log.info("开始清理组织缓存: orgId={}", orgId);
         
         // 清理各类业务缓存
-        evictAllUserPermissions(orgId);
         evictAllUserGroupPermissions(orgId);
+        evictAllUserAccessibleTerminalGroups(orgId);
         evictAllTerminalGroups(orgId);
-        evictAllUsers(orgId);
         evictUserGroups(orgId);
-        evictTerminalGroupTree(orgId);
         
         log.info("组织缓存清理完成: orgId={}", orgId);
     }
@@ -196,25 +146,5 @@ public class BusinessCacheServiceImpl implements BusinessCacheService {
         orgIds.forEach(this::evictOrganizationCache);
         log.info("批量组织缓存清理完成: count={}", orgIds.size());
     }
-    
-    // 全局缓存（不按组织隔离的系统级缓存）
-    @Override
-    public <T> T getSystemConfig(String configKey, Class<T> clazz) {
-        String key = CacheType.SYSTEM_CONFIG.buildKey(configKey);
-        return cacheService.get(key, clazz);
-    }
-    
-    @Override
-    public void cacheSystemConfig(String configKey, Object value) {
-        String key = CacheType.SYSTEM_CONFIG.buildKey(configKey);
-        cacheService.put(key, value, CacheType.SYSTEM_CONFIG.getDefaultTtl());
-        log.debug("缓存系统配置: key={}", configKey);
-    }
-    
-    @Override
-    public void evictSystemConfig(String configKey) {
-        String key = CacheType.SYSTEM_CONFIG.buildKey(configKey);
-        cacheService.evict(key);
-        log.debug("清理系统配置缓存: key={}", configKey);
-    }
+
 }

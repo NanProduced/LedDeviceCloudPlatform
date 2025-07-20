@@ -14,27 +14,18 @@ import java.time.Duration;
 public enum CacheType {
     
     // 权限相关缓存
-    USER_PERMISSIONS("user:permissions", Duration.ofMinutes(30), true, true),
-    ROLE_PERMISSIONS("role:permissions", Duration.ofHours(1), true, true),
     PERMISSION_EXPRESSION("permission:expression", Duration.ofMinutes(30), true, true),
     
-    // 组织架构缓存
-    ORGANIZATION_INFO("org:info", Duration.ofHours(2), true, true),
-    ORGANIZATION_TREE("org:tree", Duration.ofHours(1), true, true),
-    
     // 用户相关缓存
-    USER_INFO("user:info", Duration.ofMinutes(15), false, true),
     USER_GROUPS("user:groups", Duration.ofMinutes(30), true, true),
     
     // 终端组缓存
-    TERMINAL_GROUP_TREE("terminal:group:tree", Duration.ofHours(1), true, true),
     TERMINAL_GROUP_INFO("terminal:group:info", Duration.ofMinutes(30), true, true),
     TERMINAL_GROUP_PERMISSIONS("terminal:group:permissions", Duration.ofMinutes(30), true, true),
     
     // 系统配置缓存
-    SYSTEM_CONFIG("system:config", Duration.ofHours(12), true, false),
-    CASBIN_POLICY("casbin:policy", Duration.ofMinutes(30), true, true);
-    
+    SYSTEM_CONFIG("system:config", Duration.ofHours(12), true, false);
+
     private final String keyPrefix;
     private final Duration defaultTtl;
     private final boolean useLocalCache;    // 是否使用本地缓存

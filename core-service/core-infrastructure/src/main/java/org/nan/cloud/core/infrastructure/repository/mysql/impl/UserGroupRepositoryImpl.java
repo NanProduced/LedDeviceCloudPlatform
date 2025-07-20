@@ -40,6 +40,16 @@ public class UserGroupRepositoryImpl implements UserGroupRepository {
     }
 
     @Override
+    public List<UserGroup> getUserGroupsByOrgId(Long orgId) {
+        LambdaQueryWrapper<UserGroupDO> queryWrapper = new LambdaQueryWrapper<>();
+        queryWrapper.eq(UserGroupDO::getOid, orgId);
+        List<UserGroupDO> userGroupDOs = userGroupMapper.selectList(queryWrapper);
+        return userGroupDOs.stream()
+                .map(commonConverter::userGroupDO2UserGroup)
+                .collect(Collectors.toList());
+    }
+
+    @Override
     public void deleteUserGroupsByUgids(List<Long> ugids) {
         userGroupMapper.deleteByIds(ugids);
     }

@@ -62,7 +62,7 @@ public class UserFacade {
         Organization org = orgService.getOrgByOid(oid);
         resp.setOrgName(org.getName());
         // 用户组名称
-        UserGroup userGroup = userGroupService.getUserGroupById(ugid);
+        UserGroup userGroup = userGroupService.getUserGroupById(oid, ugid);
         resp.setUgName(userGroup.getName());
 
         resp.setRoles(

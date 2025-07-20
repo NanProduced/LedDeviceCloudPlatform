@@ -9,6 +9,8 @@ public interface UserGroupRepository {
     UserGroup createUserGroup(UserGroup userGroup);
 
     UserGroup getUserGroupById(Long ugid);
+    
+    List<UserGroup> getUserGroupsByOrgId(Long orgId);
 
     void deleteUserGroupsByUgids(List<Long> ugids);
 
