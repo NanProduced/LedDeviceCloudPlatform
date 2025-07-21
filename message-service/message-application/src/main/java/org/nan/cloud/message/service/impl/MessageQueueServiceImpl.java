@@ -3,7 +3,7 @@ package org.nan.cloud.message.service.impl;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.nan.cloud.message.api.event.MessageEvent;
-import org.nan.cloud.message.infrastructure.mq.publisher.MessageEventPublisher;
+import org.nan.cloud.message.repository.MessageEventRepository;
 import org.nan.cloud.message.service.MessageQueueService;
 import org.springframework.stereotype.Service;
 
@@ -18,14 +18,14 @@ import org.springframework.stereotype.Service;
 @RequiredArgsConstructor
 public class MessageQueueServiceImpl implements MessageQueueService {
     
-    private final MessageEventPublisher messageEventPublisher;
+    private final MessageEventRepository messageEventRepository;
     
     @Override
     public void publishNotification(String messageId, String title, String content, 
                                   String receiverId, String organizationId) {
         try {
             log.debug("发布通知消息: messageId={}, receiverId={}", messageId, receiverId);
-            messageEventPublisher.publishNotification(messageId, title, content, receiverId, organizationId);
+            messageEventRepository.publishNotification(messageId, title, content, receiverId, organizationId);
             log.info("✅ 通知消息发布成功: messageId={}", messageId);
         } catch (Exception e) {
             log.error("❌ 通知消息发布失败: messageId={}, error={}", messageId, e.getMessage(), e);
@@ -38,7 +38,7 @@ public class MessageQueueServiceImpl implements MessageQueueService {
                                    String organizationId) {
         try {
             log.debug("发布系统消息: messageId={}, organizationId={}", messageId, organizationId);
-            messageEventPublisher.publishSystemMessage(messageId, title, content, organizationId);
+            messageEventRepository.publishSystemMessage(messageId, title, content, organizationId);
             log.info("✅ 系统消息发布成功: messageId={}", messageId);
         } catch (Exception e) {
             log.error("❌ 系统消息发布失败: messageId={}, error={}", messageId, e.getMessage(), e);
@@ -53,7 +53,7 @@ public class MessageQueueServiceImpl implements MessageQueueService {
         try {
             log.debug("发布用户消息: messageId={}, senderId={}, receiverId={}", 
                     messageId, senderId, receiverId);
-            messageEventPublisher.publishUserMessage(messageId, title, content, 
+            messageEventRepository.publishUserMessage(messageId, title, content, 
                     senderId, senderName, receiverId, organizationId);
             log.info("✅ 用户消息发布成功: messageId={}", messageId);
         } catch (Exception e) {
@@ -68,7 +68,7 @@ public class MessageQueueServiceImpl implements MessageQueueService {
         try {
             log.debug("发布广播消息: messageId={}, senderId={}, organizationId={}", 
                     messageId, senderId, organizationId);
-            messageEventPublisher.publishBroadcast(messageId, title, content, 
+            messageEventRepository.publishBroadcast(messageId, title, content, 
                     senderId, senderName, organizationId);
             log.info("✅ 广播消息发布成功: messageId={}", messageId);
         } catch (Exception e) {
@@ -82,7 +82,7 @@ public class MessageQueueServiceImpl implements MessageQueueService {
         try {
             log.debug("发布自定义消息事件: eventId={}, messageId={}", 
                     event.getEventId(), event.getMessageId());
-            messageEventPublisher.publishEvent(event);
+            messageEventRepository.publishEvent(event);
             log.info("✅ 自定义消息事件发布成功: eventId={}", event.getEventId());
         } catch (Exception e) {
             log.error("❌ 自定义消息事件发布失败: eventId={}, error={}", 
@@ -96,7 +96,7 @@ public class MessageQueueServiceImpl implements MessageQueueService {
         try {
             log.debug("重新发布失败事件: eventId={}, retryCount={}", 
                     event.getEventId(), event.getRetryCount());
-            messageEventPublisher.republishFailedEvent(event);
+            messageEventRepository.republishFailedEvent(event);
             log.info("✅ 失败事件重新发布成功: eventId={}", event.getEventId());
         } catch (Exception e) {
             log.error("❌ 失败事件重新发布失败: eventId={}, error={}", 
