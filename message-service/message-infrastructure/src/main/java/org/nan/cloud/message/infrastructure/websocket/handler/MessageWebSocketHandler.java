@@ -294,7 +294,6 @@ public class MessageWebSocketHandler implements WebSocketHandler {
      */
     private void handlePingMessage(WebSocketSession session, PingMessage pingMessage) {
         try {
-            log.debug("收到Ping消息 - 连接ID: {}", session.getId());
             
             // WebSocket协议要求收到Ping后发送Pong响应
             session.sendMessage(new PongMessage());
@@ -312,8 +311,6 @@ public class MessageWebSocketHandler implements WebSocketHandler {
      */
     private void handlePongMessage(WebSocketSession session, PongMessage pongMessage) {
         try {
-            log.debug("收到Pong消息 - 连接ID: {}", session.getId());
-            
             // Pong消息通常用于确认连接仍然活跃
             // 可以更新连接的最后活跃时间
             

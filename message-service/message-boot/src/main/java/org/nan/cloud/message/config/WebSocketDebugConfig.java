@@ -30,11 +30,6 @@ public class WebSocketDebugConfig {
             checkBean(context, "webSocketConfig", "WebSocketConfig");
             checkBean(context, "messageWebSocketHandler", "MessageWebSocketHandler"); 
             checkBean(context, "webSocketConnectionManager", "WebSocketConnectionManager");
-            
-            // 检查配置属性Bean
-            checkBean(context, "webSocketProperties", "WebSocketProperties");
-            checkBean(context, "messageProperties", "MessageProperties");
-            
             // 检查ObjectMapper Bean（按类型）
             try {
                 var objectMapper = context.getBean(com.fasterxml.jackson.databind.ObjectMapper.class);

@@ -35,13 +35,13 @@ spring:
           min-idle: 0
           max-wait: 5s
 
-  # RabbitMQ 本地配置（临时禁用）
+  # RabbitMQ 本地配置
   rabbitmq:
     host: 192.168.1.185
     port: 5672
     username: admin
     password: Nan12091209
-    virtual-host: /led-platform-local
+    virtual-host: /  # 临时使用默认vhost，稍后创建/led-platform-local
     
   # 本地开发环境禁用部分自动配置
   autoconfigure:

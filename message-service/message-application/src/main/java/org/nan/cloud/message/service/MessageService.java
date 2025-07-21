@@ -1,4 +1,4 @@
-package org.nan.cloud.message.api.service;
+package org.nan.cloud.message.service;
 
 import org.nan.cloud.message.api.dto.websocket.WebSocketMessage;
 import org.nan.cloud.message.api.enums.MessageType;

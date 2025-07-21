@@ -5,7 +5,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.nan.cloud.message.api.dto.websocket.WebSocketMessage;
 import org.nan.cloud.message.api.enums.MessageType;
 import org.nan.cloud.message.api.enums.Priority;
-import org.nan.cloud.message.api.service.MessageService;
+import org.nan.cloud.message.service.MessageService;
 import org.nan.cloud.message.repository.WebSocketConnectionRepository;
 import org.nan.cloud.message.service.MessageQueueService;
 import org.springframework.stereotype.Service;
@@ -76,12 +76,7 @@ public class MessageServiceImpl implements MessageService {
                 log.warn("发送消息失败：用户ID为空");
                 return false;
             }
-            
-            if (message == null) {
-                log.warn("发送消息失败：消息对象为空");
-                return false;
-            }
-            
+
             // 2. 设置消息接收者信息
             message.setReceiverId(userId);
             message.setTimestamp(LocalDateTime.now());
@@ -133,12 +128,7 @@ public class MessageServiceImpl implements MessageService {
                 log.warn("广播消息失败：组织ID为空");
                 return 0;
             }
-            
-            if (message == null) {
-                log.warn("广播消息失败：消息对象为空");
-                return 0;
-            }
-            
+
             // 2. 设置消息组织信息
             message.setOrganizationId(organizationId);
             message.setTimestamp(LocalDateTime.now());
@@ -173,12 +163,7 @@ public class MessageServiceImpl implements MessageService {
     public int broadcastToAll(WebSocketMessage message) {
         try {
             log.info("向所有用户广播消息 - 消息类型: {}, 标题: {}", message.getType(), message.getTitle());
-            
-            if (message == null) {
-                log.warn("全平台广播失败：消息对象为空");
-                return 0;
-            }
-            
+
             // 设置消息时间戳
             message.setTimestamp(LocalDateTime.now());
             

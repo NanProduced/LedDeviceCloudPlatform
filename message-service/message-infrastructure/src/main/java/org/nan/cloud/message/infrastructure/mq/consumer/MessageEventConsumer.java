@@ -220,7 +220,7 @@ public class MessageEventConsumer {
                 .senderName(event.getSenderName())
                 .receiverId(event.getReceiverId())
                 .organizationId(event.getOrganizationId())
-                .timestamp(event.getTimestamp() != null ? event.getTimestamp().toString() : null)
+                .timestamp(event.getTimestamp() != null ? event.getTimestamp() : null)
                 .data(event.getData())
                 .requireAck(event.getRequireAck())
                 .expireTime(event.getExpireTime())
