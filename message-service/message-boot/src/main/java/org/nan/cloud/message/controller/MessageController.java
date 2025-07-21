@@ -3,7 +3,9 @@ package org.nan.cloud.message.controller;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.tags.Tag;
+import lombok.Getter;
 import lombok.RequiredArgsConstructor;
+import lombok.Setter;
 import lombok.extern.slf4j.Slf4j;
 import org.nan.cloud.message.api.dto.websocket.WebSocketMessage;
 import org.nan.cloud.message.service.MessageService;
@@ -57,7 +59,7 @@ public class MessageController {
     @Operation(summary = "发送消息给指定用户", description = "向特定用户发送实时消息")
     public ResponseEntity<Map<String, Object>> sendMessageToUser(
             @Parameter(description = "目标用户ID", required = true)
-            @PathVariable String userId,
+            @PathVariable("userId") String userId,
             
             @Parameter(description = "消息内容", required = true)
             @RequestBody WebSocketMessage message) {
@@ -108,7 +110,7 @@ public class MessageController {
     @Operation(summary = "组织内广播消息", description = "向指定组织内所有用户广播消息")
     public ResponseEntity<Map<String, Object>> broadcastToOrganization(
             @Parameter(description = "目标组织ID", required = true)
-            @PathVariable String organizationId,
+            @PathVariable("organizationId") String organizationId,
             
             @Parameter(description = "消息内容", required = true)
             @RequestBody WebSocketMessage message) {
@@ -279,7 +281,7 @@ public class MessageController {
     @Operation(summary = "查询用户在线状态", description = "查询指定用户的在线状态和连接信息")
     public ResponseEntity<Map<String, Object>> getUserStatus(
             @Parameter(description = "用户ID", required = true)
-            @PathVariable String userId) {
+            @PathVariable("userId") String userId) {
         
         try {
             boolean online = messageService.isUserOnline(userId);
@@ -336,38 +338,26 @@ public class MessageController {
     /**
      * 系统通知请求参数
      */
+    @Setter
+    @Getter
     public static class SystemNotificationRequest {
+        // Getters and Setters
         private String userId;          // 可选，指定用户ID
         private String organizationId;  // 必填，组织ID
         private String title;           // 必填，通知标题
         private String content;         // 必填，通知内容
-        
-        // Getters and Setters
-        public String getUserId() { return userId; }
-        public void setUserId(String userId) { this.userId = userId; }
-        
-        public String getOrganizationId() { return organizationId; }
-        public void setOrganizationId(String organizationId) { this.organizationId = organizationId; }
-        
-        public String getTitle() { return title; }
-        public void setTitle(String title) { this.title = title; }
-        
-        public String getContent() { return content; }
-        public void setContent(String content) { this.content = content; }
+
     }
     
     /**
      * 批量发送请求参数
      */
+    @Setter
+    @Getter
     public static class BatchSendRequest {
+        // Getters and Setters
         private List<String> userIds;    // 必填，目标用户ID列表
         private WebSocketMessage message; // 必填，消息内容
-        
-        // Getters and Setters
-        public List<String> getUserIds() { return userIds; }
-        public void setUserIds(List<String> userIds) { this.userIds = userIds; }
-        
-        public WebSocketMessage getMessage() { return message; }
-        public void setMessage(WebSocketMessage message) { this.message = message; }
+
     }
 }

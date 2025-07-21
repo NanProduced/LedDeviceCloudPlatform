@@ -41,7 +41,7 @@ spring:
     port: 5672
     username: admin
     password: Nan12091209
-    virtual-host: /  # 临时使用默认vhost，稍后创建/led-platform-local
+    virtual-host: /led-platform-local
     
   # 本地开发环境禁用部分自动配置
   autoconfigure:

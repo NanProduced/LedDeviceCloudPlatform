@@ -184,8 +184,8 @@ public class MessageQueueTestController {
      * 快速测试 - 发送一条简单的通知消息
      */
     @GetMapping("/quick-test")
-    public Map<String, Object> quickTest(@RequestParam(defaultValue = "test-user-001") String userId,
-                                       @RequestParam(defaultValue = "test-org-001") String orgId) {
+    public Map<String, Object> quickTest(@RequestParam(name = "userId", defaultValue = "test-user-001") String userId,
+                                       @RequestParam(name = "orgId", defaultValue = "test-org-001") String orgId) {
         try {
             String title = "队列测试消息";
             String content = "这是一条通过RabbitMQ队列发送的测试消息，时间: " + 
