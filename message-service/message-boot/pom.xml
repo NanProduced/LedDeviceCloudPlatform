@@ -20,6 +20,12 @@
             <artifactId>message-infrastructure</artifactId>
         </dependency>
         
+        <!-- Common Web 模块依赖 (提供ApiResponse等公共Web组件) -->
+        <dependency>
+            <groupId>org.nan</groupId>
+            <artifactId>common-web</artifactId>
+        </dependency>
+        
         <!-- Spring Boot Web -->
         <dependency>
             <groupId>org.springframework.boot</groupId>

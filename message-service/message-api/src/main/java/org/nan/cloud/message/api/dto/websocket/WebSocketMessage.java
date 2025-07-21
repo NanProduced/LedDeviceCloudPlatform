@@ -97,6 +97,12 @@ public class WebSocketMessage {
     private Map<String, Object> data;
     
     /**
+     * 消息元数据
+     * 存储消息的元数据信息，如会话ID、通知类型等
+     */
+    private Map<String, Object> metadata;
+    
+    /**
      * 消息是否需要确认
      * true: 需要客户端确认收到消息
      * false: 不需要确认，发送即可
@@ -115,6 +121,18 @@ public class WebSocketMessage {
      * 消息发送失败时的重试计数
      */
     private Integer retryCount;
+    
+    /**
+     * 是否紧急消息
+     * true表示紧急消息，需要立即显示和处理
+     */
+    private Boolean urgent;
+    
+    /**
+     * 消息类型字符串
+     * 为了兼容某些使用String类型的地方
+     */
+    private String messageType;
     
     /**
      * 创建系统通知消息的便捷方法
