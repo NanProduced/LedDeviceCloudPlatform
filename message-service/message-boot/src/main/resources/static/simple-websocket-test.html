@@ -1,0 +1,128 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <title>简单WebSocket连接测试</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 20px; }
+        .status { padding: 10px; margin: 10px 0; border-radius: 4px; }
+        .connected { background-color: #d4edda; color: #155724; }
+        .disconnected { background-color: #f8d7da; color: #721c24; }
+        .log { height: 300px; overflow-y: auto; border: 1px solid #ccc; padding: 10px; background: #f8f9fa; }
+        button { padding: 10px 20px; margin: 5px; }
+    </style>
+</head>
+<body>
+    <h1>WebSocket连接测试</h1>
+    
+    <div id="status" class="status disconnected">状态: 未连接</div>
+    
+    <div>
+        <label>用户ID: <input type="text" id="userId" value="test-user-123"></label><br><br>
+        <label>组织ID: <input type="text" id="orgId" value="test-org-456"></label><br><br>
+        <label>令牌: <input type="text" id="token" value="test-token-789"></label><br><br>
+    </div>
+    
+    <button onclick="connectWebSocket()">连接WebSocket</button>
+    <button onclick="disconnectWebSocket()">断开连接</button>
+    <button onclick="sendPing()">发送Ping</button>
+    <button onclick="clearLog()">清空日志</button>
+    
+    <h3>连接日志:</h3>
+    <div id="log" class="log"></div>
+
+    <script>
+        let socket = null;
+        let isConnected = false;
+        
+        function log(message) {
+            const logDiv = document.getElementById('log');
+            const timestamp = new Date().toLocaleTimeString();
+            logDiv.innerHTML += `[${timestamp}] ${message}<br>`;
+            logDiv.scrollTop = logDiv.scrollHeight;
+        }
+        
+        function updateStatus(connected) {
+            const statusDiv = document.getElementById('status');
+            if (connected) {
+                statusDiv.className = 'status connected';
+                statusDiv.textContent = '状态: 已连接 ✅';
+            } else {
+                statusDiv.className = 'status disconnected';
+                statusDiv.textContent = '状态: 未连接 ❌';
+            }
+        }
+        
+        function connectWebSocket() {
+            const userId = document.getElementById('userId').value;
+            const orgId = document.getElementById('orgId').value;
+            const token = document.getElementById('token').value;
+            
+            // 构建WebSocket URL
+            const wsUrl = `ws://localhost:8084/ws?userId=${userId}&orgId=${orgId}&token=${token}`;
+            log(`尝试连接: ${wsUrl}`);
+            
+            try {
+                socket = new WebSocket(wsUrl);
+                
+                socket.onopen = function(event) {
+                    isConnected = true;
+                    updateStatus(true);
+                    log('✅ WebSocket连接成功建立');
+                };
+                
+                socket.onmessage = function(event) {
+                    log(`📨 收到消息: ${event.data}`);
+                };
+                
+                socket.onclose = function(event) {
+                    isConnected = false;
+                    updateStatus(false);
+                    log(`❌ 连接关闭 - 代码: ${event.code}, 原因: ${event.reason}`);
+                };
+                
+                socket.onerror = function(error) {
+                    log(`❌ 连接错误: ${error}`);
+                    console.error('WebSocket错误:', error);
+                };
+                
+            } catch (error) {
+                log(`❌ 创建连接失败: ${error.message}`);
+                console.error('创建WebSocket失败:', error);
+            }
+        }
+        
+        function disconnectWebSocket() {
+            if (socket && isConnected) {
+                socket.close();
+                log('🔌 主动断开连接');
+            }
+        }
+        
+        function sendPing() {
+            if (!isConnected) {
+                log('❌ 请先建立连接');
+                return;
+            }
+            
+            const pingMessage = JSON.stringify({
+                type: 'ping',
+                timestamp: Date.now()
+            });
+            
+            socket.send(pingMessage);
+            log(`📤 发送Ping: ${pingMessage}`);
+        }
+        
+        function clearLog() {
+            document.getElementById('log').innerHTML = '';
+        }
+        
+        // 页面加载时显示说明
+        window.onload = function() {
+            log('📋 WebSocket测试页面已加载');
+            log('💡 请填写连接信息并点击"连接WebSocket"');
+        };
+    </script>
+</body>
+</html>

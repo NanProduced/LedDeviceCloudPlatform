@@ -1,57 +1,113 @@
-# 开发环境配置
+# 本地环境配置
 spring:
-  # MongoDB 开发环境配置
+  # 禁用Nacos配置中心，使用本地配置文件
+  cloud:
+    nacos:
+      config:
+        import-check:
+          enabled: false  # 禁用Nacos配置导入检查
+        enabled: false    # 完全禁用Nacos配置功能
+      discovery:
+        enabled: false    # 本地测试时也禁用服务发现
+
+  # MongoDB 本地配置
   data:
     mongodb:
       host: 192.168.1.185
       port: 27017
-      database: led-platform-messages-dev
-      
-  # Redis 开发环境配置
-  redis:
-    host: 192.168.1.185
-    port: 6379
-    database: 3  # 开发环境使用数据库3
-    
-  # RabbitMQ 开发环境配置
+      database: nan_test
+      username: root
+      password: Nan12091209
+      authentication-database: admin
+      auto-index-creation: true
+
+    # Redis 本地配置
+    redis:
+      host: 192.168.1.185
+      port: 6379
+      database: 1
+      password: Nan12091209
+      timeout: 3000
+      lettuce:
+        pool:
+          max-active: 50
+          max-idle: 48
+          min-idle: 0
+          max-wait: 5s
+
+  # RabbitMQ 本地配置（临时禁用）
   rabbitmq:
     host: 192.168.1.185
     port: 5672
     username: admin
-    password: admin123456
-    virtual-host: /led-platform-dev
+    password: Nan12091209
+    virtual-host: /led-platform-local
+    
+  # 本地开发环境禁用部分自动配置
+  autoconfigure:
+    exclude:
+      # - org.springframework.boot.autoconfigure.amqp.RabbitAutoConfiguration  # 启用RabbitMQ测试
+      - org.springframework.boot.autoconfigure.data.mongo.MongoDataAutoConfiguration  # 临时禁用MongoDB
 
-# WebSocket 配置
+# WebSocket 本地环境配置
 websocket:
-  # 连接路径
   endpoint: /ws
-  # 允许的源
-  allowed-origins: 
-    - "http://localhost:3000"  # React开发服务器
-    - "http://localhost:8080"  # Vue开发服务器
-    - "http://localhost:8081"  # 其他前端服务
-  # 心跳间隔（秒）
-  heartbeat-interval: 25000
-  # 缓冲区大小
-  send-buffer-size: 8192
-  receive-buffer-size: 8192
-  
-# 消息配置
+  allowed-origins:
+    - "*"  # 本地开发允许所有源
+  heartbeat-interval: 30000
+  connection-timeout: 60000
+  max-connections: 1000  # 本地环境降低最大连接数
+  message-buffer-size: 8192
+  sockjs-enabled: true
+  sockjs-disconnect-delay: 30000
+  sockjs-heartbeat-time: 25000
+  sockjs-http-message-cache-size: 1000
+
+# 消息本地配置
 message:
-  # 默认消息过期时间（天）
-  default-ttl-days: 30
-  # 批量处理大小
-  batch-size: 100
-  # 最大重试次数
-  max-retry-count: 3
-  # 消息模板缓存时间（秒）
-  template-cache-ttl: 3600
+  default-ttl-days: 7  # 本地环境消息保留时间更短
+  batch-size: 50
+  max-retry-count: 1
+  template-cache-ttl: 600  # 本地环境缓存时间更短
   
-# 日志配置（开发环境更详细）
+  # 消息队列配置
+  queue:
+    prefix: "message-local"
+    dead-letter-suffix: ".dlq"
+    message-ttl: 1800000  # 30分钟（本地环境较短）
+    max-length: 5000  # 本地环境队列长度较小
+  
+  # 持久化配置
+  persistence:
+    enabled: true
+    batch-insert-size: 100  # 本地环境批量插入数量较小
+    async: true
+    thread-pool-size: 3  # 本地环境线程池较小
+  
+  # 通知配置
+  notification:
+    enabled: true
+    retry-interval: 3000  # 本地环境重试间隔较短
+    default-language: "zh-CN"
+    email-enabled: false  # 本地环境关闭邮件通知
+    sms-enabled: false    # 本地环境关闭短信通知
+
+# 日志配置（本地环境调试友好）
 logging:
   level:
-    org.nan.cloud.message: DEBUG
+    # 我们的代码使用详细日志
+    org.nan.cloud.message: TRACE
+    
+    # Spring框架组件使用适中日志
     org.springframework.web.socket: DEBUG
-    org.springframework.amqp: DEBUG
-    org.springframework.data.mongodb: DEBUG
-    root: INFO
+    org.springframework.amqp: INFO          # RabbitMQ改为INFO，减少日志
+    org.springframework.data.mongodb: INFO  # MongoDB改为INFO，避免过多集群状态日志
+    org.springframework.data.redis: INFO    # Redis改为INFO，减少连接日志
+    
+    # MongoDB驱动程序日志控制
+    org.mongodb.driver.cluster: WARN        # 集群状态监控日志改为WARN
+    org.mongodb.driver.connection: WARN     # 连接日志改为WARN
+    org.mongodb.driver.protocol: WARN       # 协议日志改为WARN
+    
+    # 根日志级别
+    root: INFO  # 根日志改为INFO，减少整体日志量

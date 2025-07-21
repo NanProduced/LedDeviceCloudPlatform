@@ -54,11 +54,15 @@ spring:
         server-addr: 192.168.1.185:8848
         namespace: 1e90921e-70cf-4745-87ed-dd165319ff3a
         group: DEFAULT_GROUP
+        enabled: ${NACOS_DISCOVERY_ENABLED:true}  # 可通过环境变量控制
       config:
         server-addr: 192.168.1.185:8848
         namespace: 1e90921e-70cf-4745-87ed-dd165319ff3a
         group: DEFAULT_GROUP
         file-extension: yml
+        enabled: ${NACOS_CONFIG_ENABLED:true}      # 可通过环境变量控制
+        import-check:
+          enabled: ${NACOS_IMPORT_CHECK_ENABLED:true}  # 可通过环境变量控制
         
 # 管理和监控配置
 management:
@@ -69,11 +73,10 @@ management:
   endpoint:
     health:
       show-details: always
-  metrics:
-    export:
-      prometheus:
+  prometheus:
+    metrics:
+      export:
         enabled: true
-        
 # 日志配置
 logging:
   level:

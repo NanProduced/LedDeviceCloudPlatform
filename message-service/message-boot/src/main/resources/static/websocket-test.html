@@ -1,0 +1,411 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>WebSocket消息中心测试页面</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #f5f5f5;
+        }
+        
+        .container {
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            margin-bottom: 20px;
+        }
+        
+        .form-group {
+            margin-bottom: 15px;
+        }
+        
+        label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: bold;
+        }
+        
+        input, textarea, select {
+            width: 100%;
+            padding: 8px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            box-sizing: border-box;
+        }
+        
+        button {
+            background-color: #007bff;
+            color: white;
+            padding: 10px 20px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            margin-right: 10px;
+        }
+        
+        button:hover {
+            background-color: #0056b3;
+        }
+        
+        button:disabled {
+            background-color: #ccc;
+            cursor: not-allowed;
+        }
+        
+        .status {
+            padding: 10px;
+            border-radius: 4px;
+            margin-bottom: 15px;
+        }
+        
+        .status.connected {
+            background-color: #d4edda;
+            border: 1px solid #c3e6cb;
+            color: #155724;
+        }
+        
+        .status.disconnected {
+            background-color: #f8d7da;
+            border: 1px solid #f5c6cb;
+            color: #721c24;
+        }
+        
+        .message-log {
+            height: 300px;
+            overflow-y: auto;
+            border: 1px solid #ddd;
+            padding: 10px;
+            background-color: #f8f9fa;
+            font-family: monospace;
+            font-size: 12px;
+        }
+        
+        .message-item {
+            margin-bottom: 5px;
+            padding: 5px;
+            border-left: 3px solid #007bff;
+            background-color: white;
+        }
+        
+        .timestamp {
+            color: #666;
+            font-size: 11px;
+        }
+    </style>
+</head>
+<body>
+    <h1>🚀 WebSocket消息中心测试页面</h1>
+    
+    <!-- 连接控制面板 -->
+    <div class="container">
+        <h2>📡 连接控制</h2>
+        
+        <div id="connectionStatus" class="status disconnected">
+            状态: 未连接
+        </div>
+        
+        <div class="form-group">
+            <label for="userId">用户ID:</label>
+            <input type="text" id="userId" value="test-user-123" placeholder="输入用户ID">
+        </div>
+        
+        <div class="form-group">
+            <label for="orgId">组织ID:</label>
+            <input type="text" id="orgId" value="test-org-456" placeholder="输入组织ID">
+        </div>
+        
+        <div class="form-group">
+            <label for="token">访问令牌:</label>
+            <input type="text" id="token" value="test-token-789" placeholder="输入访问令牌">
+        </div>
+        
+        <button id="connectBtn" onclick="connectWebSocket()">连接WebSocket</button>
+        <button id="disconnectBtn" onclick="disconnectWebSocket()" disabled>断开连接</button>
+        <button onclick="sendPing()">发送心跳</button>
+    </div>
+    
+    <!-- 消息发送面板 -->
+    <div class="container">
+        <h2>📤 消息发送测试</h2>
+        
+        <div class="form-group">
+            <label for="messageType">消息类型:</label>
+            <select id="messageType">
+                <option value="SYSTEM_NOTIFICATION">系统通知</option>
+                <option value="DEVICE_ALERT">设备告警</option>
+                <option value="USER_MESSAGE">用户消息</option>
+                <option value="TASK_NOTIFICATION">任务通知</option>
+            </select>
+        </div>
+        
+        <div class="form-group">
+            <label for="messageTitle">消息标题:</label>
+            <input type="text" id="messageTitle" value="测试消息" placeholder="输入消息标题">
+        </div>
+        
+        <div class="form-group">
+            <label for="messageContent">消息内容:</label>
+            <textarea id="messageContent" rows="3" placeholder="输入消息内容">这是一条测试消息，用于验证WebSocket功能是否正常工作。</textarea>
+        </div>
+        
+        <div class="form-group">
+            <label for="targetUserId">目标用户ID (发送给特定用户):</label>
+            <input type="text" id="targetUserId" value="test-user-123" placeholder="留空则发送给自己">
+        </div>
+        
+        <button onclick="sendTestMessage()">通过REST API发送消息</button>
+        <button onclick="sendBroadcastMessage()">组织广播消息</button>
+        <button onclick="sendSystemNotification()">发送系统通知</button>
+    </div>
+    
+    <!-- 消息接收日志 -->
+    <div class="container">
+        <h2>📥 消息接收日志</h2>
+        <button onclick="clearMessages()">清空日志</button>
+        <div id="messageLog" class="message-log">
+            <div class="message-item">
+                <div class="timestamp">[等待连接...]</div>
+                <div>WebSocket连接建立后，接收到的消息将显示在这里</div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // WebSocket连接对象
+        let socket = null;
+        let isConnected = false;
+        
+        /**
+         * 建立WebSocket连接
+         */
+        function connectWebSocket() {
+            const userId = document.getElementById('userId').value;
+            const orgId = document.getElementById('orgId').value;
+            const token = document.getElementById('token').value;
+            
+            if (!userId || !orgId) {
+                alert('请填写用户ID和组织ID');
+                return;
+            }
+            
+            // 构建WebSocket连接URL
+            const wsUrl = `ws://localhost:8084/ws?userId=${userId}&orgId=${orgId}&token=${token}`;
+            logMessage('系统', `正在连接到: ${wsUrl}`);
+            
+            try {
+                // 创建WebSocket连接
+                socket = new WebSocket(wsUrl);
+                
+                // 连接建立事件
+                socket.onopen = function(event) {
+                    isConnected = true;
+                    updateConnectionStatus(true);
+                    logMessage('系统', '✅ WebSocket连接已建立');
+                    
+                    // 启用/禁用按钮
+                    document.getElementById('connectBtn').disabled = true;
+                    document.getElementById('disconnectBtn').disabled = false;
+                };
+                
+                // 接收消息事件
+                socket.onmessage = function(event) {
+                    const message = JSON.parse(event.data);
+                    logMessage('接收', `📨 ${message.title || '无标题'}: ${message.content || '无内容'}`, message);
+                };
+                
+                // 连接关闭事件
+                socket.onclose = function(event) {
+                    isConnected = false;
+                    updateConnectionStatus(false);
+                    logMessage('系统', `❌ WebSocket连接已关闭 (代码: ${event.code}, 原因: ${event.reason})`);
+                    
+                    // 启用/禁用按钮
+                    document.getElementById('connectBtn').disabled = false;
+                    document.getElementById('disconnectBtn').disabled = true;
+                };
+                
+                // 连接错误事件
+                socket.onerror = function(error) {
+                    logMessage('系统', `❌ WebSocket连接错误: ${error}`);
+                };
+                
+            } catch (error) {
+                logMessage('系统', `❌ 创建WebSocket连接失败: ${error}`);
+            }
+        }
+        
+        /**
+         * 断开WebSocket连接
+         */
+        function disconnectWebSocket() {
+            if (socket && isConnected) {
+                socket.close();
+                logMessage('系统', '🔌 主动断开WebSocket连接');
+            }
+        }
+        
+        /**
+         * 发送心跳包
+         */
+        function sendPing() {
+            if (!isConnected) {
+                alert('请先建立WebSocket连接');
+                return;
+            }
+            
+            const pingMessage = {
+                type: 'ping',
+                timestamp: Date.now()
+            };
+            
+            socket.send(JSON.stringify(pingMessage));
+            logMessage('发送', '💓 发送心跳包');
+        }
+        
+        /**
+         * 通过REST API发送消息
+         */
+        async function sendTestMessage() {
+            const targetUserId = document.getElementById('targetUserId').value || document.getElementById('userId').value;
+            const message = buildMessage();
+            
+            try {
+                const response = await fetch(`/api/v1/messages/send/${targetUserId}`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify(message)
+                });
+                
+                const result = await response.json();
+                logMessage('API', `📤 发送消息到用户 ${targetUserId}: ${result.message}`, result);
+                
+            } catch (error) {
+                logMessage('API', `❌ 发送消息失败: ${error}`);
+            }
+        }
+        
+        /**
+         * 发送组织广播消息
+         */
+        async function sendBroadcastMessage() {
+            const orgId = document.getElementById('orgId').value;
+            const message = buildMessage();
+            
+            try {
+                const response = await fetch(`/api/v1/messages/broadcast/organization/${orgId}`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify(message)
+                });
+                
+                const result = await response.json();
+                logMessage('API', `📢 组织广播消息: ${result.message}`, result);
+                
+            } catch (error) {
+                logMessage('API', `❌ 组织广播失败: ${error}`);
+            }
+        }
+        
+        /**
+         * 发送系统通知
+         */
+        async function sendSystemNotification() {
+            const request = {
+                userId: document.getElementById('targetUserId').value,
+                organizationId: document.getElementById('orgId').value,
+                title: document.getElementById('messageTitle').value,
+                content: document.getElementById('messageContent').value
+            };
+            
+            try {
+                const response = await fetch('/api/v1/messages/notification/system', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify(request)
+                });
+                
+                const result = await response.json();
+                logMessage('API', `🔔 系统通知: ${result.message}`, result);
+                
+            } catch (error) {
+                logMessage('API', `❌ 系统通知失败: ${error}`);
+            }
+        }
+        
+        /**
+         * 构建消息对象
+         */
+        function buildMessage() {
+            return {
+                messageId: 'test-msg-' + Date.now(),
+                type: document.getElementById('messageType').value,
+                title: document.getElementById('messageTitle').value,
+                content: document.getElementById('messageContent').value,
+                priority: 'NORMAL',
+                organizationId: document.getElementById('orgId').value,
+                requireAck: false,
+                retryCount: 0
+            };
+        }
+        
+        /**
+         * 更新连接状态显示
+         */
+        function updateConnectionStatus(connected) {
+            const statusElement = document.getElementById('connectionStatus');
+            if (connected) {
+                statusElement.className = 'status connected';
+                statusElement.textContent = '状态: 已连接 ✅';
+            } else {
+                statusElement.className = 'status disconnected';
+                statusElement.textContent = '状态: 未连接 ❌';
+            }
+        }
+        
+        /**
+         * 记录消息到日志
+         */
+        function logMessage(source, content, data = null) {
+            const messageLog = document.getElementById('messageLog');
+            const messageItem = document.createElement('div');
+            messageItem.className = 'message-item';
+            
+            const timestamp = new Date().toLocaleTimeString();
+            const dataStr = data ? `\n数据: ${JSON.stringify(data, null, 2)}` : '';
+            
+            messageItem.innerHTML = `
+                <div class="timestamp">[${timestamp}] ${source}</div>
+                <div>${content}${dataStr}</div>
+            `;
+            
+            messageLog.appendChild(messageItem);
+            messageLog.scrollTop = messageLog.scrollHeight;
+        }
+        
+        /**
+         * 清空消息日志
+         */
+        function clearMessages() {
+            document.getElementById('messageLog').innerHTML = '';
+        }
+        
+        // 页面加载完成后的初始化
+        document.addEventListener('DOMContentLoaded', function() {
+            logMessage('系统', '📋 WebSocket测试页面已加载');
+            logMessage('系统', '💡 请填写连接信息并点击"连接WebSocket"开始测试');
+        });
+    </script>
+</body>
+</html>

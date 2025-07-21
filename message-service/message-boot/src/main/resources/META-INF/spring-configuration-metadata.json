@@ -1,0 +1,94 @@
+{
+  "groups": [
+    {
+      "name": "websocket",
+      "type": "org.nan.cloud.message.config.WebSocketProperties",
+      "description": "WebSocket配置属性，用于配置WebSocket连接相关参数（定义在application层）"
+    },
+    {
+      "name": "message",
+      "type": "org.nan.cloud.message.config.MessageProperties", 
+      "description": "消息服务配置属性，用于配置消息处理相关参数（定义在application层）"
+    }
+  ],
+  "properties": [
+    {
+      "name": "websocket.endpoint",
+      "type": "java.lang.String",
+      "description": "WebSocket端点路径，客户端连接使用的URL路径",
+      "defaultValue": "/ws"
+    },
+    {
+      "name": "websocket.allowed-origins",
+      "type": "java.util.List<java.lang.String>",
+      "description": "允许跨域访问的源列表，生产环境建议配置具体域名",
+      "defaultValue": ["*"]
+    },
+    {
+      "name": "websocket.heartbeat-interval",
+      "type": "java.lang.Long",
+      "description": "心跳间隔时间（毫秒），客户端发送心跳包的间隔",
+      "defaultValue": 30000
+    },
+    {
+      "name": "websocket.connection-timeout",
+      "type": "java.lang.Long", 
+      "description": "连接超时时间（毫秒），超过此时间没有心跳将关闭连接",
+      "defaultValue": 60000
+    },
+    {
+      "name": "websocket.max-connections",
+      "type": "java.lang.Integer",
+      "description": "最大连接数，服务器允许的最大并发WebSocket连接数",
+      "defaultValue": 10000
+    },
+    {
+      "name": "websocket.sockjs-enabled",
+      "type": "java.lang.Boolean",
+      "description": "是否启用SockJS支持，提供WebSocket降级方案",
+      "defaultValue": true
+    },
+    {
+      "name": "message.default-ttl-days",
+      "type": "java.lang.Integer",
+      "description": "消息默认存活时间（天），消息在数据库中的保留时间",
+      "defaultValue": 30
+    },
+    {
+      "name": "message.batch-size",
+      "type": "java.lang.Integer",
+      "description": "批量处理大小，批量发送消息时每批次处理的消息数量",
+      "defaultValue": 100
+    },
+    {
+      "name": "message.max-retry-count",
+      "type": "java.lang.Integer",
+      "description": "最大重试次数，消息发送失败时的最大重试次数",
+      "defaultValue": 3
+    },
+    {
+      "name": "message.template-cache-ttl",
+      "type": "java.lang.Integer",
+      "description": "模板缓存TTL（秒），消息模板在缓存中的存活时间",
+      "defaultValue": 3600
+    },
+    {
+      "name": "message.queue.prefix",
+      "type": "java.lang.String",
+      "description": "消息队列名称前缀",
+      "defaultValue": "message"
+    },
+    {
+      "name": "message.persistence.enabled",
+      "type": "java.lang.Boolean",
+      "description": "是否启用消息持久化存储",
+      "defaultValue": true
+    },
+    {
+      "name": "message.notification.enabled",
+      "type": "java.lang.Boolean",
+      "description": "是否启用推送通知功能",
+      "defaultValue": true
+    }
+  ]
+}
