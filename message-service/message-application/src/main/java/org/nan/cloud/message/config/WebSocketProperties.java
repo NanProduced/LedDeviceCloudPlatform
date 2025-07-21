@@ -23,7 +23,6 @@ import java.util.List;
  * @since 1.0.0
  */
 @Data
-@Component
 @ConfigurationProperties(prefix = "websocket")
 public class WebSocketProperties {
     

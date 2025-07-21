@@ -21,7 +21,6 @@ import org.springframework.stereotype.Component;
  * @since 1.0.0
  */
 @Data
-@Component
 @ConfigurationProperties(prefix = "message")
 public class MessageProperties {
     
