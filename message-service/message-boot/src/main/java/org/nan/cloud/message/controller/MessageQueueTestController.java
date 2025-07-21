@@ -2,7 +2,7 @@ package org.nan.cloud.message.controller;
 
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.nan.cloud.message.service.impl.MessageServiceImpl;
+import org.nan.cloud.message.service.MessageQueueService;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.Map;
@@ -21,7 +21,7 @@ import java.util.Map;
 @RequiredArgsConstructor
 public class MessageQueueTestController {
     
-    private final MessageServiceImpl messageService;
+    private final MessageQueueService messageQueueService;
     
     /**
      * 测试异步通知消息
@@ -36,7 +36,7 @@ public class MessageQueueTestController {
             
             log.info("测试异步通知消息: receiverId={}, title={}", receiverId, title);
             
-            messageService.sendNotificationAsync(receiverId, organizationId, title, content);
+            messageQueueService.sendNotificationAsync(receiverId, organizationId, title, content);
             
             return Map.of(
                 "success", true,
@@ -64,8 +64,8 @@ public class MessageQueueTestController {
             String content = request.get("content");
             
             log.info("测试异步系统消息: organizationId={}, title={}", organizationId, title);
-            
-            messageService.sendSystemMessageAsync(organizationId, title, content);
+
+            messageQueueService.sendSystemMessageAsync(organizationId, title, content);
             
             return Map.of(
                 "success", true,
@@ -97,8 +97,8 @@ public class MessageQueueTestController {
             
             log.info("测试异步用户消息: senderId={}, receiverId={}, title={}", 
                     senderId, receiverId, title);
-            
-            messageService.sendUserMessageAsync(senderId, senderName, receiverId, 
+
+            messageQueueService.sendUserMessageAsync(senderId, senderName, receiverId,
                     organizationId, title, content);
             
             return Map.of(
@@ -130,8 +130,8 @@ public class MessageQueueTestController {
             
             log.info("测试异步广播消息: senderId={}, organizationId={}, title={}", 
                     senderId, organizationId, title);
-            
-            messageService.sendBroadcastAsync(senderId, senderName, organizationId, title, content);
+
+            messageQueueService.sendBroadcastAsync(senderId, senderName, organizationId, title, content);
             
             return Map.of(
                 "success", true,
@@ -162,8 +162,8 @@ public class MessageQueueTestController {
             
             log.info("测试异步设备告警: deviceId={}, userId={}, title={}", 
                     deviceId, userId, title);
-            
-            messageService.sendDeviceAlertAsync(userId, organizationId, deviceId, title, content);
+
+            messageQueueService.sendDeviceAlertAsync(userId, organizationId, deviceId, title, content);
             
             return Map.of(
                 "success", true,
@@ -192,8 +192,8 @@ public class MessageQueueTestController {
                            java.time.LocalDateTime.now();
             
             log.info("快速测试RabbitMQ: userId={}, orgId={}", userId, orgId);
-            
-            messageService.sendNotificationAsync(userId, orgId, title, content);
+
+            messageQueueService.sendNotificationAsync(userId, orgId, title, content);
             
             return Map.of(
                 "success", true,

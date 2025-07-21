@@ -72,7 +72,6 @@ message:
   
   # 消息队列配置
   queue:
-    prefix: "message-local"
     dead-letter-suffix: ".dlq"
     message-ttl: 1800000  # 30分钟（本地环境较短）
     max-length: 5000  # 本地环境队列长度较小

@@ -126,7 +126,7 @@ public class RabbitMQConfig {
     @Bean
     public Queue notificationQueue() {
         return QueueBuilder
-                .durable(getQueueName(MESSAGE_NOTIFICATION_QUEUE))
+                .durable(MESSAGE_NOTIFICATION_QUEUE)
                 .withArgument("x-message-ttl", messageProperties.getQueue().getMessageTtl())
                 .withArgument("x-max-length", messageProperties.getQueue().getMaxLength())
                 .withArgument("x-dead-letter-exchange", MESSAGE_DLX_EXCHANGE)
@@ -140,7 +140,7 @@ public class RabbitMQConfig {
     @Bean
     public Queue systemQueue() {
         return QueueBuilder
-                .durable(getQueueName(MESSAGE_SYSTEM_QUEUE))
+                .durable(MESSAGE_SYSTEM_QUEUE)
                 .withArgument("x-message-ttl", messageProperties.getQueue().getMessageTtl())
                 .withArgument("x-max-length", messageProperties.getQueue().getMaxLength())
                 .withArgument("x-dead-letter-exchange", MESSAGE_DLX_EXCHANGE)
@@ -154,7 +154,7 @@ public class RabbitMQConfig {
     @Bean
     public Queue userQueue() {
         return QueueBuilder
-                .durable(getQueueName(MESSAGE_USER_QUEUE))
+                .durable(MESSAGE_USER_QUEUE)
                 .withArgument("x-message-ttl", messageProperties.getQueue().getMessageTtl())
                 .withArgument("x-max-length", messageProperties.getQueue().getMaxLength())
                 .withArgument("x-dead-letter-exchange", MESSAGE_DLX_EXCHANGE)
@@ -205,12 +205,5 @@ public class RabbitMQConfig {
                 .to(messageExchange())
                 .with("message.*");
     }
-    
-    /**
-     * 获取带前缀的队列名称
-     */
-    private String getQueueName(String baseName) {
-        String prefix = messageProperties.getQueue().getPrefix();
-        return prefix != null && !prefix.isEmpty() ? prefix + "." + baseName : baseName;
-    }
+
 }

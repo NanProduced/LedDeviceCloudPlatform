@@ -26,8 +26,6 @@ public class MessageEventRepositoryImpl implements MessageEventRepository {
     @Override
     public void publishEvent(MessageEvent event) {
         try {
-            log.debug("通过仓储发布消息事件: eventId={}, messageId={}", 
-                    event.getEventId(), event.getMessageId());
             messageEventPublisher.publishEvent(event);
         } catch (Exception e) {
             log.error("仓储发布消息事件失败: eventId={}, error={}", 
@@ -40,7 +38,6 @@ public class MessageEventRepositoryImpl implements MessageEventRepository {
     public void publishNotification(String messageId, String title, String content, 
                                   String receiverId, String organizationId) {
         try {
-            log.debug("通过仓储发布通知消息: messageId={}, receiverId={}", messageId, receiverId);
             messageEventPublisher.publishNotification(messageId, title, content, receiverId, organizationId);
         } catch (Exception e) {
             log.error("仓储发布通知消息失败: messageId={}, error={}", messageId, e.getMessage(), e);
@@ -52,7 +49,6 @@ public class MessageEventRepositoryImpl implements MessageEventRepository {
     public void publishSystemMessage(String messageId, String title, String content, 
                                    String organizationId) {
         try {
-            log.debug("通过仓储发布系统消息: messageId={}, organizationId={}", messageId, organizationId);
             messageEventPublisher.publishSystemMessage(messageId, title, content, organizationId);
         } catch (Exception e) {
             log.error("仓储发布系统消息失败: messageId={}, error={}", messageId, e.getMessage(), e);
@@ -65,8 +61,6 @@ public class MessageEventRepositoryImpl implements MessageEventRepository {
                                  String senderId, String senderName, 
                                  String receiverId, String organizationId) {
         try {
-            log.debug("通过仓储发布用户消息: messageId={}, senderId={}, receiverId={}", 
-                    messageId, senderId, receiverId);
             messageEventPublisher.publishUserMessage(messageId, title, content, 
                     senderId, senderName, receiverId, organizationId);
         } catch (Exception e) {
@@ -79,8 +73,6 @@ public class MessageEventRepositoryImpl implements MessageEventRepository {
     public void publishBroadcast(String messageId, String title, String content,
                                String senderId, String senderName, String organizationId) {
         try {
-            log.debug("通过仓储发布广播消息: messageId={}, senderId={}, organizationId={}", 
-                    messageId, senderId, organizationId);
             messageEventPublisher.publishBroadcast(messageId, title, content, 
                     senderId, senderName, organizationId);
         } catch (Exception e) {
@@ -92,8 +84,6 @@ public class MessageEventRepositoryImpl implements MessageEventRepository {
     @Override
     public void republishFailedEvent(MessageEvent event) {
         try {
-            log.debug("通过仓储重新发布失败事件: eventId={}, retryCount={}", 
-                    event.getEventId(), event.getRetryCount());
             messageEventPublisher.republishFailedEvent(event);
         } catch (Exception e) {
             log.error("仓储重新发布失败事件失败: eventId={}, error={}", 

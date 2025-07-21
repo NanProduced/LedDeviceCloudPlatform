@@ -8,6 +8,7 @@ import org.nan.cloud.message.api.enums.Priority;
 import org.nan.cloud.message.service.MessageService;
 import org.nan.cloud.message.repository.WebSocketConnectionRepository;
 import org.nan.cloud.message.service.MessageQueueService;
+import org.nan.cloud.message.utils.MessageUtils;
 import org.springframework.stereotype.Service;
 
 import java.time.LocalDateTime;
@@ -39,12 +40,6 @@ public class MessageServiceImpl implements MessageService {
      * 负责WebSocket连接管理和实时消息推送，遵循DDD架构的依赖倒置原则
      */
     private final WebSocketConnectionRepository webSocketConnectionRepository;
-    
-    /**
-     * 消息队列服务
-     * 负责异步消息处理和事件驱动的消息分发
-     */
-    private final MessageQueueService messageQueueService;
     
     // TODO: 后续会注入以下组件
     // private final MessageRepository messageRepository;     // 消息持久化
@@ -200,7 +195,7 @@ public class MessageServiceImpl implements MessageService {
         
         // 创建系统通知消息
         WebSocketMessage message = WebSocketMessage.builder()
-                .messageId(generateMessageId())
+                .messageId(MessageUtils.generateMessageId())
                 .type(MessageType.SYSTEM_NOTIFICATION)
                 .title(title)
                 .content(content)
@@ -240,7 +235,7 @@ public class MessageServiceImpl implements MessageService {
         
         // 创建设备告警消息
         WebSocketMessage message = WebSocketMessage.builder()
-                .messageId(generateMessageId())
+                .messageId(MessageUtils.generateMessageId())
                 .type(MessageType.DEVICE_ALERT)
                 .title(title)
                 .content(content)
@@ -366,153 +361,5 @@ public class MessageServiceImpl implements MessageService {
         
         return 0;
     }
-    
-    // ==================== RabbitMQ异步消息处理方法 ====================
-    
-    /**
-     * 异步发送通知消息
-     * 
-     * 通过RabbitMQ队列异步处理消息，提高系统响应性能，
-     * 支持消息持久化、重试机制和故障恢复。
-     * 
-     * @param receiverId 接收者ID
-     * @param organizationId 组织ID
-     * @param title 消息标题
-     * @param content 消息内容
-     */
-    public void sendNotificationAsync(String receiverId, String organizationId, 
-                                    String title, String content) {
-        try {
-            String messageId = generateMessageId();
-            log.info("异步发送通知消息 - 接收者: {}, 组织: {}, 消息ID: {}", 
-                    receiverId, organizationId, messageId);
-            
-            messageQueueService.publishNotification(messageId, title, content, receiverId, organizationId);
-            
-            log.debug("通知消息已发布到队列: messageId={}", messageId);
-        } catch (Exception e) {
-            log.error("异步发送通知消息失败 - 接收者: {}, 错误: {}", receiverId, e.getMessage(), e);
-            throw new RuntimeException("异步消息发送失败", e);
-        }
-    }
-    
-    /**
-     * 异步发送系统消息
-     * 
-     * @param organizationId 组织ID
-     * @param title 消息标题
-     * @param content 消息内容
-     */
-    public void sendSystemMessageAsync(String organizationId, String title, String content) {
-        try {
-            String messageId = generateMessageId();
-            log.info("异步发送系统消息 - 组织: {}, 消息ID: {}", organizationId, messageId);
-            
-            messageQueueService.publishSystemMessage(messageId, title, content, organizationId);
-            
-            log.debug("系统消息已发布到队列: messageId={}", messageId);
-        } catch (Exception e) {
-            log.error("异步发送系统消息失败 - 组织: {}, 错误: {}", organizationId, e.getMessage(), e);
-            throw new RuntimeException("异步系统消息发送失败", e);
-        }
-    }
-    
-    /**
-     * 异步发送用户消息
-     * 
-     * @param senderId 发送者ID
-     * @param senderName 发送者名称
-     * @param receiverId 接收者ID
-     * @param organizationId 组织ID
-     * @param title 消息标题
-     * @param content 消息内容
-     */
-    public void sendUserMessageAsync(String senderId, String senderName, String receiverId, 
-                                   String organizationId, String title, String content) {
-        try {
-            String messageId = generateMessageId();
-            log.info("异步发送用户消息 - 发送者: {}, 接收者: {}, 消息ID: {}", 
-                    senderId, receiverId, messageId);
-            
-            messageQueueService.publishUserMessage(messageId, title, content, 
-                    senderId, senderName, receiverId, organizationId);
-            
-            log.debug("用户消息已发布到队列: messageId={}", messageId);
-        } catch (Exception e) {
-            log.error("异步发送用户消息失败 - 发送者: {}, 接收者: {}, 错误: {}", 
-                    senderId, receiverId, e.getMessage(), e);
-            throw new RuntimeException("异步用户消息发送失败", e);
-        }
-    }
-    
-    /**
-     * 异步发送广播消息
-     * 
-     * @param senderId 发送者ID
-     * @param senderName 发送者名称
-     * @param organizationId 组织ID
-     * @param title 消息标题
-     * @param content 消息内容
-     */
-    public void sendBroadcastAsync(String senderId, String senderName, String organizationId, 
-                                 String title, String content) {
-        try {
-            String messageId = generateMessageId();
-            log.info("异步发送广播消息 - 发送者: {}, 组织: {}, 消息ID: {}", 
-                    senderId, organizationId, messageId);
-            
-            messageQueueService.publishBroadcast(messageId, title, content, 
-                    senderId, senderName, organizationId);
-            
-            log.debug("广播消息已发布到队列: messageId={}", messageId);
-        } catch (Exception e) {
-            log.error("异步发送广播消息失败 - 发送者: {}, 组织: {}, 错误: {}", 
-                    senderId, organizationId, e.getMessage(), e);
-            throw new RuntimeException("异步广播消息发送失败", e);
-        }
-    }
-    
-    /**
-     * 异步发送设备告警
-     * 
-     * @param userId 用户ID（可选，为空时发送给整个组织）
-     * @param organizationId 组织ID
-     * @param deviceId 设备ID
-     * @param title 告警标题
-     * @param content 告警内容
-     */
-    public void sendDeviceAlertAsync(String userId, String organizationId, String deviceId, 
-                                   String title, String content) {
-        try {
-            String messageId = generateMessageId();
-            log.info("异步发送设备告警 - 用户: {}, 组织: {}, 设备: {}, 消息ID: {}", 
-                    userId, organizationId, deviceId, messageId);
-            
-            // 创建设备告警的完整标题和内容
-            String alertTitle = "设备告警: " + title;
-            String alertContent = String.format("设备ID: %s\n%s", deviceId, content);
-            
-            if (userId != null && !userId.trim().isEmpty()) {
-                // 发送给特定用户
-                messageQueueService.publishNotification(messageId, alertTitle, alertContent, userId, organizationId);
-            } else {
-                // 发送给整个组织
-                messageQueueService.publishSystemMessage(messageId, alertTitle, alertContent, organizationId);
-            }
-            
-            log.debug("设备告警已发布到队列: messageId={}, deviceId={}", messageId, deviceId);
-        } catch (Exception e) {
-            log.error("异步发送设备告警失败 - 设备: {}, 错误: {}", deviceId, e.getMessage(), e);
-            throw new RuntimeException("异步设备告警发送失败", e);
-        }
-    }
-    
-    /**
-     * 生成消息唯一ID
-     * 
-     * @return 消息ID
-     */
-    private String generateMessageId() {
-        return "msg-" + System.currentTimeMillis() + "-" + (int)(Math.random() * 10000);
-    }
+
 }

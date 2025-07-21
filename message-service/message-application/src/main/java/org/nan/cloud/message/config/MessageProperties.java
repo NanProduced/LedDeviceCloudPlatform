@@ -70,12 +70,6 @@ public class MessageProperties {
     public static class Queue {
         
         /**
-         * 队列前缀
-         * 默认值: "message"
-         */
-        private String prefix = "message";
-        
-        /**
          * 死信队列后缀
          * 默认值: ".dlq"
          */
