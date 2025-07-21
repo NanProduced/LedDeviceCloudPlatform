@@ -9,8 +9,7 @@ public class MessageUtils {
      *
      * @return 消息ID
      */
-    public
-    static String generateMessageId() {
+    public static String generateMessageId() {
         return "msg-" + System.currentTimeMillis() + "-" + (int)(Math.random() * 10000);
     }
 }

@@ -194,16 +194,5 @@ public class RabbitMQConfig {
                 .to(messageExchange())
                 .with(USER_ROUTING_KEY);
     }
-    
-    /**
-     * 通配符绑定 - 所有消息类型
-     */
-    @Bean
-    public Binding allMessagesBinding() {
-        return BindingBuilder
-                .bind(notificationQueue())
-                .to(messageExchange())
-                .with("message.*");
-    }
 
 }
