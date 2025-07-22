@@ -64,6 +64,9 @@ local.properties
 # VS Code
 .vscode/
 
+# Claude Code CLI
+.claude/
+
 # OS
 .DS_Store
 .DS_Store?
