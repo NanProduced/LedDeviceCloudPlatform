@@ -22,7 +22,7 @@ public interface UserGroupRepository {
 
     List<UserGroup> getDirectUserGroupsByParent(Long ugid);
 
-    boolean ifTheSameOrg(Long oid, Long targetTgid);
+    boolean ifTheSameOrg(Long oid, Long targetUgid);
 
     boolean isAncestor(Long aUgid, Long bUgid);
 

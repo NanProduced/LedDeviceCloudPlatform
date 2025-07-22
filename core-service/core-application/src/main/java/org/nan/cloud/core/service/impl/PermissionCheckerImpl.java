@@ -94,7 +94,7 @@ public class PermissionCheckerImpl implements PermissionChecker {
 
     @Override
     public boolean ifTargetUserGroupIsTheSameOrg(Long oid, Long targetUgid) {
-        return false;
+        return userGroupRepository.ifTheSameOrg(oid, targetUgid);
     }
 
     @Override

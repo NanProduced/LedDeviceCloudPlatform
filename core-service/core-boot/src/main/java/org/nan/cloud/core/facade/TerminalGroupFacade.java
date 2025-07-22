@@ -202,7 +202,7 @@ public class TerminalGroupFacade {
     @SkipOrgManagerPermissionCheck
     public PermissionExpressionResponse updatePermissionExpression(PermissionExpressionRequest request) {
         RequestUserInfo userInfo = InvocationContextHolder.getContext().getRequestUser();
-        ExceptionEnum.ORG_PERMISSION_DENIED.throwIf(!permissionChecker.ifTargetUserGroupIsTheSameOrg(userInfo.getUgid(), request.getUgid()));
+        ExceptionEnum.ORG_PERMISSION_DENIED.throwIf(!permissionChecker.ifTargetUserGroupIsTheSameOrg(userInfo.getOid(), request.getUgid()));
         // 权限检查：确保操作用户有权限修改目标用户组的绑定
         List<Long> targetTgids = request.getPermissionBindings().stream().map(PermissionExpressionRequest.PermissionBinding::getTgid).toList();
         permissionChecker.canModifyUserGroupTerminalGroupBinding(userInfo.getOid(), userInfo.getUgid(), request.getUgid(), targetTgids);
