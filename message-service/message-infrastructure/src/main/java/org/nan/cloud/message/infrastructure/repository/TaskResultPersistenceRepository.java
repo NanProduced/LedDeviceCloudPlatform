@@ -285,15 +285,17 @@ public class TaskResultPersistenceRepository implements org.nan.cloud.message.do
                 .map(UserTaskRecord::getTaskId)
                 .collect(Collectors.toList());
             
-            Map<String, TaskResult> resultMap = Map.of();
+            Map<String, TaskResult> resultMap;
             if (!taskIds.isEmpty()) {
                 resultMap = taskResultRepository
                     .findAll()
                     .stream()
                     .filter(result -> taskIds.contains(result.getTaskId()))
                     .collect(Collectors.toMap(TaskResult::getTaskId, result -> result));
+            } else {
+                resultMap = Map.of();
             }
-            
+
             // 3. 构建响应
             List<TaskResultResponse> taskResults = taskPage.getRecords().stream()
                 .map(record -> {
@@ -307,8 +309,6 @@ public class TaskResultPersistenceRepository implements org.nan.cloud.message.do
                 .total(taskPage.getTotal())
                 .page(page)
                 .size(size)
-                .hasNext(taskPage.hasNext())
-                .hasPrevious(taskPage.hasPrevious())
                 .build();
             
             log.debug("分页查询用户任务历史完成: userId={}, total={}", userId, response.getTotal());
@@ -321,8 +321,6 @@ public class TaskResultPersistenceRepository implements org.nan.cloud.message.do
                 .total(0L)
                 .page(page)
                 .size(size)
-                .hasNext(false)
-                .hasPrevious(false)
                 .build();
         }
     }
@@ -457,9 +455,7 @@ public class TaskResultPersistenceRepository implements org.nan.cloud.message.do
             // MongoDB详细数据
             .resultData(result != null ? result.getResultData() : null)
             .executionParams(result != null ? result.getExecutionParams() : null)
-            .executionLogs(result != null ? result.getExecutionLogs() : null)
-            .performanceMetrics(result != null ? result.getPerformanceMetrics() : null)
-            .outputFiles(result != null ? result.getOutputFiles() : null)
+            .outputFiles(result != null ? result.getOutputFiles().stream().map(e -> e.getFileUrl()).toList() : null)
             .executionDurationMs(result != null ? result.getExecutionDurationMs() : null)
             .build();
     }

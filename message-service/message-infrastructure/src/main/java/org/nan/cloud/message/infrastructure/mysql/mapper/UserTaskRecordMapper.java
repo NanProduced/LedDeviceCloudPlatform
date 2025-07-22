@@ -75,10 +75,10 @@ public interface UserTaskRecordMapper extends BaseMapper<UserTaskRecord> {
             "SELECT * FROM user_task_record " +
             "WHERE user_id = #{userId} " +
             "AND organization_id = #{organizationId} " +
-            "<if test='taskType != null and taskType != \"\"">' +
+            "<if test='taskType != null and taskType != \"\"'>" +
             "AND task_type = #{taskType} " +
             "</if>" +
-            "<if test='status != null and status != \"\"">' +
+            "<if test='status != null and status != \"\"'>" +
             "AND status = #{status} " +
             "</if>" +
             "ORDER BY created_time DESC" +

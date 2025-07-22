@@ -4,17 +4,13 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.nan.cloud.message.api.dto.response.MessageDetailResponse;
 import org.nan.cloud.message.api.dto.response.MessageListResponse;
-import org.nan.cloud.message.api.enums.MessageType;
 import org.nan.cloud.message.api.event.MessageEvent;
+import org.nan.cloud.message.domain.repository.MessagePersistenceRepositoryInterface;
 import org.nan.cloud.message.infrastructure.mongodb.document.MessageDetail;
 import org.nan.cloud.message.infrastructure.mongodb.repository.MessageDetailRepository;
 import org.nan.cloud.message.infrastructure.mysql.entity.MessageInfo;
 import org.nan.cloud.message.infrastructure.mysql.mapper.MessageInfoMapper;
 import org.nan.cloud.message.infrastructure.redis.manager.MessageCacheManager;
-import org.nan.cloud.message.utils.MessageUtils;
-import org.springframework.data.domain.Page;
-import org.springframework.data.domain.PageRequest;
-import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Repository;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -50,7 +46,7 @@ import java.util.stream.Collectors;
 @Slf4j
 @Repository
 @RequiredArgsConstructor
-public class MessagePersistenceRepository implements org.nan.cloud.message.domain.repository.MessagePersistenceRepositoryInterface {
+public class MessagePersistenceRepository implements MessagePersistenceRepositoryInterface {
     
     private final MessageInfoMapper messageInfoMapper;
     private final MessageDetailRepository messageDetailRepository;
@@ -115,7 +111,7 @@ public class MessagePersistenceRepository implements org.nan.cloud.message.domai
             // 1. 批量保存到MySQL
             List<MessageInfo> messageInfos = events.stream()
                 .map(this::buildMessageInfo)
-                .collect(Collectors.toList());
+                .toList();
             
             for (MessageInfo info : messageInfos) {
                 messageInfoMapper.insert(info);
@@ -270,8 +266,6 @@ public class MessagePersistenceRepository implements org.nan.cloud.message.domai
                 .total(messageInfoPage.getTotal())
                 .page(page)
                 .size(size)
-                .hasNext(messageInfoPage.hasNext())
-                .hasPrevious(messageInfoPage.hasPrevious())
                 .build();
             
             log.debug("分页查询用户消息完成: receiverId={}, total={}", receiverId, response.getTotal());
@@ -284,8 +278,6 @@ public class MessagePersistenceRepository implements org.nan.cloud.message.domai
                 .total(0L)
                 .page(page)
                 .size(size)
-                .hasNext(false)
-                .hasPrevious(false)
                 .build();
         }
     }
@@ -473,15 +465,15 @@ public class MessagePersistenceRepository implements org.nan.cloud.message.domai
         messageInfo.setReceiverId(event.getReceiverId());
         messageInfo.setOrganizationId(event.getOrganizationId());
         messageInfo.setTitle(event.getTitle());
-        messageInfo.setPriority(event.getPriority() != null ? event.getPriority() : 2);
+        messageInfo.setPriority(event.getPriority() != null ? event.getPriority().getLevel() : 2);
         messageInfo.setStatus("PENDING");
         messageInfo.setCreatedTime(event.getTimestamp());
         
         // 设置消息过期时间（默认30天）
-        if (event.getExpiresAt() != null) {
-            messageInfo.setExpiresAt(event.getExpiresAt());
+        if (event.getExpireTime() != null) {
+            messageInfo.setExpiresAt(event.getExpireTime());
         } else {
-            messageInfo.setExpiresAt(LocalDateTime.now().plus(30, ChronoUnit.DAYS));
+            messageInfo.setExpiresAt(LocalDateTime.now().plusDays(30));
         }
         
         return messageInfo;
@@ -498,14 +490,11 @@ public class MessagePersistenceRepository implements org.nan.cloud.message.domai
             .senderId(event.getSenderId())
             .senderName(event.getSenderName())
             .receiverId(event.getReceiverId())
-            .receiverName(event.getReceiverName())
             .title(event.getTitle())
             .content(event.getContent())
             .metadata(event.getMetadata())
-            .priority(event.getPriority() != null ? event.getPriority() : 2)
+            .priority(event.getPriority() != null ? event.getPriority().getLevel() : 2)
             .source("message-service")
-            .relatedObjectId(event.getRelatedObjectId())
-            .relatedObjectType(event.getRelatedObjectType())
             .createdTime(event.getTimestamp())
             .ttl(LocalDateTime.now().plus(30, ChronoUnit.DAYS)) // TTL 30天
             .build();
@@ -521,21 +510,15 @@ public class MessagePersistenceRepository implements org.nan.cloud.message.domai
             .senderId(info.getSenderId())
             .senderName(detail != null ? detail.getSenderName() : null)
             .receiverId(info.getReceiverId())
-            .receiverName(detail != null ? detail.getReceiverName() : null)
             .organizationId(info.getOrganizationId())
             .title(info.getTitle())
             .content(detail != null ? detail.getContent() : null)
-            .richContent(detail != null ? detail.getRichContent() : null)
             .metadata(detail != null ? detail.getMetadata() : null)
-            .attachments(detail != null ? detail.getAttachments() : null)
             .tags(detail != null ? detail.getTags() : null)
             .priority(info.getPriority())
             .status(info.getStatus())
             .createdTime(info.getCreatedTime())
-            .sentTime(info.getSentTime())
-            .deliveredTime(info.getDeliveredTime())
-            .readTime(info.getReadTime())
-            .expiresAt(info.getExpiresAt())
+            .expireTime(info.getExpiresAt())
             .build();
     }
     

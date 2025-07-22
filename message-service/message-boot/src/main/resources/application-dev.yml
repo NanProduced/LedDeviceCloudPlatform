@@ -50,7 +50,7 @@ spring:
   autoconfigure:
     exclude:
       # - org.springframework.boot.autoconfigure.amqp.RabbitAutoConfiguration  # 启用RabbitMQ测试
-      - org.springframework.boot.autoconfigure.data.mongo.MongoDataAutoConfiguration  # 临时禁用MongoDB
+      # - org.springframework.boot.autoconfigure.data.mongo.MongoDataAutoConfiguration  # 启用MongoDB
 
 # WebSocket 本地环境配置
 websocket:

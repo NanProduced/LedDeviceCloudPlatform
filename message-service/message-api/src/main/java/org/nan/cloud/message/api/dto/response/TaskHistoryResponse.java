@@ -40,14 +40,4 @@ public class TaskHistoryResponse {
      * 每页大小
      */
     private Integer size;
-    
-    /**
-     * 是否有下一页
-     */
-    private Boolean hasNext;
-    
-    /**
-     * 是否有上一页
-     */
-    private Boolean hasPrevious;
 }

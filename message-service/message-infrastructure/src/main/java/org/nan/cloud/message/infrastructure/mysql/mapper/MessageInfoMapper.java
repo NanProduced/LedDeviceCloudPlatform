@@ -113,7 +113,7 @@ public interface MessageInfoMapper extends BaseMapper<MessageInfo> {
             "SELECT * FROM message_info " +
             "WHERE organization_id = #{organizationId} " +
             "AND created_time BETWEEN #{startTime} AND #{endTime} " +
-            "<if test='messageType != null and messageType != \"\"">' +
+            "<if test='messageType != null and messageType != \"\"'>" +
             "AND message_type = #{messageType} " +
             "</if>" +
             "ORDER BY created_time DESC" +

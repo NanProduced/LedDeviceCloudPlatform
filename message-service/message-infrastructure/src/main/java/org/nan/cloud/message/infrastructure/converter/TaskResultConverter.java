@@ -37,7 +37,6 @@ public class TaskResultConverter {
             .taskType(domainModel.getTaskType())
             .taskName(domainModel.getTaskName())
             .status(domainModel.getStatus())
-            .success(domainModel.isSuccess())
             .errorMessage(domainModel.getErrorMessage())
             .createdTime(domainModel.getCreatedTime())
             .startedTime(domainModel.getStartedTime())
@@ -86,60 +85,60 @@ public class TaskResultConverter {
     
     // ==================== 私有转换方法 ====================
     
-    private List<TaskResult.LogEntry> convertLogEntries(List<TaskResultData.LogEntry> domainLogEntries) {
+    private List<TaskResult.TaskExecutionLog> convertLogEntries(List<TaskResultData.LogEntry> domainLogEntries) {
         if (domainLogEntries == null) {
             return null;
         }
         
         return domainLogEntries.stream()
             .map(entry -> {
-                TaskResult.LogEntry infraEntry = new TaskResult.LogEntry();
+                TaskResult.TaskExecutionLog infraEntry = new TaskResult.TaskExecutionLog();
                 infraEntry.setTimestamp(entry.getTimestamp());
                 infraEntry.setLevel(entry.getLevel());
                 infraEntry.setMessage(entry.getMessage());
-                infraEntry.setSource(entry.getSource());
+                // infraEntry.setSource(entry.getSource()); // TaskExecutionLog没有source字段
                 infraEntry.setContext(entry.getContext());
                 return infraEntry;
             })
             .collect(Collectors.toList());
     }
     
-    private TaskResult.PerformanceMetrics convertPerformanceMetrics(TaskResultData.PerformanceMetrics domainMetrics) {
+    private TaskResult.TaskPerformanceMetrics convertPerformanceMetrics(TaskResultData.PerformanceMetrics domainMetrics) {
         if (domainMetrics == null) {
             return null;
         }
         
-        TaskResult.PerformanceMetrics infraMetrics = new TaskResult.PerformanceMetrics();
+        TaskResult.TaskPerformanceMetrics infraMetrics = new TaskResult.TaskPerformanceMetrics();
         infraMetrics.setMemoryPeakBytes(domainMetrics.getMemoryPeakBytes());
         infraMetrics.setCpuTimeMs(domainMetrics.getCpuTimeMs());
-        infraMetrics.setThreadCount(domainMetrics.getThreadCount());
-        infraMetrics.setDiskSpaceUsedBytes(domainMetrics.getDiskSpaceUsedBytes());
-        infraMetrics.setNetworkBytesTransferred(domainMetrics.getNetworkBytesTransferred());
-        infraMetrics.setCustomMetrics(domainMetrics.getCustomMetrics());
+        // infraMetrics.setThreadCount(domainMetrics.getThreadCount()); // TaskPerformanceMetrics没有threadCount字段
+        infraMetrics.setDiskReadBytes(domainMetrics.getDiskSpaceUsedBytes()); // 使用diskReadBytes代替
+        infraMetrics.setNetworkDownloadBytes(domainMetrics.getNetworkBytesTransferred()); // 使用networkDownloadBytes代替
+        // infraMetrics.setCustomMetrics(domainMetrics.getCustomMetrics()); // TaskPerformanceMetrics没有customMetrics字段
         return infraMetrics;
     }
     
-    private List<TaskResult.OutputFile> convertOutputFiles(List<TaskResultData.OutputFile> domainOutputFiles) {
+    private List<TaskResult.TaskOutputFile> convertOutputFiles(List<TaskResultData.OutputFile> domainOutputFiles) {
         if (domainOutputFiles == null) {
             return null;
         }
         
         return domainOutputFiles.stream()
             .map(file -> {
-                TaskResult.OutputFile infraFile = new TaskResult.OutputFile();
+                TaskResult.TaskOutputFile infraFile = new TaskResult.TaskOutputFile();
                 infraFile.setFileName(file.getFileName());
-                infraFile.setFilePath(file.getFilePath());
+                infraFile.setFileUrl(file.getFilePath()); // 使用fileUrl代替filePath
                 infraFile.setFileType(file.getFileType());
                 infraFile.setFileSize(file.getFileSize());
-                infraFile.setChecksum(file.getChecksum());
-                infraFile.setCreatedTime(file.getCreatedTime());
-                infraFile.setMetadata(file.getMetadata());
+                infraFile.setMd5Checksum(file.getChecksum()); // 使用md5Checksum代替checksum
+                // infraFile.setCreatedTime(file.getCreatedTime()); // TaskOutputFile没有createdTime字段
+                infraFile.setDescription(file.getMetadata() != null ? file.getMetadata().toString() : null); // 使用description代替metadata
                 return infraFile;
             })
             .collect(Collectors.toList());
     }
     
-    private List<TaskResultData.LogEntry> convertLogEntriesFromInfra(List<TaskResult.LogEntry> infraLogEntries) {
+    private List<TaskResultData.LogEntry> convertLogEntriesFromInfra(List<TaskResult.TaskExecutionLog> infraLogEntries) {
         if (infraLogEntries == null) {
             return null;
         }
@@ -150,14 +149,14 @@ public class TaskResultConverter {
                 domainEntry.setTimestamp(entry.getTimestamp());
                 domainEntry.setLevel(entry.getLevel());
                 domainEntry.setMessage(entry.getMessage());
-                domainEntry.setSource(entry.getSource());
+                // domainEntry.setSource(entry.getSource()); // TaskExecutionLog没有source字段
                 domainEntry.setContext(entry.getContext());
                 return domainEntry;
             })
             .collect(Collectors.toList());
     }
     
-    private TaskResultData.PerformanceMetrics convertPerformanceMetricsFromInfra(TaskResult.PerformanceMetrics infraMetrics) {
+    private TaskResultData.PerformanceMetrics convertPerformanceMetricsFromInfra(TaskResult.TaskPerformanceMetrics infraMetrics) {
         if (infraMetrics == null) {
             return null;
         }
@@ -165,14 +164,14 @@ public class TaskResultConverter {
         TaskResultData.PerformanceMetrics domainMetrics = new TaskResultData.PerformanceMetrics();
         domainMetrics.setMemoryPeakBytes(infraMetrics.getMemoryPeakBytes());
         domainMetrics.setCpuTimeMs(infraMetrics.getCpuTimeMs());
-        domainMetrics.setThreadCount(infraMetrics.getThreadCount());
-        domainMetrics.setDiskSpaceUsedBytes(infraMetrics.getDiskSpaceUsedBytes());
-        domainMetrics.setNetworkBytesTransferred(infraMetrics.getNetworkBytesTransferred());
-        domainMetrics.setCustomMetrics(infraMetrics.getCustomMetrics());
+        // domainMetrics.setThreadCount(infraMetrics.getThreadCount()); // TaskPerformanceMetrics没有threadCount字段
+        domainMetrics.setDiskSpaceUsedBytes(infraMetrics.getDiskReadBytes()); // 使用diskReadBytes
+        domainMetrics.setNetworkBytesTransferred(infraMetrics.getNetworkDownloadBytes()); // 使用networkDownloadBytes
+        // domainMetrics.setCustomMetrics(infraMetrics.getCustomMetrics()); // TaskPerformanceMetrics没有customMetrics字段
         return domainMetrics;
     }
     
-    private List<TaskResultData.OutputFile> convertOutputFilesFromInfra(List<TaskResult.OutputFile> infraOutputFiles) {
+    private List<TaskResultData.OutputFile> convertOutputFilesFromInfra(List<TaskResult.TaskOutputFile> infraOutputFiles) {
         if (infraOutputFiles == null) {
             return null;
         }
@@ -181,12 +180,12 @@ public class TaskResultConverter {
             .map(file -> {
                 TaskResultData.OutputFile domainFile = new TaskResultData.OutputFile();
                 domainFile.setFileName(file.getFileName());
-                domainFile.setFilePath(file.getFilePath());
+                domainFile.setFilePath(file.getFileUrl()); // 使用fileUrl
                 domainFile.setFileType(file.getFileType());
                 domainFile.setFileSize(file.getFileSize());
-                domainFile.setChecksum(file.getChecksum());
-                domainFile.setCreatedTime(file.getCreatedTime());
-                domainFile.setMetadata(file.getMetadata());
+                domainFile.setChecksum(file.getMd5Checksum()); // 使用md5Checksum
+                // domainFile.setCreatedTime(file.getCreatedTime()); // TaskOutputFile没有createdTime字段
+                // domainFile.setMetadata(file.getMetadata()); // 使用description作为metadata
                 return domainFile;
             })
             .collect(Collectors.toList());

@@ -100,13 +100,6 @@ public class MessageDetail {
     private String receiverId;
     
     /**
-     * 接收者姓名
-     * 冗余存储，减少关联查询
-     */
-    @Field("receiverName")
-    private String receiverName;
-    
-    /**
      * 消息标题
      */
     @Field("title")
@@ -120,13 +113,6 @@ public class MessageDetail {
     private String content;
     
     /**
-     * 富文本内容
-     * HTML格式的消息内容，用于支持格式化显示
-     */
-    @Field("richContent")
-    private String richContent;
-    
-    /**
      * 消息扩展元数据
      * 
      * 存储特定类型消息的详细信息，如：
@@ -136,12 +122,6 @@ public class MessageDetail {
      */
     @Field("metadata")
     private Map<String, Object> metadata;
-    
-    /**
-     * 消息附件列表
-     */
-    @Field("attachments")
-    private List<MessageAttachment> attachments;
     
     /**
      * 消息标签
@@ -165,20 +145,6 @@ public class MessageDetail {
     private String source;
     
     /**
-     * 相关联的业务对象ID
-     * 如设备ID、订单ID等，便于关联查询
-     */
-    @Field("relatedObjectId")
-    private String relatedObjectId;
-    
-    /**
-     * 相关联的业务对象类型
-     * 如device、order、user等
-     */
-    @Field("relatedObjectType")
-    private String relatedObjectType;
-    
-    /**
      * 消息创建时间
      */
     @Indexed
@@ -193,86 +159,6 @@ public class MessageDetail {
     @Indexed(expireAfterSeconds = 0) // TTL索引，expireAfterSeconds=0表示使用文档中的时间
     @Field("ttl")
     private LocalDateTime ttl;
-    
-    /**
-     * 消息附件内部类
-     */
-    @Data
-    @Builder
-    @NoArgsConstructor
-    @AllArgsConstructor
-    public static class MessageAttachment {
-        
-        /**
-         * 附件文件名
-         */
-        private String fileName;
-        
-        /**
-         * 附件文件URL
-         * CDN或对象存储的访问地址
-         */
-        private String fileUrl;
-        
-        /**
-         * 附件文件大小（字节）
-         */
-        private Long fileSize;
-        
-        /**
-         * 附件MIME类型
-         */
-        private String mimeType;
-        
-        /**
-         * 附件缩略图URL（图片类型）
-         */
-        private String thumbnailUrl;
-        
-        /**
-         * 附件描述
-         */
-        private String description;
-        
-        /**
-         * 上传时间
-         */
-        private LocalDateTime uploadTime;
-    }
-    
-    /**
-     * 获取格式化的消息内容
-     * 
-     * 优先返回富文本内容，如果没有则返回普通内容
-     * 
-     * @return 格式化内容
-     */
-    public String getFormattedContent() {
-        return richContent != null && !richContent.trim().isEmpty() ? richContent : content;
-    }
-    
-    /**
-     * 检查消息是否包含附件
-     * 
-     * @return 是否有附件
-     */
-    public boolean hasAttachments() {
-        return attachments != null && !attachments.isEmpty();
-    }
-    
-    /**
-     * 获取附件总大小
-     * 
-     * @return 附件总大小（字节）
-     */
-    public Long getTotalAttachmentSize() {
-        if (!hasAttachments()) {
-            return 0L;
-        }
-        return attachments.stream()
-                .mapToLong(attachment -> attachment.getFileSize() != null ? attachment.getFileSize() : 0L)
-                .sum();
-    }
     
     /**
      * 检查消息是否已过期

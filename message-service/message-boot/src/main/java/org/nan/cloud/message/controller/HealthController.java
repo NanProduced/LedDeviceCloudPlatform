@@ -4,6 +4,7 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.nan.cloud.message.config.WebSocketProperties;
 import org.nan.cloud.message.infrastructure.websocket.manager.WebSocketConnectionManager;
+import org.nan.cloud.common.web.IgnoreDynamicResponse;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
@@ -33,6 +34,7 @@ public class HealthController {
      * 基础健康检查
      */
     @GetMapping
+    @IgnoreDynamicResponse
     public Map<String, Object> health() {
         Map<String, Object> health = new HashMap<>();
         health.put("status", "UP");
@@ -48,6 +50,7 @@ public class HealthController {
      * WebSocket状态检查
      */
     @GetMapping("/websocket")
+    @IgnoreDynamicResponse
     public Map<String, Object> websocketHealth() {
         Map<String, Object> status = new HashMap<>();
         
@@ -87,6 +90,7 @@ public class HealthController {
      * WebSocket配置信息
      */
     @GetMapping("/websocket/config")
+    @IgnoreDynamicResponse
     public Map<String, Object> websocketConfig() {
         Map<String, Object> config = new HashMap<>();
         config.put("endpoint", webSocketProperties.getEndpoint());

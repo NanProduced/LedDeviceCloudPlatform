@@ -14,6 +14,7 @@ import org.nan.cloud.core.repository.UserGroupTerminalGroupBindingRepository;
 import org.springframework.stereotype.Repository;
 import org.springframework.util.CollectionUtils;
 
+import java.time.LocalDateTime;
 import java.util.*;
 import java.util.stream.Collectors;
 
@@ -92,6 +93,22 @@ public class UserGroupTerminalGroupBindingRepositoryImpl implements UserGroupTer
         
         // 使用支持binding_type的批量插入方法
         bindingMapper.insertBatchSomeColumn(bindingDOs);
+    }
+
+    @Override
+    public void initOrgBindings(Long oid, Long ugid, Long tgid) {
+        UserGroupTerminalGroupBindingDO bindingDO = UserGroupTerminalGroupBindingDO.builder()
+                .oid(oid)
+                .ugid(ugid)
+                .tgid(tgid)
+                .bindingType(BindingType.INCLUDE)
+                .includeSub(true)
+                .creatorId(1L)
+                .createTime(LocalDateTime.now())
+                .updaterId(1L)
+                .updateTime(LocalDateTime.now())
+                .build();
+        bindingMapper.insert(bindingDO);
     }
 
 

@@ -36,21 +36,11 @@ public class MessageListResponse {
      * 当前页码
      */
     private Integer page;
-    
+
     /**
      * 每页大小
      */
     private Integer size;
-    
-    /**
-     * 是否有下一页
-     */
-    private Boolean hasNext;
-    
-    /**
-     * 是否有上一页
-     */
-    private Boolean hasPrevious;
     
     /**
      * 未读消息数

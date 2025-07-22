@@ -106,20 +106,6 @@ public interface MessageDetailRepository extends MongoRepository<MessageDetail, 
     Page<MessageDetail> findMessagesWithAttachments(String organizationId, Pageable pageable);
     
     /**
-     * 根据关联对象查询消息
-     * 
-     * 查询与特定业务对象相关的消息，如设备告警、订单通知等。
-     * 
-     * @param organizationId 组织ID
-     * @param relatedObjectType 关联对象类型
-     * @param relatedObjectId 关联对象ID
-     * @param pageable 分页参数
-     * @return 相关消息列表
-     */
-    Page<MessageDetail> findByOrganizationIdAndRelatedObjectTypeAndRelatedObjectIdOrderByCreatedTimeDesc(
-            String organizationId, String relatedObjectType, String relatedObjectId, Pageable pageable);
-    
-    /**
      * 查询指定优先级的消息
      * 
      * 用于优先级消息的单独处理和统计。

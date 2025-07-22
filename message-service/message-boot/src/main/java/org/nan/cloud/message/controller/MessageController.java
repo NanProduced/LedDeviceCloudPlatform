@@ -8,8 +8,9 @@ import lombok.RequiredArgsConstructor;
 import lombok.Setter;
 import lombok.extern.slf4j.Slf4j;
 import org.nan.cloud.message.api.dto.websocket.WebSocketMessage;
+import org.nan.cloud.message.api.dto.response.*;
 import org.nan.cloud.message.service.MessageService;
-import org.springframework.http.ResponseEntity;
+import org.nan.cloud.common.web.DynamicResponse;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.HashMap;
@@ -57,7 +58,7 @@ public class MessageController {
      */
     @PostMapping("/send/{userId}")
     @Operation(summary = "发送消息给指定用户", description = "向特定用户发送实时消息")
-    public ResponseEntity<Map<String, Object>> sendMessageToUser(
+    public SendMessageResponse sendMessageToUser(
             @Parameter(description = "目标用户ID", required = true)
             @PathVariable("userId") String userId,
             
@@ -66,35 +67,22 @@ public class MessageController {
         
         log.info("收到发送消息请求 - 目标用户: {}, 消息类型: {}", userId, message.getType());
         
-        try {
-            // 调用消息服务发送消息
-            boolean success = messageService.sendMessageToUser(userId, message);
-            
-            Map<String, Object> response = new HashMap<>();
-            response.put("success", success);
-            response.put("messageId", message.getMessageId());
-            response.put("userId", userId);
-            
-            if (success) {
-                response.put("message", "消息发送成功");
-                log.info("消息发送成功 - 用户: {}, 消息ID: {}", userId, message.getMessageId());
-                return ResponseEntity.ok(response);
-            } else {
-                response.put("message", "消息发送失败，用户可能不在线");
-                log.warn("消息发送失败 - 用户: {}, 消息ID: {}", userId, message.getMessageId());
-                return ResponseEntity.ok(response); // 即使发送失败也返回200，业务逻辑由success字段判断
-            }
-            
-        } catch (Exception e) {
-            log.error("发送消息异常 - 用户: {}, 错误: {}", userId, e.getMessage(), e);
-            
-            Map<String, Object> errorResponse = new HashMap<>();
-            errorResponse.put("success", false);
-            errorResponse.put("message", "服务器内部错误: " + e.getMessage());
-            errorResponse.put("userId", userId);
-            
-            return ResponseEntity.internalServerError().body(errorResponse);
+        // 调用消息服务发送消息，异常由GlobalExceptionHandler处理
+        boolean success = messageService.sendMessageToUser(userId, message);
+        
+        SendMessageResponse response = new SendMessageResponse();
+        response.setSuccess(success);
+        response.setMessageId(message.getMessageId());
+        response.setUserId(userId);
+        response.setMessage(success ? "消息发送成功" : "消息发送失败，用户可能不在线");
+        
+        if (success) {
+            log.info("消息发送成功 - 用户: {}, 消息ID: {}", userId, message.getMessageId());
+        } else {
+            log.warn("消息发送失败 - 用户: {}, 消息ID: {}", userId, message.getMessageId());
         }
+        
+        return response;
     }
     
     /**
@@ -108,7 +96,7 @@ public class MessageController {
      */
     @PostMapping("/broadcast/organization/{organizationId}")
     @Operation(summary = "组织内广播消息", description = "向指定组织内所有用户广播消息")
-    public ResponseEntity<Map<String, Object>> broadcastToOrganization(
+    public BroadcastResponse broadcastToOrganization(
             @Parameter(description = "目标组织ID", required = true)
             @PathVariable("organizationId") String organizationId,
             
@@ -117,32 +105,20 @@ public class MessageController {
         
         log.info("收到组织广播请求 - 目标组织: {}, 消息类型: {}", organizationId, message.getType());
         
-        try {
-            // 调用消息服务进行组织广播
-            int successCount = messageService.broadcastToOrganization(organizationId, message);
-            
-            Map<String, Object> response = new HashMap<>();
-            response.put("success", successCount > 0);
-            response.put("messageId", message.getMessageId());
-            response.put("organizationId", organizationId);
-            response.put("successCount", successCount);
-            response.put("message", String.format("广播完成，成功推送给 %d 个用户", successCount));
-            
-            log.info("组织广播完成 - 组织: {}, 消息ID: {}, 成功数量: {}", 
-                    organizationId, message.getMessageId(), successCount);
-            
-            return ResponseEntity.ok(response);
-            
-        } catch (Exception e) {
-            log.error("组织广播异常 - 组织: {}, 错误: {}", organizationId, e.getMessage(), e);
-            
-            Map<String, Object> errorResponse = new HashMap<>();
-            errorResponse.put("success", false);
-            errorResponse.put("message", "服务器内部错误: " + e.getMessage());
-            errorResponse.put("organizationId", organizationId);
-            
-            return ResponseEntity.internalServerError().body(errorResponse);
-        }
+        // 调用消息服务进行组织广播
+        int successCount = messageService.broadcastToOrganization(organizationId, message);
+        
+        BroadcastResponse response = new BroadcastResponse();
+        response.setSuccess(successCount > 0);
+        response.setMessageId(message.getMessageId());
+        response.setOrganizationId(organizationId);
+        response.setSuccessCount(successCount);
+        response.setMessage(String.format("广播完成，成功推送给 %d 个用户", successCount));
+        
+        log.info("组织广播完成 - 组织: {}, 消息ID: {}, 成功数量: {}", 
+                organizationId, message.getMessageId(), successCount);
+        
+        return response;
     }
     
     /**
@@ -155,35 +131,24 @@ public class MessageController {
      */
     @PostMapping("/broadcast/all")
     @Operation(summary = "全平台广播消息", description = "向所有在线用户广播系统级消息")
-    public ResponseEntity<Map<String, Object>> broadcastToAll(
+    public BroadcastResponse broadcastToAll(
             @Parameter(description = "消息内容", required = true)
             @RequestBody WebSocketMessage message) {
         
         log.info("收到全平台广播请求 - 消息类型: {}", message.getType());
         
-        try {
-            // 调用消息服务进行全平台广播
-            int successCount = messageService.broadcastToAll(message);
-            
-            Map<String, Object> response = new HashMap<>();
-            response.put("success", successCount > 0);
-            response.put("messageId", message.getMessageId());
-            response.put("successCount", successCount);
-            response.put("message", String.format("全平台广播完成，成功推送给 %d 个用户", successCount));
-            
-            log.info("全平台广播完成 - 消息ID: {}, 成功数量: {}", message.getMessageId(), successCount);
-            
-            return ResponseEntity.ok(response);
-            
-        } catch (Exception e) {
-            log.error("全平台广播异常 - 错误: {}", e.getMessage(), e);
-            
-            Map<String, Object> errorResponse = new HashMap<>();
-            errorResponse.put("success", false);
-            errorResponse.put("message", "服务器内部错误: " + e.getMessage());
-            
-            return ResponseEntity.internalServerError().body(errorResponse);
-        }
+        // 调用消息服务进行全平台广播
+        int successCount = messageService.broadcastToAll(message);
+        
+        BroadcastResponse response = new BroadcastResponse();
+        response.setSuccess(successCount > 0);
+        response.setMessageId(message.getMessageId());
+        response.setSuccessCount(successCount);
+        response.setMessage(String.format("全平台广播完成，成功推送给 %d 个用户", successCount));
+        
+        log.info("全平台广播完成 - 消息ID: {}, 成功数量: {}", message.getMessageId(), successCount);
+        
+        return response;
     }
     
     /**
@@ -196,37 +161,26 @@ public class MessageController {
      */
     @PostMapping("/notification/system")
     @Operation(summary = "发送系统通知", description = "发送系统级通知消息")
-    public ResponseEntity<Map<String, Object>> sendSystemNotification(
+    public SystemNotificationResponse sendSystemNotification(
             @Parameter(description = "系统通知请求", required = true)
             @RequestBody SystemNotificationRequest request) {
         
         log.info("收到系统通知请求 - 用户: {}, 组织: {}, 标题: {}", 
                 request.getUserId(), request.getOrganizationId(), request.getTitle());
         
-        try {
-            // 调用消息服务发送系统通知
-            boolean success = messageService.sendSystemNotification(
-                    request.getUserId(), 
-                    request.getOrganizationId(), 
-                    request.getTitle(), 
-                    request.getContent()
-            );
-            
-            Map<String, Object> response = new HashMap<>();
-            response.put("success", success);
-            response.put("message", success ? "系统通知发送成功" : "系统通知发送失败");
-            
-            return ResponseEntity.ok(response);
-            
-        } catch (Exception e) {
-            log.error("发送系统通知异常 - 错误: {}", e.getMessage(), e);
-            
-            Map<String, Object> errorResponse = new HashMap<>();
-            errorResponse.put("success", false);
-            errorResponse.put("message", "服务器内部错误: " + e.getMessage());
-            
-            return ResponseEntity.internalServerError().body(errorResponse);
-        }
+        // 调用消息服务发送系统通知，异常由GlobalExceptionHandler处理
+        boolean success = messageService.sendSystemNotification(
+                request.getUserId(), 
+                request.getOrganizationId(), 
+                request.getTitle(), 
+                request.getContent()
+        );
+        
+        SystemNotificationResponse response = new SystemNotificationResponse();
+        response.setSuccess(success);
+        response.setMessage(success ? "系统通知发送成功" : "系统通知发送失败");
+        
+        return response;
     }
     
     /**
@@ -239,36 +193,23 @@ public class MessageController {
      */
     @PostMapping("/batch-send")
     @Operation(summary = "批量发送消息", description = "向多个用户批量发送相同消息")
-    public ResponseEntity<Map<String, Object>> batchSendMessage(
+    public BroadcastResponse batchSendMessage(
             @Parameter(description = "批量发送请求", required = true)
             @RequestBody BatchSendRequest request) {
         
         log.info("收到批量发送请求 - 用户数量: {}, 消息类型: {}", 
                 request.getUserIds().size(), request.getMessage().getType());
         
-        try {
-            // 调用消息服务批量发送消息
-            int successCount = messageService.batchSendMessage(request.getUserIds(), request.getMessage());
-            
-            Map<String, Object> response = new HashMap<>();
-            response.put("success", successCount > 0);
-            response.put("totalUsers", request.getUserIds().size());
-            response.put("successCount", successCount);
-            response.put("failureCount", request.getUserIds().size() - successCount);
-            response.put("message", String.format("批量发送完成，成功 %d 个，失败 %d 个", 
-                    successCount, request.getUserIds().size() - successCount));
-            
-            return ResponseEntity.ok(response);
-            
-        } catch (Exception e) {
-            log.error("批量发送异常 - 错误: {}", e.getMessage(), e);
-            
-            Map<String, Object> errorResponse = new HashMap<>();
-            errorResponse.put("success", false);
-            errorResponse.put("message", "服务器内部错误: " + e.getMessage());
-            
-            return ResponseEntity.internalServerError().body(errorResponse);
-        }
+        // 调用消息服务批量发送消息，异常由GlobalExceptionHandler处理
+        int successCount = messageService.batchSendMessage(request.getUserIds(), request.getMessage());
+        
+        BroadcastResponse response = new BroadcastResponse();
+        response.setSuccess(successCount > 0);
+        response.setSuccessCount(successCount);
+        response.setMessage(String.format("批量发送完成，成功 %d 个，失败 %d 个", 
+                successCount, request.getUserIds().size() - successCount));
+        
+        return response;
     }
     
     /**
@@ -279,31 +220,20 @@ public class MessageController {
      */
     @GetMapping("/status/user/{userId}")
     @Operation(summary = "查询用户在线状态", description = "查询指定用户的在线状态和连接信息")
-    public ResponseEntity<Map<String, Object>> getUserStatus(
+    public UserStatusResponse getUserStatus(
             @Parameter(description = "用户ID", required = true)
             @PathVariable("userId") String userId) {
         
-        try {
-            boolean online = messageService.isUserOnline(userId);
-            int connectionCount = messageService.getUserConnectionCount(userId);
-            
-            Map<String, Object> response = new HashMap<>();
-            response.put("userId", userId);
-            response.put("online", online);
-            response.put("connectionCount", connectionCount);
-            response.put("message", online ? "用户在线" : "用户离线");
-            
-            return ResponseEntity.ok(response);
-            
-        } catch (Exception e) {
-            log.error("查询用户状态异常 - 用户: {}, 错误: {}", userId, e.getMessage(), e);
-            
-            Map<String, Object> errorResponse = new HashMap<>();
-            errorResponse.put("success", false);
-            errorResponse.put("message", "服务器内部错误: " + e.getMessage());
-            
-            return ResponseEntity.internalServerError().body(errorResponse);
-        }
+        boolean online = messageService.isUserOnline(userId);
+        int connectionCount = messageService.getUserConnectionCount(userId);
+        
+        UserStatusResponse response = new UserStatusResponse();
+        response.setUserId(userId);
+        response.setOnline(online);
+        response.setConnectionCount(connectionCount);
+        response.setMessage(online ? "用户在线" : "用户离线");
+        
+        return response;
     }
     
     /**
@@ -313,26 +243,16 @@ public class MessageController {
      */
     @GetMapping("/statistics")
     @Operation(summary = "获取系统统计信息", description = "获取消息中心的统计信息")
-    public ResponseEntity<Map<String, Object>> getStatistics() {
-        try {
-            int totalOnlineUsers = messageService.getTotalOnlineUserCount();
-            
-            Map<String, Object> response = new HashMap<>();
-            response.put("totalOnlineUsers", totalOnlineUsers);
-            response.put("timestamp", System.currentTimeMillis());
-            response.put("message", "统计信息获取成功");
-            
-            return ResponseEntity.ok(response);
-            
-        } catch (Exception e) {
-            log.error("获取统计信息异常 - 错误: {}", e.getMessage(), e);
-            
-            Map<String, Object> errorResponse = new HashMap<>();
-            errorResponse.put("success", false);
-            errorResponse.put("message", "服务器内部错误: " + e.getMessage());
-            
-            return ResponseEntity.internalServerError().body(errorResponse);
-        }
+    public StatisticsResponse getStatistics() {
+        // 获取统计信息，异常由GlobalExceptionHandler处理
+        int totalOnlineUsers = messageService.getTotalOnlineUserCount();
+        
+        StatisticsResponse response = new StatisticsResponse();
+        response.setTotalOnlineUsers(totalOnlineUsers);
+        response.setTimestamp(System.currentTimeMillis());
+        response.setMessage("统计信息获取成功");
+        
+        return response;
     }
     
     /**

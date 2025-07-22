@@ -4,8 +4,11 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.nan.cloud.message.api.event.MessageEvent;
 import org.nan.cloud.message.infrastructure.mq.config.RabbitMQConfig;
+import org.springframework.amqp.rabbit.connection.CorrelationData;
 import org.springframework.amqp.rabbit.core.RabbitTemplate;
 import org.springframework.stereotype.Component;
+
+import java.util.UUID;
 
 /**
  * 消息事件发布者
@@ -35,11 +38,17 @@ public class MessageEventPublisher {
             // 根据事件类型确定路由键
             String routingKey = determineRoutingKey(event);
             
-            // 发送到主交换机
+            // 创建关联数据，用于发布确认回调
+            CorrelationData correlationData = new CorrelationData(
+                "msg-" + event.getEventId() + "-" + UUID.randomUUID().toString().substring(0, 8)
+            );
+            
+            // 发送到主交换机，包含CorrelationData
             rabbitTemplate.convertAndSend(
                     RabbitMQConfig.MESSAGE_EXCHANGE, 
                     routingKey, 
-                    event
+                    event,
+                    correlationData
             );
             
             log.info("✅ 消息事件发布成功: eventId={}, routingKey={}", 

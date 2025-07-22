@@ -61,10 +61,10 @@ public interface MessageTemplateMapper extends BaseMapper<MessageTemplate> {
             "WHERE organization_id = #{organizationId} " +
             "AND is_active = true " +
             "AND status = 'ACTIVE' " +
-            "<if test='templateType != null and templateType != \"\"">' +
+            "<if test='templateType != null and templateType != \"\"'>" +
             "AND template_type = #{templateType} " +
             "</if>" +
-            "<if test='templateCategory != null and templateCategory != \"\"">' +
+            "<if test='templateCategory != null and templateCategory != \"\"'>" +
             "AND template_category = #{templateCategory} " +
             "</if>" +
             "ORDER BY usage_count DESC, created_time DESC" +
@@ -88,13 +88,13 @@ public interface MessageTemplateMapper extends BaseMapper<MessageTemplate> {
     @Select("<script>" +
             "SELECT * FROM message_template " +
             "WHERE organization_id = #{organizationId} " +
-            "<if test='templateType != null and templateType != \"\"">' +
+            "<if test='templateType != null and templateType != \"\"'>" +
             "AND template_type = #{templateType} " +
             "</if>" +
-            "<if test='status != null and status != \"\"">' +
+            "<if test='status != null and status != \"\"'>" +
             "AND status = #{status} " +
             "</if>" +
-            "<if test='keyword != null and keyword != \"\"">' +
+            "<if test='keyword != null and keyword != \"\"'>" +
             "AND (template_name LIKE CONCAT('%', #{keyword}, '%') " +
             "OR content_summary LIKE CONCAT('%', #{keyword}, '%')) " +
             "</if>" +
@@ -178,7 +178,7 @@ public interface MessageTemplateMapper extends BaseMapper<MessageTemplate> {
             "SELECT COUNT(*) FROM message_template " +
             "WHERE template_name = #{templateName} " +
             "AND organization_id = #{organizationId} " +
-            "<if test='excludeId != null and excludeId != \"\"">' +
+            "<if test='excludeId != null and excludeId != \"\"'>" +
             "AND template_id != #{excludeId} " +
             "</if>" +
             "</script>")
