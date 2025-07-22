@@ -6,7 +6,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.nan.cloud.message.api.dto.response.MessageDetailResponse;
 import org.nan.cloud.message.api.dto.response.MessageListResponse;
 import org.nan.cloud.message.api.event.MessageEvent;
-import org.nan.cloud.message.domain.repository.MessagePersistenceRepositoryInterface;
+import org.nan.cloud.message.domain.repository.MessagePersistenceRepository;
 import org.nan.cloud.message.infrastructure.mongodb.document.MessageDetail;
 import org.nan.cloud.message.infrastructure.mongodb.repository.MessageDetailMongoRepository;
 import org.nan.cloud.message.infrastructure.mysql.entity.MessageInfo;
@@ -48,7 +48,7 @@ import java.util.stream.Collectors;
 @Slf4j
 @Repository
 @RequiredArgsConstructor
-public class MessagePersistenceRepository implements MessagePersistenceRepositoryInterface {
+public class MessagePersistenceRepositoryImpl implements MessagePersistenceRepository {
     
     private final MessageInfoMapper messageInfoMapper;
     private final MessageDetailMongoRepository messageDetailMongoRepository;

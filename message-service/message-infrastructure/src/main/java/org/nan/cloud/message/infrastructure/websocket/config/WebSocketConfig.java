@@ -114,22 +114,27 @@ public class WebSocketConfig implements WebSocketConfigurer {
 }
 
 /*
- * WebSocket连接URL示例：
+ * WebSocket连接URL示例（Gateway + Cookie架构）：
  * 
  * 1. 原生WebSocket连接：
- *    ws://localhost:8084/ws?userId=123&orgId=456&token=xxx
+ *    ws://localhost:8082/message-service/ws  (通过Gateway代理)
  * 
  * 2. SockJS连接：
- *    http://localhost:8084/ws?userId=123&orgId=456&token=xxx
+ *    http://localhost:8082/message-service/ws  (通过Gateway代理)
+ * 
+ * 3. 直连Message-Service（仅开发环境）：
+ *    ws://localhost:8084/ws
  * 
  * 
- * 前端JavaScript连接示例：
+ * 前端JavaScript连接示例（Gateway架构）：
  * 
- * // 使用原生WebSocket
- * const socket = new WebSocket('ws://localhost:8084/ws?userId=123&orgId=456&token=xxx');
+ * // 使用原生WebSocket（通过Gateway，自动携带Cookie）
+ * const socket = new WebSocket('ws://localhost:8082/message-service/ws');
  * 
- * // 使用SockJS
- * const socket = new SockJS('http://localhost:8084/ws?userId=123&orgId=456&token=xxx');
+ * // 使用SockJS（通过Gateway，自动携带Cookie）
+ * const socket = new SockJS('http://localhost:8082/message-service/ws');
+ * 
+ * 注意：不再需要URL参数，认证信息通过Cookie传递给Gateway
  * 
  * 
  * 跨域配置说明：

@@ -4,12 +4,18 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.nan.cloud.message.api.dto.websocket.WebSocketMessage;
+import org.nan.cloud.message.infrastructure.websocket.event.WebSocketHeartbeatEvent;
+import org.nan.cloud.message.infrastructure.websocket.session.WebSocketSessionInfo;
+import org.nan.cloud.message.infrastructure.websocket.session.WebSocketSessionStore;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Component;
 import org.springframework.web.socket.CloseStatus;
 import org.springframework.web.socket.TextMessage;
 import org.springframework.web.socket.WebSocketSession;
 
+import jakarta.servlet.http.HttpServletRequest;
 import java.io.IOException;
+import java.net.InetSocketAddress;
 import java.time.LocalDateTime;
 import java.util.Map;
 import java.util.Set;
@@ -28,7 +34,7 @@ import java.util.concurrent.CopyOnWriteArraySet;
  * 3. 在线状态：维护用户在线状态信息
  * 4. 连接监控：统计连接数量和状态
  * 
- * @author LedDeviceCloudPlatform Team
+ * @author Nan
  * @since 1.0.0
  */
 @Slf4j
@@ -41,6 +47,18 @@ public class WebSocketConnectionManager {
      * 用于将消息对象转换为JSON字符串进行传输
      */
     private final ObjectMapper objectMapper;
+    
+    /**
+     * WebSocket会话存储器
+     * 用于Redis持久化会话信息
+     */
+    private final WebSocketSessionStore sessionStore;
+    
+    /**
+     * 应用事件发布器
+     * 用于发布WebSocket相关事件
+     */
+    private final ApplicationEventPublisher eventPublisher;
     
     /**
      * 用户连接映射表
@@ -78,6 +96,12 @@ public class WebSocketConnectionManager {
     private final Map<String, LocalDateTime> sessionConnectTime = new ConcurrentHashMap<>();
     
     /**
+     * 当前服务节点标识
+     * 用于分布式环境下的节点识别
+     */
+    private final String nodeId = generateNodeId();
+    
+    /**
      * 添加用户连接
      * 当用户建立WebSocket连接时调用此方法
      * 
@@ -86,8 +110,21 @@ public class WebSocketConnectionManager {
      * @param session WebSocket连接会话
      */
     public void addConnection(String userId, String organizationId, WebSocketSession session) {
+        addConnection(userId, organizationId, session, null);
+    }
+    
+    /**
+     * 添加用户连接（带token）
+     * 
+     * @param userId 用户ID
+     * @param organizationId 组织ID
+     * @param session WebSocket连接会话
+     * @param token 用户认证令牌
+     */
+    public void addConnection(String userId, String organizationId, WebSocketSession session, String token) {
         try {
             String sessionId = session.getId();
+            LocalDateTime connectTime = LocalDateTime.now();
             
             log.info("添加WebSocket连接 - 用户: {}, 组织: {}, 连接ID: {}", userId, organizationId, sessionId);
             
@@ -100,12 +137,20 @@ public class WebSocketConnectionManager {
             // 3. 建立连接到用户和组织的映射关系
             sessionUserMapping.put(sessionId, userId);
             sessionOrganizationMapping.put(sessionId, organizationId);
-            sessionConnectTime.put(sessionId, LocalDateTime.now());
+            sessionConnectTime.put(sessionId, connectTime);
             
-            // 4. 记录连接统计信息
+            // 4. 创建并保存会话信息到Redis
+            WebSocketSessionInfo sessionInfo = buildSessionInfo(sessionId, userId, organizationId, token, session, connectTime);
+            sessionStore.saveSession(sessionInfo);
+            
+            // 5. 发布连接注册事件
+            eventPublisher.publishEvent(new WebSocketHeartbeatEvent(this, sessionId, 
+                    WebSocketHeartbeatEvent.HeartbeatEventType.REGISTER));
+            
+            // 6. 记录连接统计信息
             logConnectionStats();
             
-            // 5. 发送连接成功确认消息
+            // 7. 发送连接成功确认消息
             sendConnectionWelcomeMessage(session, userId);
             
         } catch (Exception e) {
@@ -158,7 +203,14 @@ public class WebSocketConnectionManager {
             sessionOrganizationMapping.remove(sessionId);
             sessionConnectTime.remove(sessionId);
             
-            // 4. 记录连接统计信息
+            // 4. 发布连接移除事件
+            eventPublisher.publishEvent(new WebSocketHeartbeatEvent(this, sessionId, 
+                    WebSocketHeartbeatEvent.HeartbeatEventType.UNREGISTER));
+            
+            // 5. 从Redis会话存储中移除
+            sessionStore.removeSession(sessionId);
+            
+            // 6. 记录连接统计信息
             logConnectionStats();
             
         } catch (Exception e) {
@@ -344,5 +396,164 @@ public class WebSocketConnectionManager {
     private void logConnectionStats() {
         log.info("WebSocket连接统计 - 总连接数: {}, 在线用户数: {}, 活跃组织数: {}", 
                 getTotalConnectionCount(), getOnlineUserCount(), organizationConnections.size());
+    }
+    
+    /**
+     * 构建会话信息对象
+     * 
+     * @param sessionId 会话ID
+     * @param userId 用户ID
+     * @param organizationId 组织ID
+     * @param token 认证令牌
+     * @param session WebSocket会话
+     * @param connectTime 连接时间
+     * @return 会话信息对象
+     */
+    private WebSocketSessionInfo buildSessionInfo(String sessionId, String userId, String organizationId, 
+                                                String token, WebSocketSession session, LocalDateTime connectTime) {
+        // 获取客户端IP地址
+        String clientIp = getClientIp(session);
+        
+        // 获取User-Agent信息
+        String userAgent = getUserAgent(session);
+        
+        // 检测设备类型
+        WebSocketSessionInfo.DeviceType deviceType = detectDeviceType(userAgent);
+        
+        return WebSocketSessionInfo.builder()
+                .sessionId(sessionId)
+                .userId(userId)
+                .organizationId(organizationId)
+                .token(token)
+                .connectTime(connectTime)
+                .lastActivityTime(connectTime)
+                .lastHeartbeatTime(connectTime)
+                .clientIp(clientIp)
+                .userAgent(userAgent)
+                .status(WebSocketSessionInfo.ConnectionStatus.CONNECTED)
+                .nodeId(nodeId)
+                .deviceType(deviceType)
+                .deviceId(generateDeviceId(userAgent, clientIp))
+                .protocolVersion("1.0")
+                .heartbeatInterval(30)
+                .retryCount(0)
+                .build();
+    }
+    
+    /**
+     * 获取客户端IP地址
+     * 
+     * @param session WebSocket会话
+     * @return 客户端IP地址
+     */
+    private String getClientIp(WebSocketSession session) {
+        try {
+            InetSocketAddress remoteAddress = session.getRemoteAddress();
+            if (remoteAddress != null) {
+                return remoteAddress.getAddress().getHostAddress();
+            }
+        } catch (Exception e) {
+            log.warn("获取客户端IP失败: {}", e.getMessage());
+        }
+        return "unknown";
+    }
+    
+    /**
+     * 获取User-Agent信息
+     * 
+     * @param session WebSocket会话
+     * @return User-Agent字符串
+     */
+    private String getUserAgent(WebSocketSession session) {
+        try {
+            return session.getHandshakeHeaders().getFirst("User-Agent");
+        } catch (Exception e) {
+            log.warn("获取User-Agent失败: {}", e.getMessage());
+            return "unknown";
+        }
+    }
+    
+    /**
+     * 检测设备类型
+     * 
+     * @param userAgent User-Agent字符串
+     * @return 设备类型
+     */
+    private WebSocketSessionInfo.DeviceType detectDeviceType(String userAgent) {
+        if (userAgent == null || userAgent.isEmpty()) {
+            return WebSocketSessionInfo.DeviceType.UNKNOWN;
+        }
+        
+        String ua = userAgent.toLowerCase();
+        
+        // 移动端检测
+        if (ua.contains("mobile") || ua.contains("android") || ua.contains("iphone") || 
+            ua.contains("ipad") || ua.contains("ipod")) {
+            if (ua.contains("ipad") || ua.contains("tablet")) {
+                return WebSocketSessionInfo.DeviceType.TABLET;
+            }
+            return WebSocketSessionInfo.DeviceType.MOBILE;
+        }
+        
+        // 桌面端检测
+        if (ua.contains("electron") || ua.contains("desktop")) {
+            return WebSocketSessionInfo.DeviceType.DESKTOP;
+        }
+        
+        // 默认认为是Web浏览器
+        return WebSocketSessionInfo.DeviceType.WEB;
+    }
+    
+    /**
+     * 生成设备标识
+     * 
+     * @param userAgent User-Agent字符串
+     * @param clientIp 客户端IP
+     * @return 设备标识
+     */
+    private String generateDeviceId(String userAgent, String clientIp) {
+        try {
+            String input = (userAgent != null ? userAgent : "unknown") + "_" + clientIp;
+            return "device_" + Math.abs(input.hashCode());
+        } catch (Exception e) {
+            return "device_" + System.currentTimeMillis();
+        }
+    }
+    
+    /**
+     * 生成节点ID
+     * 
+     * @return 节点ID
+     */
+    private String generateNodeId() {
+        try {
+            String hostName = java.net.InetAddress.getLocalHost().getHostName();
+            return "node_" + hostName + "_" + System.currentTimeMillis();
+        } catch (Exception e) {
+            return "node_unknown_" + System.currentTimeMillis();
+        }
+    }
+    
+    /**
+     * 更新会话活跃时间
+     * 当会话有活动时调用此方法
+     * 
+     * @param sessionId 会话ID
+     */
+    public void updateSessionActivity(String sessionId) {
+        sessionStore.updateSessionActivity(sessionId);
+    }
+    
+    /**
+     * 处理心跳消息
+     * 当收到客户端心跳时调用此方法
+     * 
+     * @param sessionId 会话ID
+     */
+    public void handleHeartbeat(String sessionId) {
+        // 发布心跳更新事件
+        eventPublisher.publishEvent(new WebSocketHeartbeatEvent(this, sessionId, 
+                WebSocketHeartbeatEvent.HeartbeatEventType.UPDATE));
+        updateSessionActivity(sessionId);
     }
 }

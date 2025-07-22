@@ -22,7 +22,7 @@ import java.util.Optional;
  * @author Nan
  * @since 1.0.0
  */
-public interface MessagePersistenceRepositoryInterface {
+public interface MessagePersistenceRepository {
     
     /**
      * 保存完整消息

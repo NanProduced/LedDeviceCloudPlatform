@@ -5,15 +5,13 @@ import lombok.extern.slf4j.Slf4j;
 import org.nan.cloud.message.api.dto.response.TaskResultResponse;
 import org.nan.cloud.message.api.dto.response.TaskHistoryResponse;
 import org.nan.cloud.message.domain.model.TaskResultData;
+import org.nan.cloud.message.domain.repository.TaskResultPersistenceRepository;
 import org.nan.cloud.message.infrastructure.converter.TaskResultConverter;
 import org.nan.cloud.message.infrastructure.mongodb.document.TaskResult;
 import org.nan.cloud.message.infrastructure.mongodb.repository.TaskResultRepository;
 import org.nan.cloud.message.infrastructure.mysql.entity.UserTaskRecord;
 import org.nan.cloud.message.infrastructure.mysql.mapper.UserTaskRecordMapper;
 import org.nan.cloud.message.infrastructure.redis.manager.MessageCacheManager;
-import org.springframework.data.domain.Page;
-import org.springframework.data.domain.PageRequest;
-import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Repository;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -48,7 +46,7 @@ import java.util.stream.Collectors;
 @Slf4j
 @Repository
 @RequiredArgsConstructor
-public class TaskResultPersistenceRepository implements org.nan.cloud.message.domain.repository.TaskResultPersistenceRepositoryInterface {
+public class TaskResultPersistenceRepositoryImpl implements TaskResultPersistenceRepository {
     
     private final UserTaskRecordMapper userTaskRecordMapper;
     private final TaskResultRepository taskResultRepository;

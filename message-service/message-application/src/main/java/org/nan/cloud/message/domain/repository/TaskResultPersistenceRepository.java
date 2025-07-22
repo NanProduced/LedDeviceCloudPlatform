@@ -22,7 +22,7 @@ import java.util.Optional;
  * @author Nan
  * @since 1.0.0
  */
-public interface TaskResultPersistenceRepositoryInterface {
+public interface TaskResultPersistenceRepository {
     
     /**
      * 创建新任务记录

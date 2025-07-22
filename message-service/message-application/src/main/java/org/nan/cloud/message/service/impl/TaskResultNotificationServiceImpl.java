@@ -6,7 +6,7 @@ import org.nan.cloud.message.api.dto.response.*;
 import org.nan.cloud.message.api.dto.websocket.WebSocketMessage;
 import org.nan.cloud.message.api.enums.MessageType;
 import org.nan.cloud.message.domain.service.MessageCacheService;
-import org.nan.cloud.message.domain.repository.TaskResultPersistenceRepositoryInterface;
+import org.nan.cloud.message.domain.repository.TaskResultPersistenceRepository;
 import org.nan.cloud.message.service.MessageService;
 import org.nan.cloud.message.service.TaskResultNotificationService;
 import org.springframework.beans.factory.annotation.Value;
@@ -47,7 +47,7 @@ import java.util.stream.Collectors;
 @RequiredArgsConstructor
 public class TaskResultNotificationServiceImpl implements TaskResultNotificationService {
     
-    private final TaskResultPersistenceRepositoryInterface taskResultPersistenceRepository;
+    private final TaskResultPersistenceRepository taskResultPersistenceRepository;
     private final MessageCacheService messageCacheService;
     private final MessageService messageService;
     

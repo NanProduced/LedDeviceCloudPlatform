@@ -62,6 +62,8 @@ public enum MessageType {
      * 示例: "设备巡检计划将于明天到期"
      */
     BUSINESS_REMINDER("business_reminder", "业务提醒", "业务流程和事项提醒"),
+
+    BUSINESS_NOTIFICATION("business_notification", "业务通知", "业务流程状态更新通知"),
     
     /**
      * 实时数据
@@ -96,7 +98,13 @@ public enum MessageType {
      * 用途: 用户上线时的统计信息推送
      * 示例: 未读消息数、在线状态等统计数据
      */
-    USER_STATISTICS("user_statistics", "用户统计", "用户统计信息推送");
+    USER_STATISTICS("user_statistics", "用户统计", "用户统计信息推送"),
+
+    SECURITY_ALERT("security_alert", "安全报警事件", "系统异常报警"),
+
+    SECURITY_NOTIFICATION("security_notification", "安全通知", "系统安全通知"),
+
+    SYSTEM_ALERT("system_alert", "系统告警", "系统告警");
     
     /**
      * 消息类型代码

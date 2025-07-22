@@ -3,8 +3,9 @@ package org.nan.cloud.message.infrastructure.websocket.handler;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-// 移除错误的import，WebSocketMessage应该来自Spring框架
 import org.nan.cloud.message.infrastructure.websocket.manager.WebSocketConnectionManager;
+import org.nan.cloud.message.infrastructure.websocket.security.GatewayAuthValidator;
+import org.nan.cloud.message.infrastructure.websocket.security.GatewayUserInfo;
 import org.springframework.stereotype.Component;
 import org.springframework.web.socket.*;
 
@@ -23,7 +24,7 @@ import java.util.Map;
  * 3. 消息处理：接收客户端消息，进行相应处理
  * 4. 错误处理：处理连接异常，记录错误日志
  * 
- * @author LedDeviceCloudPlatform Team
+ * @author Nan
  * @since 1.0.0
  */
 @Slf4j
@@ -42,6 +43,12 @@ public class MessageWebSocketHandler implements WebSocketHandler {
      * 用于解析客户端发送的JSON消息
      */
     private final ObjectMapper objectMapper;
+    
+    /**
+     * Gateway认证验证器
+     * 负责从CLOUD-AUTH头中解析Gateway传递的用户信息
+     */
+    private final GatewayAuthValidator gatewayAuthValidator;
     
     /**
      * WebSocket连接建立后的回调方法
@@ -63,37 +70,39 @@ public class MessageWebSocketHandler implements WebSocketHandler {
             log.info("远程地址: {}", session.getRemoteAddress());
             log.info("连接URI: {}", session.getUri());
             
-            // 1. 从连接URI中提取用户信息
-            UserConnectionInfo userInfo = extractUserInfo(session);
+            // 1. 从WebSocket握手头中解析Gateway传递的用户信息
+            GatewayUserInfo userInfo = gatewayAuthValidator.validateUser(session);
             
             if (userInfo == null) {
-                log.error("❌ 用户信息提取失败，关闭连接 - 连接ID: {}", session.getId());
-                session.close(CloseStatus.BAD_DATA.withReason("缺少用户信息"));
+                log.error("❌ Gateway用户验证失败，关闭连接 - 连接ID: {}", session.getId());
+                session.close(CloseStatus.NOT_ACCEPTABLE.withReason("Gateway用户验证失败"));
                 return;
             }
             
-            log.info("✅ 用户信息提取成功 - 用户ID: {}, 组织ID: {}, Token: {}", 
-                    userInfo.getUserId(), userInfo.getOrganizationId(), 
-                    userInfo.getToken() != null ? "有" : "无");
-            
-            // 2. 验证用户权限
-            boolean permissionValid = validateUserPermission(userInfo);
-            log.info("权限验证结果: {}", permissionValid ? "通过" : "失败");
-            
-            if (!permissionValid) {
-                log.error("❌ 权限验证失败 - 用户ID: {}, 连接ID: {}", 
-                        userInfo.getUserId(), session.getId());
-                session.close(CloseStatus.NOT_ACCEPTABLE.withReason("权限验证失败"));
+            // 2. 检查WebSocket连接权限
+            if (!gatewayAuthValidator.hasWebSocketPermission(userInfo)) {
+                log.error("❌ 用户无WebSocket连接权限 - 用户ID: {}, 连接ID: {}", 
+                        userInfo.getUid(), session.getId());
+                session.close(CloseStatus.NOT_ACCEPTABLE.withReason("无WebSocket连接权限"));
                 return;
             }
+            
+            log.info("✅ Gateway用户验证成功 - 用户ID: {}, 组织ID: {}, 连接ID: {}", 
+                    userInfo.getUid(), userInfo.getOid(), session.getId());
             
             // 3. 将连接注册到连接管理器
             log.info("开始注册连接到连接管理器...");
-            connectionManager.addConnection(userInfo.getUserId(), userInfo.getOrganizationId(), session);
+            connectionManager.addConnection(
+                    userInfo.getUserIdString(), 
+                    userInfo.getOrganizationIdString(), 
+                    session, 
+                    null
+            );
             
             log.info("🎉 WebSocket连接建立成功！");
-            log.info("用户: {}, 组织: {}, 连接ID: {}", 
-                    userInfo.getUserId(), userInfo.getOrganizationId(), session.getId());
+            log.info("用户ID: {}, 组织ID: {}, 用户类型: {}, 连接ID: {}", 
+                    userInfo.getUid(), userInfo.getOid(), 
+                    userInfo.getUserType(), session.getId());
             log.info("===== WebSocket连接建立完成 =====");
             
         } catch (Exception e) {
@@ -327,11 +336,16 @@ public class MessageWebSocketHandler implements WebSocketHandler {
      */
     private void handleAppPingMessage(WebSocketSession session) {
         try {
+            String sessionId = session.getId();
+            
+            // 更新心跳时间
+            connectionManager.handleHeartbeat(sessionId);
+            
             // 回复pong消息
             String pongResponse = "{\"type\":\"pong\",\"timestamp\":" + System.currentTimeMillis() + "}";
             session.sendMessage(new TextMessage(pongResponse));
             
-            log.debug("回复应用层心跳包 - 连接ID: {}", session.getId());
+            log.debug("回复应用层心跳包 - 连接ID: {}", sessionId);
             
         } catch (Exception e) {
             log.error("回复应用层心跳包失败 - 连接ID: {}, 错误: {}", session.getId(), e.getMessage());
@@ -366,145 +380,4 @@ public class MessageWebSocketHandler implements WebSocketHandler {
         // TODO: 这里可以更新用户的在线状态信息
     }
     
-    /**
-     * 从WebSocket连接中提取用户信息
-     * 
-     * @param session WebSocket会话对象
-     * @return 用户连接信息，提取失败时返回null
-     */
-    private UserConnectionInfo extractUserInfo(WebSocketSession session) {
-        try {
-            log.debug("开始提取用户信息...");
-            
-            URI uri = session.getUri();
-            log.debug("连接URI: {}", uri);
-            
-            if (uri == null) {
-                log.warn("连接URI为空");
-                return null;
-            }
-            
-            String query = uri.getQuery();
-            log.debug("查询参数: {}", query);
-            
-            if (query == null || query.isEmpty()) {
-                log.warn("查询参数为空");
-                return null;
-            }
-            
-            // 解析URL查询参数
-            Map<String, String> params = parseQueryParams(query);
-            log.debug("解析后的参数: {}", params);
-            
-            String userId = params.get("userId");
-            String organizationId = params.get("orgId");
-            String token = params.get("token");
-            
-            log.debug("提取的参数 - userId: {}, orgId: {}, token: {}", 
-                    userId, organizationId, token != null ? "有" : "无");
-            
-            if (userId == null || organizationId == null) {
-                log.warn("必需参数缺失 - userId: {}, orgId: {}", userId, organizationId);
-                return null;
-            }
-            
-            UserConnectionInfo userInfo = new UserConnectionInfo(userId, organizationId, token);
-            log.debug("用户信息提取成功: {}", userInfo);
-            return userInfo;
-            
-        } catch (Exception e) {
-            log.error("提取WebSocket用户信息异常 - 连接ID: {}, 错误: {}", session.getId(), e.getMessage(), e);
-            return null;
-        }
-    }
-    
-    /**
-     * 解析URL查询参数
-     * 
-     * @param query 查询字符串
-     * @return 参数Map
-     */
-    private Map<String, String> parseQueryParams(String query) {
-        Map<String, String> params = new java.util.HashMap<>();
-        
-        if (query == null || query.trim().isEmpty()) {
-            log.warn("查询参数为空");
-            return params;
-        }
-        
-        log.debug("解析查询参数: {}", query);
-        
-        String[] pairs = query.split("&");
-        
-        for (String pair : pairs) {
-            String[] keyValue = pair.split("=", 2);
-            if (keyValue.length == 2) {
-                try {
-                    // URL解码参数值
-                    String key = java.net.URLDecoder.decode(keyValue[0], "UTF-8");
-                    String value = java.net.URLDecoder.decode(keyValue[1], "UTF-8");
-                    params.put(key, value);
-                    log.debug("解析参数: {} = {}", key, value);
-                } catch (Exception e) {
-                    log.warn("参数解码失败: {}", pair, e);
-                }
-            } else {
-                log.warn("参数格式错误: {}", pair);
-            }
-        }
-        
-        log.debug("解析完成，参数数量: {}", params.size());
-        return params;
-    }
-    
-    /**
-     * 验证用户权限
-     * 
-     * @param userInfo 用户连接信息
-     * @return true表示验证通过，false表示验证失败
-     */
-    private boolean validateUserPermission(UserConnectionInfo userInfo) {
-        // TODO: 这里应该验证JWT token的有效性
-        // 1. 验证token格式
-        // 2. 验证token签名
-        // 3. 验证token是否过期
-        // 4. 验证用户权限
-        
-        // 暂时简化处理，只检查基本信息
-        return userInfo.getUserId() != null && userInfo.getOrganizationId() != null;
-    }
-    
-    /**
-     * 用户连接信息内部类
-     * 封装从连接URL中提取的用户信息
-     */
-    private static class UserConnectionInfo {
-        private final String userId;
-        private final String organizationId;
-        private final String token;
-        
-        public UserConnectionInfo(String userId, String organizationId, String token) {
-            this.userId = userId;
-            this.organizationId = organizationId;
-            this.token = token;
-        }
-        
-        public String getUserId() {
-            return userId;
-        }
-        
-        public String getOrganizationId() {
-            return organizationId;
-        }
-        
-        public String getToken() {
-            return token;
-        }
-        
-        @Override
-        public String toString() {
-            return String.format("UserConnectionInfo{userId='%s', organizationId='%s', hasToken=%s}", 
-                    userId, organizationId, token != null);
-        }
-    }
 }

@@ -301,6 +301,10 @@ public class MessageEvent {
         return this.retryCount != null && this.maxRetryCount != null && 
                this.retryCount < this.maxRetryCount;
     }
+
+    public void incrementRetry() {
+        this.retryCount++;
+    }
     
     /**
      * 检查是否已过期

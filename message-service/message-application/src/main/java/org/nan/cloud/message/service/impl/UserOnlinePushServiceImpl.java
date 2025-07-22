@@ -8,8 +8,8 @@ import org.nan.cloud.message.api.dto.response.UserOnlinePushResult;
 import org.nan.cloud.message.api.dto.websocket.WebSocketMessage;
 import org.nan.cloud.message.api.enums.MessageType;
 import org.nan.cloud.message.domain.service.MessageCacheService;
-import org.nan.cloud.message.domain.repository.MessagePersistenceRepositoryInterface;
-import org.nan.cloud.message.domain.repository.TaskResultPersistenceRepositoryInterface;
+import org.nan.cloud.message.domain.repository.MessagePersistenceRepository;
+import org.nan.cloud.message.domain.repository.TaskResultPersistenceRepository;
 import org.nan.cloud.message.service.MessageService;
 import org.nan.cloud.message.service.UserOnlinePushService;
 import org.springframework.beans.factory.annotation.Value;
@@ -51,8 +51,8 @@ import java.util.stream.Collectors;
 @RequiredArgsConstructor
 public class UserOnlinePushServiceImpl implements UserOnlinePushService {
     
-    private final MessagePersistenceRepositoryInterface messagePersistenceRepository;
-    private final TaskResultPersistenceRepositoryInterface taskResultPersistenceRepository;
+    private final MessagePersistenceRepository messagePersistenceRepository;
+    private final TaskResultPersistenceRepository taskResultPersistenceRepository;
     private final MessageCacheService messageCacheService;
     private final MessageService messageService;
     
