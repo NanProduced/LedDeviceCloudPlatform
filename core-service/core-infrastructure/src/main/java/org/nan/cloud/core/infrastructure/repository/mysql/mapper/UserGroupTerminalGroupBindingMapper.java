@@ -161,4 +161,5 @@ public interface UserGroupTerminalGroupBindingMapper extends BaseMapper<UserGrou
             @Result(property = "childCount", column = "child_count")
     })
     List<UserGroupTerminalGroupBindingDO> selectUserGroupPermissionDetails(@Param("ugid") Long ugid);
+
 }

@@ -32,7 +32,6 @@ public class UserGroupServiceImpl implements UserGroupService {
 
     private final UserGroupRepository userGroupRepository;
     private final UserRepository userRepository;
-    private final BusinessCacheService businessCacheService;
 
     @Override
     public UserGroup getUserGroupById(Long ugid) {

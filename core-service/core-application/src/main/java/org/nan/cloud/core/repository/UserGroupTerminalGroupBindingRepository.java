@@ -8,7 +8,8 @@ import java.util.Map;
 public interface UserGroupTerminalGroupBindingRepository {
 
     /**
-     * 获取用户组绑定的终端组列表
+     * 获取用户组的原始绑定数据（不进行权限计算）
+     * 权限计算逻辑移至Service层处理INCLUDE/EXCLUDE混合场景
      */
     List<UserGroupTerminalGroupBinding> getUserGroupBindings(Long ugid);
 
@@ -24,13 +25,6 @@ public interface UserGroupTerminalGroupBindingRepository {
      * 一次查询检查多个终端组的权限状态，减少数据库访问次数
      */
     Map<Long, Boolean> batchCheckPermissions(Long ugid, List<Long> tgids);
-
-    /**
-     * 获取用户组的原始绑定数据（不进行权限计算）
-     * 权限计算逻辑移至Service层处理INCLUDE/EXCLUDE混合场景
-     */
-    List<UserGroupTerminalGroupBinding> getRawUserGroupBindings(Long ugid);
-
     
     /**
      * 批量删除用户组的权限绑定

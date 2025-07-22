@@ -6,6 +6,7 @@ import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import lombok.RequiredArgsConstructor;
 import org.nan.cloud.common.basic.model.BindingType;
 import org.nan.cloud.common.basic.model.PageVO;
+import org.nan.cloud.core.domain.User;
 import org.nan.cloud.core.domain.UserGroupTerminalGroupBinding;
 import org.nan.cloud.core.infrastructure.repository.mysql.DO.UserGroupTerminalGroupBindingDO;
 import org.nan.cloud.core.infrastructure.repository.mysql.converter.CommonConverter;
@@ -54,13 +55,6 @@ public class UserGroupTerminalGroupBindingRepositoryImpl implements UserGroupTer
                         UserGroupTerminalGroupBindingMapper.TerminalGroupPermissionResult::getTgid,
                         UserGroupTerminalGroupBindingMapper.TerminalGroupPermissionResult::getHasPermission
                 ));
-    }
-
-    @Override
-    public List<UserGroupTerminalGroupBinding> getRawUserGroupBindings(Long ugid) {
-        return commonConverter.toUserGroupTerminalGroupBinding(bindingMapper.selectList(new LambdaQueryWrapper<UserGroupTerminalGroupBindingDO>()
-                .eq(UserGroupTerminalGroupBindingDO::getUgid, ugid)
-                .orderByAsc(UserGroupTerminalGroupBindingDO::getTgid)));
     }
 
     @Override

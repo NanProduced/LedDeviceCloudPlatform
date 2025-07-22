@@ -28,7 +28,7 @@ import java.util.Optional;
  * @since 1.0.0
  */
 @Repository
-public interface MessageDetailRepository extends MongoRepository<MessageDetail, String> {
+public interface MessageDetailMongoRepository extends MongoRepository<MessageDetail, String> {
     
     /**
      * 根据消息ID查询消息详情

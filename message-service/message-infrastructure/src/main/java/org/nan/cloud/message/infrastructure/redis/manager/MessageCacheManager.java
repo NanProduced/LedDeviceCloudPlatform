@@ -66,7 +66,7 @@ public class MessageCacheManager {
     public boolean isUserOnline(String userId) {
         try {
             String key = getUserOnlineKey(userId);
-            return Boolean.TRUE.equals(redisTemplate.hasKey(key));
+            return redisTemplate.hasKey(key);
         } catch (Exception e) {
             log.error("检查用户在线状态失败: userId={}, error={}", userId, e.getMessage(), e);
             return false;

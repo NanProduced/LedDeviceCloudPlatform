@@ -29,7 +29,7 @@ public class UserGroupTerminalGroupBindingServiceImpl implements UserGroupTermin
     @Override
     public List<Long> getAccessibleTerminalGroupIds(Long ugid) {
         // 获取用户组的所有原始绑定关系（包含INCLUDE/EXCLUDE类型）
-        List<UserGroupTerminalGroupBinding> allBindings = bindingRepository.getRawUserGroupBindings(ugid);
+        List<UserGroupTerminalGroupBinding> allBindings = bindingRepository.getUserGroupBindings(ugid);
         
         // 计算包含的终端组ID集合
         Set<Long> includedTerminalGroupIds = new HashSet<>();
@@ -101,7 +101,7 @@ public class UserGroupTerminalGroupBindingServiceImpl implements UserGroupTermin
                 request.getEnableRedundancyOptimization());
         
         // 获取当前用户组的所有绑定关系（包含INCLUDE/EXCLUDE类型）
-        List<UserGroupTerminalGroupBinding> currentBindings = bindingRepository.getRawUserGroupBindings(request.getUgid());
+        List<UserGroupTerminalGroupBinding> currentBindings = bindingRepository.getUserGroupBindings(request.getUgid());
         int originalCount = currentBindings.size();
         
         log.info("[权限表达式更新] 当前用户组绑定状态 - 用户组ID: {}, 现有绑定数量: {}", 

@@ -1,5 +1,6 @@
 package org.nan.cloud.message.infrastructure.repository;
 
+import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.nan.cloud.message.api.dto.response.MessageDetailResponse;
@@ -7,7 +8,7 @@ import org.nan.cloud.message.api.dto.response.MessageListResponse;
 import org.nan.cloud.message.api.event.MessageEvent;
 import org.nan.cloud.message.domain.repository.MessagePersistenceRepositoryInterface;
 import org.nan.cloud.message.infrastructure.mongodb.document.MessageDetail;
-import org.nan.cloud.message.infrastructure.mongodb.repository.MessageDetailRepository;
+import org.nan.cloud.message.infrastructure.mongodb.repository.MessageDetailMongoRepository;
 import org.nan.cloud.message.infrastructure.mysql.entity.MessageInfo;
 import org.nan.cloud.message.infrastructure.mysql.mapper.MessageInfoMapper;
 import org.nan.cloud.message.infrastructure.redis.manager.MessageCacheManager;
@@ -16,6 +17,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
 import java.time.temporal.ChronoUnit;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -49,7 +51,7 @@ import java.util.stream.Collectors;
 public class MessagePersistenceRepository implements MessagePersistenceRepositoryInterface {
     
     private final MessageInfoMapper messageInfoMapper;
-    private final MessageDetailRepository messageDetailRepository;
+    private final MessageDetailMongoRepository messageDetailMongoRepository;
     private final MessageCacheManager messageCacheManager;
     
     // ==================== 消息创建和保存 ====================
@@ -75,7 +77,7 @@ public class MessagePersistenceRepository implements MessagePersistenceRepositor
             
             // 2. 保存到MongoDB（消息详细内容）
             MessageDetail messageDetail = buildMessageDetail(event);
-            messageDetailRepository.save(messageDetail);
+            messageDetailMongoRepository.save(messageDetail);
             log.debug("消息内容保存成功: messageId={}", event.getMessageId());
             
             // 3. 更新Redis缓存
@@ -123,7 +125,7 @@ public class MessagePersistenceRepository implements MessagePersistenceRepositor
                 .map(this::buildMessageDetail)
                 .collect(Collectors.toList());
             
-            messageDetailRepository.saveAll(messageDetails);
+            messageDetailMongoRepository.saveAll(messageDetails);
             log.debug("批量保存消息内容完成: count={}", messageDetails.size());
             
             // 3. 批量更新缓存
@@ -169,7 +171,7 @@ public class MessagePersistenceRepository implements MessagePersistenceRepositor
             }
             
             // 2. 从MongoDB获取详细内容
-            Optional<MessageDetail> messageDetailOpt = messageDetailRepository.findByMessageId(messageId);
+            Optional<MessageDetail> messageDetailOpt = messageDetailMongoRepository.findByMessageId(messageId);
             if (messageDetailOpt.isEmpty()) {
                 log.warn("消息详细内容不存在: messageId={}", messageId);
                 return Optional.empty();
@@ -239,7 +241,7 @@ public class MessagePersistenceRepository implements MessagePersistenceRepositor
                 .map(MessageInfo::getMessageId)
                 .collect(Collectors.toList());
             
-            Map<String, MessageDetail> detailMap = messageDetailRepository
+            Map<String, MessageDetail> detailMap = messageDetailMongoRepository
                 .findByMessageIdInOrderByCreatedTimeDesc(messageIds)
                 .stream()
                 .collect(Collectors.toMap(MessageDetail::getMessageId, detail -> detail));
@@ -323,10 +325,10 @@ public class MessagePersistenceRepository implements MessagePersistenceRepositor
                 return buildCompleteMessages(messageInfos, messageIds);
             } else {
                 // 3. 从缓存的消息ID获取完整信息
-                List<String> messageIds = unreadMessageIds.stream().collect(Collectors.toList());
+                List<String> messageIds = new ArrayList<>(unreadMessageIds);
                 
                 // 从MySQL获取元数据
-                com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper<MessageInfo> queryWrapper = 
+                LambdaQueryWrapper<MessageInfo> queryWrapper =
                     new com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper<MessageInfo>()
                         .in(MessageInfo::getMessageId, messageIds)
                         .eq(MessageInfo::getReceiverId, receiverId)
@@ -531,7 +533,7 @@ public class MessagePersistenceRepository implements MessagePersistenceRepositor
         }
         
         // 获取MongoDB详细内容
-        Map<String, MessageDetail> detailMap = messageDetailRepository
+        Map<String, MessageDetail> detailMap = messageDetailMongoRepository
             .findByMessageIdInOrderByCreatedTimeDesc(messageIds)
             .stream()
             .collect(Collectors.toMap(MessageDetail::getMessageId, detail -> detail));

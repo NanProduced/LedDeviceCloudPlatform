@@ -4,8 +4,10 @@ import com.baomidou.mybatisplus.annotation.IdType;
 import com.baomidou.mybatisplus.annotation.TableField;
 import com.baomidou.mybatisplus.annotation.TableId;
 import com.baomidou.mybatisplus.annotation.TableName;
+import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
+import lombok.NoArgsConstructor;
 import org.nan.cloud.common.basic.model.BindingType;
 import org.nan.cloud.core.infrastructure.config.BindingTypeHandler;
 
@@ -13,6 +15,8 @@ import java.time.LocalDateTime;
 
 @Data
 @Builder
+@AllArgsConstructor
+@NoArgsConstructor
 @TableName("user_group_terminal_group_rel")
 public class UserGroupTerminalGroupBindingDO {
 
@@ -45,20 +49,20 @@ public class UserGroupTerminalGroupBindingDO {
 
     @TableField("update_time")
     private LocalDateTime updateTime;
-    
+
     // 以下字段用于联表查询，不存储到数据库
     @TableField(exist = false)
     private String terminalGroupName;
-    
+
     @TableField(exist = false)
     private String terminalGroupPath;
-    
+
     @TableField(exist = false)
     private Long parentTgid;
-    
+
     @TableField(exist = false)
     private Integer depth;
-    
+
     @TableField(exist = false)
     private Integer childCount;
 }
