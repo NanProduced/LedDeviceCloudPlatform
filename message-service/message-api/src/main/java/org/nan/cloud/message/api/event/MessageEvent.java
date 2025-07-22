@@ -9,6 +9,7 @@ import org.nan.cloud.message.api.enums.MessageType;
 import org.nan.cloud.message.api.enums.Priority;
 
 import java.time.LocalDateTime;
+import java.util.HashMap;
 import java.util.Map;
 
 /**
@@ -131,6 +132,16 @@ public class MessageEvent {
      * 事件版本
      */
     private String version;
+
+    /**
+     * 消息扩展元数据
+     *
+     * 存储特定类型消息的详细信息，如：
+     * - 设备告警：deviceId, deviceName, alertType, currentValue, threshold等
+     * - 任务结果：taskType, resultData, exportUrl等
+     * - 系统通知：noticeType, effectiveTime, expireTime等
+     */
+    private Map<String, Object> metadata;
     
     /**
      * 是否已处理
@@ -304,5 +315,27 @@ public class MessageEvent {
     private static String generateEventId() {
         return "event-" + System.currentTimeMillis() + "-" + 
                (int)(Math.random() * 1000);
+    }
+
+    public void putMetadata(String key, Object value) {
+        if (this.metadata == null) {
+            this.metadata = new HashMap<>();
+        }
+        this.metadata.put(key, value);
+    }
+
+    public void putMetadata(Map<String, Object> map) {
+        if (this.metadata == null) {
+            this.metadata = map;
+        }
+        else {
+            this.metadata.putAll(map);
+        }
+    }
+
+    public void clearMetadata() {
+        if (this.metadata != null) {
+            this.metadata.clear();
+        }
     }
 }

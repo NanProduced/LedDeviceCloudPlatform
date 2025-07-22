@@ -41,6 +41,14 @@ public interface UserGroupTerminalGroupBindingRepository {
      * 批量创建权限绑定
      */
     void batchCreateBindings(List<UserGroupTerminalGroupBinding> bindings);
+
+    /**
+     * 创建组织时初始化根终端组和根用户组绑定关系
+     * @param oid
+     * @param ugid
+     * @param tgid
+     */
+    void initOrgBindings(Long oid, Long ugid, Long tgid);
     
     /**
      * 获取用户组权限绑定详细信息（包含终端组名称和路径）

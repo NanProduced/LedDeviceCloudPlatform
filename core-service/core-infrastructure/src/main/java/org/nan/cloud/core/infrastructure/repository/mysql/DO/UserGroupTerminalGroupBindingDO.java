@@ -4,6 +4,7 @@ import com.baomidou.mybatisplus.annotation.IdType;
 import com.baomidou.mybatisplus.annotation.TableField;
 import com.baomidou.mybatisplus.annotation.TableId;
 import com.baomidou.mybatisplus.annotation.TableName;
+import lombok.Builder;
 import lombok.Data;
 import org.nan.cloud.common.basic.model.BindingType;
 import org.nan.cloud.core.infrastructure.config.BindingTypeHandler;
@@ -11,6 +12,7 @@ import org.nan.cloud.core.infrastructure.config.BindingTypeHandler;
 import java.time.LocalDateTime;
 
 @Data
+@Builder
 @TableName("user_group_terminal_group_rel")
 public class UserGroupTerminalGroupBindingDO {
 

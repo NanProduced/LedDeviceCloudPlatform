@@ -1,6 +1,7 @@
 package org.nan.cloud.core.service.impl;
 
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.nan.cloud.common.basic.exception.ExceptionEnum;
 import org.nan.cloud.common.basic.utils.RandomUtils;
 import org.nan.cloud.core.DTO.CreateOrgDTO;
@@ -8,15 +9,13 @@ import org.nan.cloud.core.domain.Organization;
 import org.nan.cloud.core.domain.TerminalGroup;
 import org.nan.cloud.core.domain.UserGroup;
 import org.nan.cloud.core.exception.BusinessException;
-import org.nan.cloud.core.repository.OrgRepository;
-import org.nan.cloud.core.repository.TerminalGroupRepository;
-import org.nan.cloud.core.repository.UserGroupRepository;
-import org.nan.cloud.core.repository.UserRepository;
+import org.nan.cloud.core.repository.*;
 import org.nan.cloud.core.service.OrgService;
 import org.springframework.dao.DuplicateKeyException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+@Slf4j
 @Service
 @RequiredArgsConstructor
 public class OrgServiceImpl implements OrgService {
@@ -27,7 +26,7 @@ public class OrgServiceImpl implements OrgService {
 
     private final TerminalGroupRepository terminalGroupRepository;
 
-    private final UserRepository userRepository;
+    private final UserGroupTerminalGroupBindingRepository  userGroupTerminalGroupBindingRepository;
 
     @Override
     @Transactional
@@ -41,6 +40,7 @@ public class OrgServiceImpl implements OrgService {
                 .build();
         organization = tryCreateOrgWithSuffix(organization);
         Long oid = organization.getOid();
+        log.info("ORG_CREATE===>Organization created with OID {}", oid);
         // 创建组织根用户组
         UserGroup rootUserGroup = userGroupRepository.createUserGroup(UserGroup
                         .builder()
@@ -53,6 +53,7 @@ public class OrgServiceImpl implements OrgService {
                         .creatorId(currentUid)
                         .build());
         organization.setRootUgid(rootUserGroup.getUgid());
+        log.info("ORG_CREATE===>Organization root user group with id {}", organization.getRootUgid());
         // 创建组织根终端组
         TerminalGroup rootTerminalGroup = terminalGroupRepository.createTerminalGroup(TerminalGroup
                         .builder()
@@ -65,7 +66,10 @@ public class OrgServiceImpl implements OrgService {
                         .creatorId(currentUid)
                         .build());
         organization.setRootTgid(rootTerminalGroup.getTgid());
+        log.info("ORG_CREATE===>Organization root terminal group with id {}", organization.getRootTgid());
         if (!orgRepository.updateOrganization(organization)) throw new BusinessException(ExceptionEnum.UPDATE_FAILED, "update root group failed");
+        userGroupTerminalGroupBindingRepository.initOrgBindings(oid, organization.getRootUgid(), organization.getRootTgid());
+        log.info("ORG_CREATE===>Organization root user&terminal group binding successfully");
         return organization;
     }
 

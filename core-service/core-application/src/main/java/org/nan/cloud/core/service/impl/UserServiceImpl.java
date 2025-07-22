@@ -50,6 +50,7 @@ public class UserServiceImpl implements UserService {
                     .status(UserStatusEnum.ACTIVE.getCode())
                     .suffix(createOrgDTO.getSuffix())
                     .build());
+            log.info("ORG_MANAGER_USER created {}", manager.getUid());
         } catch (DuplicateKeyException ex) {
             throw new BusinessException(ex, "Duplicate usernames within the organization");
         }
