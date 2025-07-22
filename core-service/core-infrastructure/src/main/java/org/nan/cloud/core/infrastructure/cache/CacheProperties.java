@@ -31,7 +31,6 @@ public class CacheProperties {
     @Data
     public static class Redis {
         private boolean enabled = true;
-        private String keyPrefix = "core:cache:";
         private Duration defaultTtl = Duration.ofMinutes(30);
         private boolean enableKeyspaceNotifications = true;
     }

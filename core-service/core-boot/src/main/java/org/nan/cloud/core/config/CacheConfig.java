@@ -126,8 +126,7 @@ public class CacheConfig {
         RedisCacheConfiguration config = RedisCacheConfiguration.defaultCacheConfig()
             .entryTtl(cacheProperties.getRedis().getDefaultTtl())
             .serializeKeysWith(RedisSerializationContext.SerializationPair.fromSerializer(new StringRedisSerializer()))
-            .serializeValuesWith(RedisSerializationContext.SerializationPair.fromSerializer(serializer))
-            .computePrefixWith(cacheName -> cacheProperties.getRedis().getKeyPrefix() + cacheName + ":");
+            .serializeValuesWith(RedisSerializationContext.SerializationPair.fromSerializer(serializer));
         
         return RedisCacheManager.builder(connectionFactory)
             .cacheDefaults(config)

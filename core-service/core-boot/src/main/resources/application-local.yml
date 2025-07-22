@@ -60,7 +60,6 @@ cache:
   # Redis分布式缓存配置
   redis:
     enabled: true                   # 是否启用Redis缓存
-    key-prefix: "core:cache:"       # 缓存键前缀
     default-ttl: 30m               # 默认TTL
     enable-keyspace-notifications: true  # 启用键空间通知
 
