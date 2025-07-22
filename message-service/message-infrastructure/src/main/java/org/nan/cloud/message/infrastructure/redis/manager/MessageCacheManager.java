@@ -463,4 +463,134 @@ public class MessageCacheManager {
     private String getTaskSessionKey(String taskId) {
         return "task_session_mapping:" + taskId;
     }
+    
+    // ==================== 通用缓存操作 ====================
+    
+    /**
+     * 缓存数据
+     * 
+     * @param key 缓存键
+     * @param value 缓存值
+     * @param expireSeconds 过期时间（秒）
+     */
+    public void cacheData(String key, String value, int expireSeconds) {
+        try {
+            redisTemplate.opsForValue().set(key, value, expireSeconds, TimeUnit.SECONDS);
+            log.debug("数据缓存成功: key={}", key);
+        } catch (Exception e) {
+            log.error("数据缓存失败: key={}, error={}", key, e.getMessage(), e);
+        }
+    }
+    
+    /**
+     * 获取缓存数据
+     * 
+     * @param key 缓存键
+     * @return 缓存值，不存在时返回null
+     */
+    public String getCachedData(String key) {
+        try {
+            return redisTemplate.opsForValue().get(key);
+        } catch (Exception e) {
+            log.error("获取缓存数据失败: key={}, error={}", key, e.getMessage(), e);
+            return null;
+        }
+    }
+    
+    /**
+     * 递增计数器
+     * 
+     * @param key 计数器键
+     * @param increment 递增值
+     * @param expireSeconds 过期时间（秒）
+     * @return 递增后的值
+     */
+    public Long incrementCounter(String key, long increment, int expireSeconds) {
+        try {
+            Long value = redisTemplate.opsForValue().increment(key, increment);
+            redisTemplate.expire(key, expireSeconds, TimeUnit.SECONDS);
+            log.debug("计数器递增成功: key={}, value={}", key, value);
+            return value;
+        } catch (Exception e) {
+            log.error("计数器递增失败: key={}, error={}", key, e.getMessage(), e);
+            return 0L;
+        }
+    }
+    
+    /**
+     * 获取计数器值
+     * 
+     * @param key 计数器键
+     * @return 计数器值，不存在时返回0
+     */
+    public Long getCounter(String key) {
+        try {
+            String value = redisTemplate.opsForValue().get(key);
+            return value != null ? Long.parseLong(value) : 0L;
+        } catch (Exception e) {
+            log.error("获取计数器值失败: key={}, error={}", key, e.getMessage(), e);
+            return 0L;
+        }
+    }
+    
+    /**
+     * 删除缓存数据
+     * 
+     * @param key 缓存键
+     * @return 删除是否成功
+     */
+    public Boolean deleteData(String key) {
+        try {
+            return redisTemplate.delete(key);
+        } catch (Exception e) {
+            log.error("删除缓存数据失败: key={}, error={}", key, e.getMessage(), e);
+            return false;
+        }
+    }
+    
+    /**
+     * 批量删除缓存数据
+     * 
+     * @param keys 缓存键列表
+     * @return 删除的数量
+     */
+    public Long batchDeleteData(List<String> keys) {
+        try {
+            return redisTemplate.delete(keys);
+        } catch (Exception e) {
+            log.error("批量删除缓存数据失败: keys={}, error={}", keys.size(), e.getMessage(), e);
+            return 0L;
+        }
+    }
+    
+    /**
+     * 检查缓存键是否存在
+     * 
+     * @param key 缓存键
+     * @return 是否存在
+     */
+    public Boolean hasKey(String key) {
+        try {
+            return redisTemplate.hasKey(key);
+        } catch (Exception e) {
+            log.error("检查缓存键失败: key={}, error={}", key, e.getMessage(), e);
+            return false;
+        }
+    }
+    
+    /**
+     * 设置缓存过期时间
+     * 
+     * @param key 缓存键
+     * @param expireSeconds 过期时间（秒）
+     * @return 设置是否成功
+     */
+    public Boolean expire(String key, int expireSeconds) {
+        try {
+            return redisTemplate.expire(key, expireSeconds, TimeUnit.SECONDS);
+        } catch (Exception e) {
+            log.error("设置过期时间失败: key={}, error={}", key, e.getMessage(), e);
+            return false;
+        }
+    }
 }

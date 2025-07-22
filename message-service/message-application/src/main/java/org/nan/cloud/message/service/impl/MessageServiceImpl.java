@@ -5,15 +5,18 @@ import lombok.extern.slf4j.Slf4j;
 import org.nan.cloud.message.api.dto.websocket.WebSocketMessage;
 import org.nan.cloud.message.api.enums.MessageType;
 import org.nan.cloud.message.api.enums.Priority;
+
+import org.nan.cloud.message.domain.repository.MessagePersistenceRepository;
 import org.nan.cloud.message.service.MessageService;
 import org.nan.cloud.message.repository.WebSocketConnectionRepository;
-import org.nan.cloud.message.service.MessageQueueService;
 import org.nan.cloud.message.utils.MessageUtils;
+import org.nan.cloud.message.api.event.MessageEvent;
 import org.springframework.stereotype.Service;
 
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Map;
+import java.util.stream.Collectors;
 
 /**
  * 消息服务实现类
@@ -41,9 +44,11 @@ public class MessageServiceImpl implements MessageService {
      */
     private final WebSocketConnectionRepository webSocketConnectionRepository;
     
-    // TODO: 后续会注入以下组件
-    // private final MessageRepository messageRepository;     // 消息持久化
-    // private final MessageTemplateService templateService; // 消息模板服务
+    /**
+     * 消息持久化仓储
+     * 统一协调MySQL、MongoDB和Redis三个数据源的消息数据操作
+     */
+    private final MessagePersistenceRepository messagePersistenceRepository;
     
     /**
      * 发送消息给指定用户
@@ -79,19 +84,23 @@ public class MessageServiceImpl implements MessageService {
             // 3. 尝试通过WebSocket发送消息
             int successCount = webSocketConnectionRepository.sendMessageToUser(userId, message);
             
+            // 4. 保存消息到持久化存储
+            MessageEvent messageEvent = createMessageEvent(message);
+            messagePersistenceRepository.saveMessage(messageEvent);
+            
             if (successCount > 0) {
                 log.info("消息发送成功 - 用户ID: {}, 消息ID: {}, 连接数: {}", 
                         userId, message.getMessageId(), successCount);
                 
-                // TODO: 记录消息发送成功事件
-                // eventPublisher.publishMessageSentEvent(message, userId);
+                // 更新消息状态为已发送
+                messagePersistenceRepository.updateMessageStatus(message.getMessageId(), "SENT");
                 
                 return true;
             } else {
-                log.warn("用户不在线，消息发送失败 - 用户ID: {}, 消息ID: {}", userId, message.getMessageId());
+                log.warn("用户不在线，消息已持久化，等待用户上线后推送 - 用户ID: {}, 消息ID: {}", userId, message.getMessageId());
                 
-                // TODO: 如果用户离线，将消息持久化，等待用户上线后推送
-                // messageRepository.saveOfflineMessage(userId, message);
+                // 更新消息状态为等待发送
+                messagePersistenceRepository.updateMessageStatus(message.getMessageId(), "PENDING");
                 
                 return false;
             }
@@ -128,14 +137,18 @@ public class MessageServiceImpl implements MessageService {
             message.setOrganizationId(organizationId);
             message.setTimestamp(LocalDateTime.now());
             
-            // 3. 通过WebSocket广播消息
+            // 3. 保存广播消息到持久化存储
+            MessageEvent messageEvent = createMessageEvent(message);
+            messagePersistenceRepository.saveMessage(messageEvent);
+            
+            // 4. 通过WebSocket广播消息
             int successCount = webSocketConnectionRepository.broadcastToOrganization(organizationId, message);
             
             log.info("组织广播完成 - 组织ID: {}, 消息ID: {}, 成功数量: {}", 
                     organizationId, message.getMessageId(), successCount);
             
-            // TODO: 记录广播事件和统计信息
-            // eventPublisher.publishBroadcastEvent(message, organizationId, successCount);
+            // 5. 更新消息状态
+            messagePersistenceRepository.updateMessageStatus(message.getMessageId(), "BROADCAST");
             
             return successCount;
             
@@ -162,13 +175,17 @@ public class MessageServiceImpl implements MessageService {
             // 设置消息时间戳
             message.setTimestamp(LocalDateTime.now());
             
+            // 保存全平台广播消息
+            MessageEvent messageEvent = createMessageEvent(message);
+            messagePersistenceRepository.saveMessage(messageEvent);
+            
             // 通过WebSocket广播消息
             int successCount = webSocketConnectionRepository.broadcastToAll(message);
             
             log.info("全平台广播完成 - 消息ID: {}, 成功数量: {}", message.getMessageId(), successCount);
             
-            // TODO: 记录全平台广播事件
-            // eventPublisher.publishGlobalBroadcastEvent(message, successCount);
+            // 更新消息状态
+            messagePersistenceRepository.updateMessageStatus(message.getMessageId(), "GLOBAL_BROADCAST");
             
             return successCount;
             
@@ -329,11 +346,53 @@ public class MessageServiceImpl implements MessageService {
         int successCount = 0;
         message.setTimestamp(LocalDateTime.now());
         
+        // 创建消息事件列表用于批量保存
+        List<MessageEvent> messageEvents = userIds.stream()
+            .map(userId -> {
+                WebSocketMessage userMessage = WebSocketMessage.builder()
+                    .messageId(MessageUtils.generateMessageId())
+                    .type(message.getType())
+                    .title(message.getTitle())
+                    .content(message.getContent())
+                    .priority(message.getPriority())
+                    .senderId(message.getSenderId())
+                    .receiverId(userId)
+                    .organizationId(message.getOrganizationId())
+                    .timestamp(LocalDateTime.now())
+                    .data(message.getData())
+                    .requireAck(message.getRequireAck())
+                    .build();
+                return createMessageEvent(userMessage);
+            })
+            .collect(Collectors.toList());
+        
+        // 批量保存消息
+        messagePersistenceRepository.batchSaveMessages(messageEvents);
+        
         // 逐个发送消息
         for (String userId : userIds) {
             try {
-                if (sendMessageToUser(userId, message)) {
+                // 创建独立的消息对象给每个用户
+                WebSocketMessage userMessage = WebSocketMessage.builder()
+                    .messageId(MessageUtils.generateMessageId())
+                    .type(message.getType())
+                    .title(message.getTitle())
+                    .content(message.getContent())
+                    .priority(message.getPriority())
+                    .senderId(message.getSenderId())
+                    .receiverId(userId)
+                    .organizationId(message.getOrganizationId())
+                    .timestamp(LocalDateTime.now())
+                    .data(message.getData())
+                    .requireAck(message.getRequireAck())
+                    .build();
+                
+                int connectionCount = webSocketConnectionRepository.sendMessageToUser(userId, userMessage);
+                if (connectionCount > 0) {
+                    messagePersistenceRepository.updateMessageStatus(userMessage.getMessageId(), "SENT");
                     successCount++;
+                } else {
+                    messagePersistenceRepository.updateMessageStatus(userMessage.getMessageId(), "PENDING");
                 }
             } catch (Exception e) {
                 log.error("批量发送消息失败 - 用户ID: {}, 错误: {}", userId, e.getMessage());
@@ -360,6 +419,28 @@ public class MessageServiceImpl implements MessageService {
         // 2. 调用批量发送方法
         
         return 0;
+    }
+    
+    /**
+     * 创建消息事件对象
+     * 
+     * @param message WebSocket消息
+     * @return 消息事件
+     */
+    private MessageEvent createMessageEvent(WebSocketMessage message) {
+        return MessageEvent.builder()
+            .messageId(message.getMessageId())
+            .eventType(message.getType().name())
+            .senderId(message.getSenderId())
+            .receiverId(message.getReceiverId())
+            .organizationId(message.getOrganizationId())
+            .title(message.getTitle())
+            .content(message.getContent())
+            .metadata(message.getData())
+            .priority(message.getPriority())
+            .timestamp(message.getTimestamp())
+            .expireTime(message.getExpireTime())
+            .build();
     }
 
 }
