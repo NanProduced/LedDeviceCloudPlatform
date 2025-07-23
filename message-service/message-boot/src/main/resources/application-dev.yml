@@ -33,3 +33,22 @@ spring:
         max-retry: 3
         refresh-enabled: true
         file-extension: yml
+
+# 用户在线状态管理配置
+message:
+  online-status:
+    # 默认过期时间（秒）
+    default-expire-seconds: 1800  # 30分钟
+    # 心跳间隔（秒）
+    heartbeat-interval-seconds: 30
+    # 每个用户最大设备数
+    max-devices-per-user: 10
+    # 定时任务配置
+    scheduler:
+      enabled: true
+    # 清理配置
+    cleanup:
+      timeout-minutes: 5  # 超时5分钟清理
+    # 集群配置
+    cluster:
+      enabled: false  # 开发环境关闭集群同步

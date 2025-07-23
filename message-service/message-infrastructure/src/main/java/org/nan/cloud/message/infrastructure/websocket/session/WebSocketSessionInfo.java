@@ -227,6 +227,26 @@ public class WebSocketSessionInfo {
         this.retryCount = (this.retryCount == null ? 0 : this.retryCount) + 1;
     }
     
+    /**
+     * 获取IP地址
+     * 为了兼容性，提供ipAddress的getter方法
+     * 
+     * @return IP地址
+     */
+    public String getIpAddress() {
+        return this.clientIp;
+    }
+    
+    /**
+     * 设置IP地址
+     * 为了兼容性，提供ipAddress的setter方法
+     * 
+     * @param ipAddress IP地址
+     */
+    public void setIpAddress(String ipAddress) {
+        this.clientIp = ipAddress;
+    }
+    
     @Override
     public String toString() {
         return String.format("WebSocketSessionInfo{sessionId='%s', userId='%s', organizationId='%s', status=%s, nodeId='%s', deviceType=%s}", 

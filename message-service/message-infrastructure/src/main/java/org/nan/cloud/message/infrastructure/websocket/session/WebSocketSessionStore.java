@@ -89,6 +89,48 @@ public class WebSocketSessionStore {
     }
     
     /**
+     * 存储会话信息（带过期时间）
+     * 
+     * @param sessionInfo 会话信息
+     * @param expireSeconds 过期时间（秒）
+     */
+    public void storeSession(WebSocketSessionInfo sessionInfo, int expireSeconds) {
+        try {
+            String sessionId = sessionInfo.getSessionId();
+            String userId = sessionInfo.getUserId();
+            String orgId = sessionInfo.getOrganizationId();
+            
+            log.debug("存储WebSocket会话到Redis - 用户: {}, 会话: {}, 过期时间: {}秒", userId, sessionId, expireSeconds);
+            
+            // 1. 保存会话详细信息
+            String sessionKey = SESSION_KEY_PREFIX + sessionId;
+            String sessionJson = objectMapper.writeValueAsString(sessionInfo);
+            redisTemplate.opsForValue().set(sessionKey, sessionJson, expireSeconds, TimeUnit.SECONDS);
+            
+            // 2. 添加到用户会话集合
+            String userSessionsKey = USER_SESSIONS_KEY_PREFIX + userId;
+            redisTemplate.opsForSet().add(userSessionsKey, sessionId);
+            redisTemplate.expire(userSessionsKey, expireSeconds, TimeUnit.SECONDS);
+            
+            // 3. 添加到组织会话集合
+            if (orgId != null) {
+                String orgSessionsKey = ORG_SESSIONS_KEY_PREFIX + orgId;
+                redisTemplate.opsForSet().add(orgSessionsKey, sessionId);
+                redisTemplate.expire(orgSessionsKey, expireSeconds, TimeUnit.SECONDS);
+            }
+            
+            // 4. 添加到在线用户集合
+            redisTemplate.opsForSet().add(ONLINE_USERS_KEY, userId);
+            
+            log.debug("WebSocket会话存储成功 - 会话: {}", sessionId);
+            
+        } catch (Exception e) {
+            log.error("存储WebSocket会话失败 - 会话: {}, 错误: {}", 
+                    sessionInfo.getSessionId(), e.getMessage(), e);
+        }
+    }
+    
+    /**
      * 获取会话信息
      * 
      * @param sessionId 会话ID
@@ -194,7 +236,7 @@ public class WebSocketSessionStore {
      * @return true表示在线，false表示离线
      */
     public boolean isUserOnline(String userId) {
-        return redisTemplate.opsForSet().isMember(ONLINE_USERS_KEY, userId);
+        return Boolean.TRUE.equals(redisTemplate.opsForSet().isMember(ONLINE_USERS_KEY, userId));
     }
     
     /**
@@ -202,7 +244,7 @@ public class WebSocketSessionStore {
      * 
      * @return 在线用户数量
      */
-    public long getOnlineUserCount() {
+    public Long getOnlineUserCount() {
         return redisTemplate.opsForSet().size(ONLINE_USERS_KEY);
     }
     
@@ -233,11 +275,7 @@ public class WebSocketSessionStore {
         try {
             String pattern = SESSION_KEY_PREFIX + "*";
             Set<String> keys = redisTemplate.keys(pattern);
-            
-            if (keys == null) {
-                return Set.of();
-            }
-            
+
             // 提取会话ID（移除前缀）
             return keys.stream()
                     .map(key -> key.substring(SESSION_KEY_PREFIX.length()))
