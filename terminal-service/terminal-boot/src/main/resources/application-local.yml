@@ -1,0 +1,114 @@
+# 本地开发环境配置
+# 用于本地单机开发和测试
+
+server:
+  port: 8082
+
+spring:
+  # 本地环境数据源 - 可使用H2内存数据库快速启动
+  datasource:
+    url: jdbc:mysql://localhost:3306/led_device_platform_local?useUnicode=true&characterEncoding=utf8&zeroDateTimeBehavior=convertToNull&useSSL=false&serverTimezone=GMT%2B8&allowMultiQueries=true
+    username: ${DB_USERNAME:root}
+    password: ${DB_PASSWORD:root}
+    hikari:
+      maximum-pool-size: 10
+      minimum-idle: 2
+      connection-timeout: 10000
+      idle-timeout: 180000
+      max-lifetime: 600000
+  
+  # 本地Redis
+  data:
+    redis:
+      host: localhost
+      port: 6379
+      database: 2
+      lettuce:
+        pool:
+          max-active: 20
+          max-idle: 10
+          min-idle: 2
+          max-wait: 1000ms
+  
+  # 本地MongoDB
+  data:
+    mongodb:
+      uri: mongodb://localhost:27017/led_device_platform_local
+      options:
+        max-connection-pool-size: 10
+        min-connection-pool-size: 2
+  
+  # 本地Nacos配置
+  cloud:
+    nacos:
+      discovery:
+        server-addr: localhost:8848
+        namespace: local
+      config:
+        server-addr: localhost:8848
+        namespace: local
+
+# WebSocket本地环境配置
+websocket:
+  endpoint: /terminal/ws
+  heartbeat:
+    interval: 30
+    timeout: 60
+  connection:
+    max-connections: 100
+    shard-count: 2
+
+# Netty本地环境配置
+netty:
+  boss-threads: 1
+  worker-threads: 2
+  socket:
+    backlog: 512
+
+# 本地环境日志配置 - 更详细的日志便于调试
+logging:
+  level:
+    root: INFO
+    org.springframework: WARN
+    org.springframework.web: DEBUG
+    org.springframework.security: DEBUG
+    org.mybatis: DEBUG
+    io.netty: DEBUG
+    org.nan.cloud.terminal: DEBUG
+    # WebSocket相关日志
+    org.springframework.web.socket: DEBUG
+  pattern:
+    console: "%d{HH:mm:ss.SSS} [%thread] %-5level %logger{36} - %msg%n"
+  file:
+    name: logs/terminal-service-local.log
+
+# 本地环境监控配置
+management:
+  endpoints:
+    web:
+      exposure:
+        include: "*"
+  endpoint:
+    health:
+      show-details: always
+    metrics:
+      enabled: true
+
+# 本地环境业务配置
+terminal:
+  device:
+    command-timeout: 5
+    status-update-interval: 15
+    offline-threshold: 30
+  file:
+    upload-path: ./target/terminal-files-local
+    max-file-size: 10
+    total-size-limit: 0.5
+    md5-check-enabled: false
+  cache:
+    device-status-ttl: 30
+    command-ttl: 120
+    auth-ttl: 300
+
+# 本地开发便利配置
+debug: true

@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<application generated-by="intellij" xmlns="http://www.zeroturnaround.com/rebel">
+    <id>terminal-application</id>
+    <classpath>
+        <dir name="C:\Users\nanpr\javaProject\LedDeviceCloudPlatform\terminal-service\terminal-application\target\classes"/>
+    </classpath>
+</application>

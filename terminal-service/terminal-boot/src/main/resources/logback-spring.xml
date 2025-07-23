@@ -1,0 +1,294 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+LED设备终端通信服务 - Logback日志配置
+针对高并发WebSocket连接优化的日志配置
+支持异步日志写入，减少I/O阻塞对性能的影响
+-->
+<configuration>
+
+    <!-- 日志基础配置 -->
+    <springProfile name="!prod">
+        <include resource="org/springframework/boot/logging/logback/defaults.xml"/>
+    </springProfile>
+
+    <!-- 属性配置 -->
+    <property name="LOG_FILE" value="${LOG_FILE:-${LOG_PATH:-${LOG_TEMP:-${java.io.tmpdir:-/tmp}}/}terminal-service.log}"/>
+    <property name="LOG_PATH" value="${LOG_PATH:-${LOG_TEMP:-${java.io.tmpdir:-/tmp}}}"/>
+    
+    <!-- 日志格式定义 -->
+    <property name="CONSOLE_LOG_PATTERN" 
+              value="%clr(%d{yyyy-MM-dd HH:mm:ss.SSS}){faint} %clr(${LOG_LEVEL_PATTERN:-%5p}) %clr(${PID:- }){magenta} %clr([%15.15t]){faint} %clr([%X{traceId}]){yellow} %clr(%-40.40logger{39}){cyan} %clr(:){faint} %m%n${LOG_EXCEPTION_CONVERSION_WORD:-%wEx}"/>
+    
+    <property name="FILE_LOG_PATTERN" 
+              value="%d{yyyy-MM-dd HH:mm:ss.SSS} [%thread] %-5level [%X{traceId}] %logger{50} - %msg%n"/>
+
+    <!-- ================================ -->
+    <!-- 控制台日志配置 -->
+    <!-- ================================ -->
+    <appender name="CONSOLE" class="ch.qos.logback.core.ConsoleAppender">
+        <encoder>
+            <pattern>${CONSOLE_LOG_PATTERN}</pattern>
+            <charset>UTF-8</charset>
+        </encoder>
+        <!-- 控制台日志过滤器 - 只输出WARN及以上级别 -->
+        <filter class="ch.qos.logback.classic.filter.ThresholdFilter">
+            <level>INFO</level>
+        </filter>
+    </appender>
+
+    <!-- ================================ -->
+    <!-- 异步文件日志配置 - 主日志文件 -->
+    <!-- ================================ -->
+    <appender name="FILE" class="ch.qos.logback.core.rolling.RollingFileAppender">
+        <file>${LOG_FILE}</file>
+        <encoder>
+            <pattern>${FILE_LOG_PATTERN}</pattern>
+            <charset>UTF-8</charset>
+        </encoder>
+        
+        <!-- 滚动策略 - 基于时间和大小 -->
+        <rollingPolicy class="ch.qos.logback.core.rolling.SizeAndTimeBasedRollingPolicy">
+            <!-- 日志文件名格式 -->
+            <fileNamePattern>${LOG_PATH}/terminal-service.%d{yyyy-MM-dd}.%i.log.gz</fileNamePattern>
+            <!-- 单个日志文件最大大小 -->
+            <maxFileSize>100MB</maxFileSize>
+            <!-- 日志文件保留天数 -->
+            <maxHistory>30</maxHistory>
+            <!-- 所有日志文件总大小限制 -->
+            <totalSizeCap>10GB</totalSizeCap>
+            <!-- 启动时是否清理历史日志文件 -->
+            <cleanHistoryOnStart>false</cleanHistoryOnStart>
+        </rollingPolicy>
+        
+        <!-- 日志级别过滤器 -->
+        <filter class="ch.qos.logback.classic.filter.ThresholdFilter">
+            <level>DEBUG</level>
+        </filter>
+    </appender>
+
+    <!-- ================================ -->
+    <!-- 错误日志单独文件 -->
+    <!-- ================================ -->
+    <appender name="ERROR_FILE" class="ch.qos.logback.core.rolling.RollingFileAppender">
+        <file>${LOG_PATH}/terminal-service-error.log</file>
+        <encoder>
+            <pattern>${FILE_LOG_PATTERN}</pattern>
+            <charset>UTF-8</charset>
+        </encoder>
+        
+        <!-- 只记录ERROR级别日志 -->
+        <filter class="ch.qos.logback.classic.filter.LevelFilter">
+            <level>ERROR</level>
+            <onMatch>ACCEPT</onMatch>
+            <onMismatch>DENY</onMismatch>
+        </filter>
+        
+        <rollingPolicy class="ch.qos.logback.core.rolling.SizeAndTimeBasedRollingPolicy">
+            <fileNamePattern>${LOG_PATH}/terminal-service-error.%d{yyyy-MM-dd}.%i.log.gz</fileNamePattern>
+            <maxFileSize>50MB</maxFileSize>
+            <maxHistory>60</maxHistory>
+            <totalSizeCap>2GB</totalSizeCap>
+        </rollingPolicy>
+    </appender>
+
+    <!-- ================================ -->
+    <!-- WebSocket连接日志 - 独立文件 -->
+    <!-- ================================ -->
+    <appender name="WEBSOCKET_FILE" class="ch.qos.logback.core.rolling.RollingFileAppender">
+        <file>${LOG_PATH}/terminal-websocket.log</file>
+        <encoder>
+            <pattern>%d{yyyy-MM-dd HH:mm:ss.SSS} [%thread] %-5level [%X{traceId}] [%X{deviceId}] %logger{50} - %msg%n</pattern>
+            <charset>UTF-8</charset>
+        </encoder>
+        
+        <rollingPolicy class="ch.qos.logback.core.rolling.SizeAndTimeBasedRollingPolicy">
+            <fileNamePattern>${LOG_PATH}/terminal-websocket.%d{yyyy-MM-dd}.%i.log.gz</fileNamePattern>
+            <maxFileSize>200MB</maxFileSize>
+            <maxHistory>15</maxHistory>
+            <totalSizeCap>5GB</totalSizeCap>
+        </rollingPolicy>
+        
+        <!-- 异步写入优化 -->
+        <immediateFlush>false</immediateFlush>
+    </appender>
+
+    <!-- ================================ -->
+    <!-- 设备指令日志 - 独立文件 -->
+    <!-- ================================ -->
+    <appender name="COMMAND_FILE" class="ch.qos.logback.core.rolling.RollingFileAppender">
+        <file>${LOG_PATH}/terminal-command.log</file>
+        <encoder>
+            <pattern>%d{yyyy-MM-dd HH:mm:ss.SSS} [%X{traceId}] [%X{deviceId}] [%X{commandId}] %-5level %logger{50} - %msg%n</pattern>
+            <charset>UTF-8</charset>
+        </encoder>
+        
+        <rollingPolicy class="ch.qos.logback.core.rolling.SizeAndTimeBasedRollingPolicy">
+            <fileNamePattern>${LOG_PATH}/terminal-command.%d{yyyy-MM-dd}.%i.log.gz</fileNamePattern>
+            <maxFileSize>100MB</maxFileSize>
+            <maxHistory>30</maxHistory>
+            <totalSizeCap>3GB</totalSizeCap>
+        </rollingPolicy>
+    </appender>
+
+    <!-- ================================ -->
+    <!-- 性能监控日志 - 独立文件 -->
+    <!-- ================================ -->
+    <appender name="PERFORMANCE_FILE" class="ch.qos.logback.core.rolling.RollingFileAppender">
+        <file>${LOG_PATH}/terminal-performance.log</file>
+        <encoder>
+            <pattern>%d{yyyy-MM-dd HH:mm:ss.SSS} [%X{traceId}] %-5level %logger{50} - %msg%n</pattern>
+            <charset>UTF-8</charset>
+        </encoder>
+        
+        <rollingPolicy class="ch.qos.logback.core.rolling.SizeAndTimeBasedRollingPolicy">
+            <fileNamePattern>${LOG_PATH}/terminal-performance.%d{yyyy-MM-dd}.%i.log.gz</fileNamePattern>
+            <maxFileSize>50MB</maxFileSize>
+            <maxHistory>7</maxHistory>
+            <totalSizeCap>1GB</totalSizeCap>
+        </rollingPolicy>
+    </appender>
+
+    <!-- ================================ -->
+    <!-- 异步Appender配置 - 提升性能 -->
+    <!-- ================================ -->
+    
+    <!-- 异步主日志文件 -->
+    <appender name="ASYNC_FILE" class="ch.qos.logback.classic.AsyncAppender">
+        <appender-ref ref="FILE"/>
+        <!-- 队列大小 - 支持高并发日志写入 -->
+        <queueSize>2048</queueSize>
+        <!-- 丢弃阈值 - 队列使用率达到80%时开始丢弃TRACE和DEBUG日志 -->
+        <discardingThreshold>0</discardingThreshold>
+        <!-- 队列满时的行为 - 不阻塞调用线程 -->
+        <neverBlock>true</neverBlock>
+        <!-- 是否包含调用者信息 -->
+        <includeCallerData>false</includeCallerData>
+        <!-- 最大刷新时间(毫秒) -->
+        <maxFlushTime>5000</maxFlushTime>
+    </appender>
+
+    <!-- 异步错误日志文件 -->
+    <appender name="ASYNC_ERROR_FILE" class="ch.qos.logback.classic.AsyncAppender">
+        <appender-ref ref="ERROR_FILE"/>
+        <queueSize>512</queueSize>
+        <discardingThreshold>0</discardingThreshold>
+        <neverBlock>false</neverBlock>
+        <includeCallerData>true</includeCallerData>
+    </appender>
+
+    <!-- 异步WebSocket日志文件 -->
+    <appender name="ASYNC_WEBSOCKET_FILE" class="ch.qos.logback.classic.AsyncAppender">
+        <appender-ref ref="WEBSOCKET_FILE"/>
+        <queueSize>4096</queueSize>
+        <discardingThreshold>0</discardingThreshold>
+        <neverBlock>true</neverBlock>
+        <includeCallerData>false</includeCallerData>
+    </appender>
+
+    <!-- 异步指令日志文件 -->
+    <appender name="ASYNC_COMMAND_FILE" class="ch.qos.logback.classic.AsyncAppender">
+        <appender-ref ref="COMMAND_FILE"/>
+        <queueSize>1024</queueSize>
+        <discardingThreshold>0</discardingThreshold>
+        <neverBlock>true</neverBlock>
+        <includeCallerData>false</includeCallerData>
+    </appender>
+
+    <!-- 异步性能日志文件 -->
+    <appender name="ASYNC_PERFORMANCE_FILE" class="ch.qos.logback.classic.AsyncAppender">
+        <appender-ref ref="PERFORMANCE_FILE"/>
+        <queueSize>512</queueSize>
+        <discardingThreshold>0</discardingThreshold>
+        <neverBlock>true</neverBlock>
+        <includeCallerData>false</includeCallerData>
+    </appender>
+
+    <!-- ================================ -->
+    <!-- Logger配置 -->
+    <!-- ================================ -->
+
+    <!-- WebSocket相关日志 -->
+    <logger name="org.nan.cloud.terminal.websocket" level="DEBUG" additivity="false">
+        <appender-ref ref="ASYNC_WEBSOCKET_FILE"/>
+        <appender-ref ref="CONSOLE"/>
+    </logger>
+
+    <!-- 设备指令相关日志 -->
+    <logger name="org.nan.cloud.terminal.command" level="DEBUG" additivity="false">
+        <appender-ref ref="ASYNC_COMMAND_FILE"/>
+        <appender-ref ref="CONSOLE"/>
+    </logger>
+
+    <!-- 性能监控相关日志 -->
+    <logger name="org.nan.cloud.terminal.performance" level="INFO" additivity="false">
+        <appender-ref ref="ASYNC_PERFORMANCE_FILE"/>
+    </logger>
+
+    <!-- Spring框架日志级别控制 -->
+    <logger name="org.springframework" level="INFO"/>
+    <logger name="org.springframework.web" level="INFO"/>
+    <logger name="org.springframework.security" level="INFO"/>
+    <logger name="org.springframework.boot.actuate" level="INFO"/>
+
+    <!-- Netty框架日志级别控制 -->
+    <logger name="io.netty" level="INFO"/>
+    <logger name="io.netty.handler.logging" level="DEBUG"/>
+
+    <!-- MyBatis日志级别控制 -->
+    <logger name="org.mybatis" level="INFO"/>
+    <logger name="org.nan.cloud.terminal.infrastructure.mapper" level="DEBUG"/>
+
+    <!-- 数据库连接池日志 -->
+    <logger name="com.zaxxer.hikari" level="INFO"/>
+    <logger name="com.zaxxer.hikari.HikariConfig" level="DEBUG"/>
+
+    <!-- Redis客户端日志 -->
+    <logger name="io.lettuce.core" level="INFO"/>
+    
+    <!-- MongoDB驱动日志 -->
+    <logger name="org.mongodb.driver" level="INFO"/>
+
+    <!-- Nacos客户端日志 -->
+    <logger name="com.alibaba.nacos" level="INFO"/>
+
+    <!-- ================================ -->
+    <!-- 环境特定配置 -->
+    <!-- ================================ -->
+
+    <!-- 本地开发环境 -->
+    <springProfile name="local">
+        <root level="DEBUG">
+            <appender-ref ref="CONSOLE"/>
+            <appender-ref ref="ASYNC_FILE"/>
+            <appender-ref ref="ASYNC_ERROR_FILE"/>
+        </root>
+    </springProfile>
+
+    <!-- 开发环境 -->
+    <springProfile name="dev">
+        <root level="DEBUG">
+            <appender-ref ref="CONSOLE"/>
+            <appender-ref ref="ASYNC_FILE"/>
+            <appender-ref ref="ASYNC_ERROR_FILE"/>
+        </root>
+    </springProfile>
+
+    <!-- 生产环境 -->
+    <springProfile name="prod">
+        <root level="INFO">
+            <appender-ref ref="ASYNC_FILE"/>
+            <appender-ref ref="ASYNC_ERROR_FILE"/>
+        </root>
+        
+        <!-- 生产环境减少不必要的DEBUG日志 -->
+        <logger name="org.nan.cloud.terminal.infrastructure.mapper" level="INFO"/>
+        <logger name="org.springframework.web" level="WARN"/>
+        <logger name="io.netty.handler.logging" level="INFO"/>
+    </springProfile>
+
+    <!-- ================================ -->
+    <!-- JMX监控配置 -->
+    <!-- ================================ -->
+    <jmxConfigurator/>
+
+</configuration>
