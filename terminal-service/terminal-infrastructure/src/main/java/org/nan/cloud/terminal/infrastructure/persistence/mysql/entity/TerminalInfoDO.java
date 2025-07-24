@@ -23,10 +23,10 @@ import java.time.LocalDateTime;
 @Data
 @EqualsAndHashCode(callSuper = false)
 @TableName("terminal_info")
-public class TerminalDeviceEntity {
+public class TerminalInfoDO {
 
     /**
-     * 主键ID - 雪花算法生成
+     * 主键ID
      */
     @TableId(value = "tid")
     private Long tid;
@@ -38,52 +38,28 @@ public class TerminalDeviceEntity {
     private String terminalName;
 
     /**
-     * 设备类型 - LED屏幕类型分类
+     * 终端描述
      */
-    @TableField("device_type")
-    private String deviceType;
+    @TableField("description")
+    private String description;
+
+    /**
+     * 设备型号- 播放盒型号
+     */
+    @TableField("terminal_model")
+    private String terminalModel;
 
     /**
      * 组织ID - 设备所属组织的标识
      */
-    @TableField("organization_id")
-    private String organizationId;
+    @TableField("oid")
+    private Long oid;
 
     /**
-     * 设备分组 - 业务层面的设备分组管理
+     * 终端组ID - 设备所属终端组
      */
-    @TableField("device_group")
-    private String deviceGroup;
-
-    /**
-     * 设备认证用户名 - 用于Basic Auth认证
-     */
-    @TableField("username")
-    private String username;
-
-    /**
-     * 设备认证密码Hash - BCrypt加密存储
-     */
-    @TableField("password_hash")
-    private String passwordHash;
-
-    /**
-     * 设备状态 - ACTIVE, INACTIVE, MAINTENANCE, OFFLINE
-     */
-    @TableField("status")
-    private String status;
-
-    /**
-     * 设备IP地址 - 最后连接的IP地址
-     */
-    @TableField("ip_address")
-    private String ipAddress;
-
-    /**
-     * 设备MAC地址 - 网络物理地址
-     */
-    @TableField("mac_address")
-    private String macAddress;
+    @TableField("tgid")
+    private Long tgid;
 
     /**
      * 设备固件版本
@@ -92,52 +68,10 @@ public class TerminalDeviceEntity {
     private String firmwareVersion;
 
     /**
-     * 设备硬件版本
-     */
-    @TableField("hardware_version")
-    private String hardwareVersion;
-
-    /**
      * 设备序列号
      */
     @TableField("serial_number")
     private String serialNumber;
-
-    /**
-     * 设备安装位置描述
-     */
-    @TableField("location")
-    private String location;
-
-    /**
-     * 设备标签 - JSON格式存储，用于分类和搜索
-     */
-    @TableField("tags")
-    private String tags;
-
-    /**
-     * 设备备注信息
-     */
-    @TableField("remarks")
-    private String remarks;
-
-    /**
-     * 最后在线时间
-     */
-    @TableField("last_online_time")
-    private LocalDateTime lastOnlineTime;
-
-    /**
-     * 最后离线时间
-     */
-    @TableField("last_offline_time")
-    private LocalDateTime lastOfflineTime;
-
-    /**
-     * 累计在线时长(秒)
-     */
-    @TableField("total_online_duration")
-    private Long totalOnlineDuration;
 
     /**
      * 设备创建时间
@@ -177,87 +111,4 @@ public class TerminalDeviceEntity {
     @TableField("version")
     private Integer version;
 
-    /**
-     * 设备状态枚举
-     */
-    public enum DeviceStatus {
-        /**
-         * 活跃状态 - 设备正常运行
-         */
-        ACTIVE("ACTIVE", "活跃"),
-        
-        /**
-         * 非活跃状态 - 设备已停用但可恢复
-         */
-        INACTIVE("INACTIVE", "非活跃"),
-        
-        /**
-         * 维护状态 - 设备正在维护中
-         */
-        MAINTENANCE("MAINTENANCE", "维护中"),
-        
-        /**
-         * 离线状态 - 设备长时间未连接
-         */
-        OFFLINE("OFFLINE", "离线");
-
-        private final String code;
-        private final String description;
-
-        DeviceStatus(String code, String description) {
-            this.code = code;
-            this.description = description;
-        }
-
-        public String getCode() {
-            return code;
-        }
-
-        public String getDescription() {
-            return description;
-        }
-
-        public static DeviceStatus fromCode(String code) {
-            for (DeviceStatus status : values()) {
-                if (status.code.equals(code)) {
-                    return status;
-                }
-            }
-            throw new IllegalArgumentException("未知的设备状态代码: " + code);
-        }
-    }
-
-    /**
-     * 检查设备是否在线
-     * 基于最后在线时间判断（2分钟内有活动认为在线）
-     */
-    public boolean isOnline() {
-        if (lastOnlineTime == null) {
-            return false;
-        }
-        
-        LocalDateTime threshold = LocalDateTime.now().minusMinutes(2);
-        return lastOnlineTime.isAfter(threshold) && 
-               DeviceStatus.ACTIVE.getCode().equals(status);
-    }
-
-    /**
-     * 计算设备空闲时间（秒）
-     */
-    public long getIdleTimeSeconds() {
-        if (lastOnlineTime == null) {
-            return Long.MAX_VALUE;
-        }
-        
-        return java.time.Duration.between(lastOnlineTime, LocalDateTime.now()).getSeconds();
-    }
-
-    /**
-     * 获取设备显示名称
-     * 优先使用设备名称，没有则使用设备ID
-     */
-    public String getDisplayName() {
-        return deviceName != null && !deviceName.trim().isEmpty() ? 
-               deviceName : deviceId;
-    }
 }

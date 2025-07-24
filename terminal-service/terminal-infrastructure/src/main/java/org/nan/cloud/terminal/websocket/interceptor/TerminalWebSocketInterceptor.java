@@ -66,7 +66,7 @@ public class TerminalWebSocketInterceptor implements HandshakeInterceptor {
 
             // 2. 检查设备认证状态
             String authKey = AUTH_SUCCESS_PREFIX + deviceId;
-            if (!Boolean.TRUE.equals(redisTemplate.hasKey(authKey))) {
+            if (!redisTemplate.hasKey(authKey)) {
                 log.warn("WebSocket握手失败: 设备未认证, deviceId: {}", deviceId);
                 return false;
             }

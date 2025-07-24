@@ -1,92 +1,36 @@
-# 开发环境配置
-# 专注于开发效率和调试便利性
-
 server:
-  port: 8082
-
+  port: 8085
 spring:
-  # 开发环境数据源
-  datasource:
-    url: jdbc:mysql://192.168.1.185:3306/led_device_platform_dev?useUnicode=true&characterEncoding=utf8&zeroDateTimeBehavior=convertToNull&useSSL=false&serverTimezone=GMT%2B8&allowMultiQueries=true&rewriteBatchedStatements=true
-    username: ${DB_USERNAME:root}
-    password: ${DB_PASSWORD:123456}
-    hikari:
-      # 开发环境连接池配置较小
-      maximum-pool-size: 20
-      minimum-idle: 5
-      connection-timeout: 20000
-      idle-timeout: 300000
-      max-lifetime: 900000
-  
-  # 开发环境Redis
-  data:
-    redis:
-      host: 192.168.1.185
-      port: 6379
-      database: 1
-      lettuce:
-        pool:
-          max-active: 50
-          max-idle: 20
-          min-idle: 5
-          max-wait: 2000ms
-  
-  # 开发环境MongoDB
-  data:
-    mongodb:
-      uri: mongodb://192.168.1.185:27017/led_device_platform_dev
-      options:
-        max-connection-pool-size: 30
-        min-connection-pool-size: 5
+  application:
+    name: terminal-service
 
-# WebSocket开发环境配置
-websocket:
-  connection:
-    # 开发环境支持较少连接
-    max-connections: 1000
-    shard-count: 4
+  config:
+    import:
+      - nacos:terminal-service-dev.yml?group=DEFAULT_GROUP&fresh=true
 
-# Netty开发环境配置
-netty:
-  boss-threads: 1
-  worker-threads: 4
-  socket:
-    backlog: 1024
 
-# 开发环境日志配置
-logging:
-  level:
-    root: INFO
-    org.springframework: INFO
-    org.mybatis: DEBUG
-    io.netty: DEBUG
-    org.nan.cloud.terminal: DEBUG
-    # 开启SQL日志
-    org.nan.cloud.terminal.infrastructure.mapper: DEBUG
-  pattern:
-    console: "%d{HH:mm:ss.SSS} [%thread] %-5level [%X{traceId}] %logger{36} - %msg%n"
-
-# 开发环境监控配置
-management:
-  endpoints:
-    web:
-      exposure:
-        include: health,info,metrics,prometheus
-  endpoint:
-    health:
-      show-details: always
-
-# 开发环境业务配置
-terminal:
-  device:
-    command-timeout: 10
-    status-update-interval: 30
-    offline-threshold: 60
-  file:
-    upload-path: /tmp/terminal-files-dev
-    max-file-size: 50
-    total-size-limit: 1
-  cache:
-    device-status-ttl: 60
-    command-ttl: 300
-    auth-ttl: 600
+  cloud:
+    nacos:
+      discovery:
+        server-addr: 192.168.1.185:8848
+        namespace: 1e90921e-70cf-4745-87ed-dd165319ff3a
+        group: DEFAULT_GROUP
+        username: Nan
+        password: Nan12091209
+        access-key: nan_nacos
+        secret-key: nanproduced
+        fail-fast: false
+      config:
+        server-addr: 192.168.1.185:8848
+        namespace: 1e90921e-70cf-4745-87ed-dd165319ff3a
+        group: DEFAULT_GROUP
+        username: Nan
+        password: Nan12091209
+        access-key: nan_nacos
+        secret-key: nanproduced
+        timeout: 5000
+        config-long-poll-timeout: 1000
+        config-retry-time: 100000
+        max-retry: 3
+        refresh-enabled: true
+        file-extension: yml

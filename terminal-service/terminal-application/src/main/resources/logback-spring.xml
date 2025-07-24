@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <configuration scan="true" scanPeriod="10 seconds">
     <!-- logger上下文名称（根据业务修改） -->
-    <contextName>gateway</contextName>
+    <contextName>terminal-service</contextName>
 
     <!-- 定义了一个名为serverName的属性，它的值来自于logging.file.name，如果没有找到该属性默认为MyServerName（根据业务修改） -->
     <springProperty name="serverName" source="logging.file.name" defaultValue="MyServerName"/>

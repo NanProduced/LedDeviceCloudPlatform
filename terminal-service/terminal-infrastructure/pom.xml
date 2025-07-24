@@ -49,11 +49,7 @@
             <artifactId>spring-boot-starter-data-redis</artifactId>
         </dependency>
         
-        <!-- Redis连接池Lettuce -->
-        <dependency>
-            <groupId>io.lettuce</groupId>
-            <artifactId>lettuce-core</artifactId>
-        </dependency>
+        <!-- Redis连接池已经包含在starter中，无需额外配置 -->
         
         <!-- MongoDB文档存储 -->
         <dependency>

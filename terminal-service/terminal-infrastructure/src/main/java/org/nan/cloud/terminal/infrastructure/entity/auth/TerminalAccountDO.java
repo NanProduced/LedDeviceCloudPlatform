@@ -13,7 +13,7 @@ import java.time.LocalDateTime;
  */
 @Data
 @TableName("terminal_account")
-public class TerminalAccountEntity {
+public class TerminalAccountDO {
 
     /**
      * 主键ID
@@ -44,6 +44,12 @@ public class TerminalAccountEntity {
      */
     @TableField("oid")
     private Long oid;
+
+    /**
+     * 首次登录时间 - 上云时间
+     */
+    @TableField("first_login_time")
+    private LocalDateTime firstLoginTime;
 
     /**
      * 最后登录时间

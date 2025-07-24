@@ -4,8 +4,8 @@ import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
-import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.nan.cloud.terminal.config.security.auth.TerminalPrincipal;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.Authentication;
@@ -106,17 +106,9 @@ public class TerminalAuthenticationFilter extends BasicAuthenticationFilter {
         }
         
         // WebSocket握手请求不在这里处理认证
-        if (uri.startsWith("/terminal/ws")) {
-            return false;
-        }
+        return !uri.startsWith("/terminal/ws");
         
         // API端点需要认证
-        if (uri.startsWith("/wp-json/") || uri.startsWith("/api/terminal/")) {
-            return true;
-        }
-        
-        // 默认需要认证
-        return true;
     }
 
     /**
@@ -136,17 +128,17 @@ public class TerminalAuthenticationFilter extends BasicAuthenticationFilter {
                 return null;
             }
             
-            String deviceId = token.substring(0, delim);
+            String account = token.substring(0, delim);
             String password = token.substring(delim + 1);
             
             // 验证设备ID和密码不为空
-            if (!StringUtils.hasText(deviceId) || !StringUtils.hasText(password)) {
+            if (!StringUtils.hasText(account) || !StringUtils.hasText(password)) {
                 log.debug("Basic Auth格式错误：设备ID或密码为空");
                 return null;
             }
             
             // 创建认证令牌
-            return new UsernamePasswordAuthenticationToken(deviceId, password);
+            return new UsernamePasswordAuthenticationToken(account, password);
             
         } catch (IllegalArgumentException e) {
             log.debug("Basic Auth解码失败", e);
@@ -165,11 +157,9 @@ public class TerminalAuthenticationFilter extends BasicAuthenticationFilter {
         super.onSuccessfulAuthentication(request, response, authResult);
         
         // 添加设备信息到响应头(可选)
-        if (authResult.getPrincipal() instanceof org.nan.cloud.terminal.config.security.auth.TerminalUserPrincipal) {
-            org.nan.cloud.terminal.config.security.auth.TerminalUserPrincipal principal = 
-                (org.nan.cloud.terminal.config.security.auth.TerminalUserPrincipal) authResult.getPrincipal();
-            response.setHeader("X-Device-ID", principal.getDeviceId());
-            response.setHeader("X-Organization-ID", principal.getOrganizationId());
+        if (authResult.getPrincipal() instanceof TerminalPrincipal principal) {
+            response.setHeader("X-Terminal-ID", principal.getTid().toString());
+            response.setHeader("X-Organization-ID", principal.getOid().toString());
         }
     }
 
