@@ -86,10 +86,10 @@ spring:
         # 关闭连接超时时间
         shutdown-timeout: 100ms
   
-  # MongoDB配置 - 异步响应式驱动
-  data:
+    # MongoDB配置 - 异步响应式驱动
     mongodb:
       uri: mongodb://192.168.1.185:27017/led_device_platform
+      database: led_device_platform
       # 连接池配置
       options:
         # 最大连接数

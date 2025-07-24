@@ -153,6 +153,22 @@
                 <artifactId>terminal-infrastructure</artifactId>
                 <version>${project.version}</version>
             </dependency>
+            <!-- common-mq 模块依赖管理 -->
+            <dependency>
+                <groupId>org.nan</groupId>
+                <artifactId>common-mq-core</artifactId>
+                <version>${project.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>org.nan</groupId>
+                <artifactId>common-mq-producer</artifactId>
+                <version>${project.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>org.nan</groupId>
+                <artifactId>common-mq-consumer</artifactId>
+                <version>${project.version}</version>
+            </dependency>
         </dependencies>
     </dependencyManagement>
 

@@ -27,6 +27,12 @@
             <artifactId>common-web</artifactId>
         </dependency>
         
+        <!-- 消息队列消费者依赖 -->
+        <dependency>
+            <groupId>org.nan</groupId>
+            <artifactId>common-mq-consumer</artifactId>
+        </dependency>
+        
         <!-- 高性能WebSocket支持 -->
         <dependency>
             <groupId>org.springframework.boot</groupId>
