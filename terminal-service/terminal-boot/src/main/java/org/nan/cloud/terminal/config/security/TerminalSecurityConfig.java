@@ -1,7 +1,7 @@
 package org.nan.cloud.terminal.config.security;
 
 import lombok.RequiredArgsConstructor;
-import org.nan.cloud.terminal.config.security.auth.SimpleTerminalAuthenticationProvider;
+import org.nan.cloud.terminal.config.security.auth.TerminalAuthenticationProvider;
 import org.nan.cloud.terminal.config.security.filter.TerminalAuthenticationFilter;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -10,6 +10,7 @@ import org.springframework.security.config.Customizer;
 import org.springframework.security.config.annotation.authentication.builders.AuthenticationManagerBuilder;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
+import org.springframework.security.config.annotation.web.configurers.AbstractHttpConfigurer;
 import org.springframework.security.config.annotation.web.configurers.HeadersConfigurer;
 import org.springframework.security.config.http.SessionCreationPolicy;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
@@ -35,7 +36,7 @@ import org.springframework.security.web.authentication.www.BasicAuthenticationEn
 @RequiredArgsConstructor
 public class TerminalSecurityConfig {
 
-    private final SimpleTerminalAuthenticationProvider authenticationProvider;
+    // 移除字段注入，改用方法参数注入避免循环依赖
 
     /**
      * 密码编码器
@@ -49,10 +50,11 @@ public class TerminalSecurityConfig {
      * 认证管理器
      */
     @Bean
-    public AuthenticationManager authenticationManager(HttpSecurity http) throws Exception {
+    public AuthenticationManager authenticationManager(HttpSecurity http, 
+                                                     TerminalAuthenticationProvider authProvider) throws Exception {
         AuthenticationManagerBuilder authenticationManagerBuilder = 
             http.getSharedObject(AuthenticationManagerBuilder.class);
-        authenticationManagerBuilder.authenticationProvider(authenticationProvider);
+        authenticationManagerBuilder.authenticationProvider(authProvider);
         return authenticationManagerBuilder.build();
     }
 
@@ -85,10 +87,10 @@ public class TerminalSecurityConfig {
         
         http
             // 禁用CSRF - 终端设备API无需CSRF保护
-            .csrf(csrf -> csrf.disable())
+            .csrf(AbstractHttpConfigurer::disable)
             
             // 禁用CORS - 根据需要配置
-            .cors(cors -> cors.disable())
+            .cors(AbstractHttpConfigurer::disable)
             
             // 完全无状态 - 不创建任何会话
             .sessionManagement(session -> 

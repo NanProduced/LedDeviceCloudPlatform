@@ -18,26 +18,14 @@ public class TerminalAccountEntity {
     /**
      * 主键ID
      */
-    @TableId(type = IdType.ASSIGN_ID)
-    private Long id;
-
-    /**
-     * 设备ID - 唯一标识
-     */
-    @TableField("device_id")
-    private String deviceId;
+    @TableId(value = "tid", type = IdType.AUTO)
+    private Long tid;
 
     /**
      * 设备名称
      */
-    @TableField("device_name")
-    private String deviceName;
-
-    /**
-     * 设备类型
-     */
-    @TableField("device_type")
-    private String deviceType;
+    @TableField("account")
+    private String account;
 
     /**
      * 设备密码 - BCrypt加密
@@ -49,25 +37,13 @@ public class TerminalAccountEntity {
      * 设备状态：ACTIVE-活跃，INACTIVE-非活跃，DISABLED-禁用
      */
     @TableField("status")
-    private String status;
+    private Integer status;
 
     /**
      * 组织ID
      */
-    @TableField("organization_id")
-    private String organizationId;
-
-    /**
-     * 组织名称
-     */
-    @TableField("organization_name")
-    private String organizationName;
-
-    /**
-     * 设备描述
-     */
-    @TableField("description")
-    private String description;
+    @TableField("oid")
+    private Long oid;
 
     /**
      * 最后登录时间
@@ -80,30 +56,6 @@ public class TerminalAccountEntity {
      */
     @TableField("last_login_ip")
     private String lastLoginIp;
-
-    /**
-     * 登录失败次数
-     */
-    @TableField("failed_attempts")
-    private Integer failedAttempts;
-
-    /**
-     * 是否锁定
-     */
-    @TableField("locked")
-    private Boolean locked;
-
-    /**
-     * 锁定时间
-     */
-    @TableField("locked_time")
-    private LocalDateTime lockedTime;
-
-    /**
-     * 锁定过期时间
-     */
-    @TableField("locked_until")
-    private LocalDateTime lockedUntil;
 
     /**
      * 创建时间
@@ -121,13 +73,13 @@ public class TerminalAccountEntity {
      * 创建者
      */
     @TableField("create_by")
-    private String createBy;
+    private Long createBy;
 
     /**
      * 更新者
      */
     @TableField("update_by")
-    private String updateBy;
+    private Long updateBy;
 
     /**
      * 逻辑删除标记

@@ -22,26 +22,20 @@ import java.time.LocalDateTime;
  */
 @Data
 @EqualsAndHashCode(callSuper = false)
-@TableName("terminal_device")
+@TableName("terminal_info")
 public class TerminalDeviceEntity {
 
     /**
      * 主键ID - 雪花算法生成
      */
-    @TableId(value = "id", type = IdType.ASSIGN_ID)
-    private Long id;
-
-    /**
-     * 设备ID - 唯一标识符，对应LED设备的硬件ID
-     */
-    @TableField("device_id")
-    private String deviceId;
+    @TableId(value = "tid")
+    private Long tid;
 
     /**
      * 设备名称 - 用户友好的设备显示名称
      */
-    @TableField("device_name")
-    private String deviceName;
+    @TableField("terminal_name")
+    private String terminalName;
 
     /**
      * 设备类型 - LED屏幕类型分类

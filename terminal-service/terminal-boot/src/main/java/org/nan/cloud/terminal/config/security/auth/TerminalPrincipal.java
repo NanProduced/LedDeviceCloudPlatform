@@ -8,25 +8,43 @@ import org.springframework.security.core.userdetails.UserDetails;
 
 import java.util.Collection;
 import java.util.Collections;
-import java.util.List;
 
 /**
  * 终端设备用户主体
  * 
  * 实现UserDetails接口，用于Spring Security认证和授权
+ * 封装终端设备的身份信息和权限信息
  * 
  * @author terminal-service
  * @since 1.0.0
  */
 @Data
-public class TerminalUserPrincipal implements UserDetails {
+public class TerminalPrincipal implements UserDetails {
 
-    private String deviceId;
-    private String deviceName;
-    private String deviceType;
-    private String organizationId;
-    private String organizationName;
-    private String status;
+    /**
+     * 终端ID - 主键
+     */
+    private Long tid;
+
+    /**
+     * 终端名称
+     */
+    private String terminalName;
+
+    /**
+     * 组织ID
+     */
+    private Long oid;
+
+    /**
+     * 终端组ID
+     */
+    private Long tgid;
+
+    /**
+     * 终端状态：0-正常，1-禁用
+     */
+    private Integer status;
 
     /**
      * 获取权限列表
@@ -48,12 +66,12 @@ public class TerminalUserPrincipal implements UserDetails {
     }
 
     /**
-     * 获取用户名 - 使用设备ID作为用户名
+     * 获取用户名 - 使用终端ID作为用户名
      */
     @Override
     @JsonIgnore
     public String getUsername() {
-        return deviceId;
+        return tid != null ? tid.toString() : null;
     }
 
     /**
@@ -71,7 +89,7 @@ public class TerminalUserPrincipal implements UserDetails {
     @Override
     @JsonIgnore
     public boolean isAccountNonLocked() {
-        return "ACTIVE".equals(status);
+        return status != null && status == 0;
     }
 
     /**
@@ -89,38 +107,26 @@ public class TerminalUserPrincipal implements UserDetails {
     @Override
     @JsonIgnore
     public boolean isEnabled() {
-        return "ACTIVE".equals(status);
+        return status != null && status == 0;
     }
 
     /**
-     * 检查是否有指定权限
-     */
-    public boolean hasAuthority(String authority) {
-        return getAuthorities().stream()
-                .anyMatch(grantedAuthority -> grantedAuthority.getAuthority().equals(authority));
-    }
-
-    /**
-     * 检查是否属于指定组织
-     */
-    public boolean belongsToOrganization(String orgId) {
-        return organizationId != null && organizationId.equals(orgId);
-    }
-
-    /**
-     * 获取设备显示名称
+     * 获取终端显示名称
      */
     public String getDisplayName() {
-        if (deviceName != null && !deviceName.trim().isEmpty()) {
-            return deviceName;
-        }
-        return deviceId;
+        return terminalName != null ? terminalName : "Terminal-" + tid;
     }
 
     /**
-     * 检查设备类型
+     * 检查终端是否可用
      */
-    public boolean isDeviceType(String type) {
-        return deviceType != null && deviceType.equals(type);
+    public boolean isTerminalAvailable() {
+        return isEnabled() && isAccountNonLocked();
+    }
+
+    @Override
+    public String toString() {
+        return String.format("TerminalPrincipal{tid=%d, terminalName='%s', oid=%d, tgid=%d, status=%d}", 
+            tid, terminalName, oid, tgid, status);
     }
 }
