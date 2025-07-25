@@ -89,13 +89,13 @@ public class TerminalInfoDO {
      * 创建者ID
      */
     @TableField("created_by")
-    private String createdBy;
+    private Long createdBy;
 
     /**
      * 更新者ID
      */
     @TableField("updated_by")
-    private String updatedBy;
+    private Long updatedBy;
 
     /**
      * 逻辑删除标记 - 0未删除，1已删除

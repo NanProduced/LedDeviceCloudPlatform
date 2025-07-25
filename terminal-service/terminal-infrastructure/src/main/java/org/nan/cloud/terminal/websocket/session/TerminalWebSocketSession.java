@@ -1,9 +1,8 @@
 package org.nan.cloud.terminal.websocket.session;
 
+import io.netty.channel.Channel;
 import lombok.Builder;
 import lombok.Data;
-import org.springframework.web.socket.WebSocketSession;
-
 import java.io.IOException;
 import java.util.concurrent.atomic.AtomicLong;
 
@@ -30,19 +29,24 @@ import java.util.concurrent.atomic.AtomicLong;
 public class TerminalWebSocketSession {
     
     /**
-     * WebSocket会话ID（Spring生成的唯一标识）
+     * WebSocket会话ID（
      */
     private String sessionId;
     
     /**
      * 设备ID（业务唯一标识）
      */
-    private String deviceId;
+    private Long tid;
+
+    /**
+     * 设备所属组织Id
+     */
+    private Long oid;
     
     /**
-     * 原生WebSocket会话对象
+     * Netty Channel对象（Netty WebSocket）
      */
-    private WebSocketSession webSocketSession;
+    private Channel nettyChannel;
     
     /**
      * 连接建立时间戳
@@ -87,7 +91,11 @@ public class TerminalWebSocketSession {
      * 检查连接是否有效
      */
     public boolean isConnected() {
-        return webSocketSession != null && webSocketSession.isOpen();
+        // 基于Netty Channel连接状态检查
+        if (nettyChannel != null) {
+            return nettyChannel.isActive();
+        }
+        return false;
     }
 
     /**
@@ -157,8 +165,9 @@ public class TerminalWebSocketSession {
      * 关闭WebSocket连接
      */
     public void closeConnection() throws IOException {
-        if (webSocketSession != null && webSocketSession.isOpen()) {
-            webSocketSession.close();
+        // 基于Netty Channel关闭连接
+        if (nettyChannel != null && nettyChannel.isActive()) {
+            nettyChannel.close();
         }
     }
 
@@ -168,7 +177,7 @@ public class TerminalWebSocketSession {
     public SessionStats getSessionStats() {
         return SessionStats.builder()
             .sessionId(sessionId)
-            .deviceId(deviceId)
+            .tid(tid)
             .clientIp(clientIp)
             .connectTime(connectTime)
             .connectionDuration(getConnectionDuration())
@@ -189,7 +198,7 @@ public class TerminalWebSocketSession {
     @Builder
     public static class SessionStats {
         private String sessionId;
-        private String deviceId;
+        private Long tid;
         private String clientIp;
         private Long connectTime;
         private Long connectionDuration;
@@ -209,7 +218,7 @@ public class TerminalWebSocketSession {
             return String.format(
                 "SessionStats{deviceId='%s', connected=%s, duration=%dms, " +
                 "messages(rx/tx)=%d/%d, reconnects=%d, errors=%d, lastHeartbeat=%dms ago}",
-                deviceId, isConnected, connectionDuration,
+                    tid, isConnected, connectionDuration,
                 receivedMessageCount, sentMessageCount, reconnectCount, errorCount,
                 timeSinceLastHeartbeat
             );
@@ -224,7 +233,7 @@ public class TerminalWebSocketSession {
         return String.format(
             "TerminalWebSocketSession{deviceId='%s', sessionId='%s', connected=%s, " +
             "duration=%dms, lastHeartbeat=%dms ago}",
-            deviceId, sessionId, isConnected(), getConnectionDuration(), getTimeSinceLastHeartbeat()
+                tid, sessionId, isConnected(), getConnectionDuration(), getTimeSinceLastHeartbeat()
         );
     }
 }

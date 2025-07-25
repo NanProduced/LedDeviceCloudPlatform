@@ -107,10 +107,14 @@ mvn clean package
    - MongoDB消息持久化
 
 7. **terminal-service** - LED设备终端通信服务
+   - 双端口架构：HTTP 8085 + WebSocket 8843
    - 支持10K并发WebSocket连接
    - 分片式连接管理(16个分片)
    - 独立Basic Auth体系
-   - HTTP轮询 + WebSocket长连接
+   - 基于Netty的高性能WebSocket服务器
+   - WebSocket路径：/ColorWebSocket/websocket/chat
+   - URL参数认证：?username=xxx&password=xxx
+   - 注意：原Spring WebSocket相关类已标注@Deprecated
 
 8. **common-mq** - 通用RabbitMQ客户端模块
    - 分离式设计(core, producer, consumer)
@@ -244,7 +248,7 @@ mvn clean package
 - **Auth-Server**: 8081
 - **Core-Service**: 默认随机
 - **Message-Service**: 8084
-- **Terminal-Service**: 与Gateway共享8082端口，通过路由区分
+- **Terminal-Service**: HTTP 8085 + WebSocket 8843 (双端口架构)
 
 ## 迁移计划
 

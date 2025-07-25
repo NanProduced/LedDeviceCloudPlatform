@@ -1,5 +1,10 @@
 server:
   port: 8085
+
+# WebSocket专用端口配置
+terminal:
+  websocket:
+    port: 8843
 spring:
   application:
     name: terminal-service

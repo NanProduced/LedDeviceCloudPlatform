@@ -13,27 +13,22 @@ import java.time.LocalDateTime;
  * @since 1.0.0
  */
 @Data
-public class DeviceConnection {
+public class TerminalConnection {
 
     /**
      * 设备ID
      */
-    private String deviceId;
-
-    /**
-     * 设备名称
-     */
-    private String deviceName;
-
-    /**
-     * 设备类型
-     */
-    private String deviceType;
+    private Long tid;
 
     /**
      * 组织ID
      */
-    private String organizationId;
+    private Long oid;
+
+    /**
+     * 设备名称
+     */
+    private String terminalName;
 
     /**
      * WebSocket会话对象
@@ -113,14 +108,16 @@ public class DeviceConnection {
     /**
      * 创建设备连接
      * 
-     * @param deviceId 设备ID
+     * @param tid 设备ID
+     * @param oid 组织ID
      * @param session WebSocket会话
      * @param clientIp 客户端IP
      * @return 设备连接对象
      */
-    public static DeviceConnection create(String deviceId, Object session, String clientIp) {
-        DeviceConnection connection = new DeviceConnection();
-        connection.setDeviceId(deviceId);
+    public static TerminalConnection create(Long tid, Long oid, Object session, String clientIp) {
+        TerminalConnection connection = new TerminalConnection();
+        connection.setTid(tid);
+        connection.setOid(oid);
         connection.setSession(session);
         connection.setClientIp(clientIp);
         connection.setConnectTime(LocalDateTime.now());

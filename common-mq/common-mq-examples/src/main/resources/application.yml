@@ -117,5 +117,3 @@ logging:
     org.nan.cloud.common.mq: DEBUG
     org.springframework.amqp: INFO
     org.springframework.rabbit: INFO
-  pattern:
-    console: "%d{yyyy-MM-dd HH:mm:ss.SSS} [%thread] %-5level %logger{36} - %msg%n"

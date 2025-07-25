@@ -124,7 +124,7 @@ public class TerminalSecurityConfig {
                 .requestMatchers("/actuator/prometheus").permitAll()
                 
                 // WebSocket端点使用自定义认证
-                .requestMatchers("/terminal/ws/**").permitAll()
+                .requestMatchers("/ColorWebSocket/websocket/chat").permitAll()
                 
                 // 设备API端点需要Basic Auth认证
                 .requestMatchers("/wp-json/**").authenticated()

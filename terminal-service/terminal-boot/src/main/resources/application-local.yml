@@ -1,5 +1,8 @@
 server:
   port: 8085
+terminal:
+  websocket:
+    port: 8843
 spring:
   application:
     name: terminal-service
@@ -64,8 +67,8 @@ logging:
     org.mybatis: DEBUG
     io.netty: DEBUG
     org.nan.cloud.terminal: DEBUG
-    # WebSocket相关日志
-    org.springframework.web.socket: DEBUG
+    # Netty WebSocket相关日志
+    io.netty.handler.codec.http.websocketx: DEBUG
 
 # 本地环境监控配置
 management:

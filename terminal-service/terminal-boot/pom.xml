@@ -33,11 +33,6 @@
             <artifactId>common-mq-consumer</artifactId>
         </dependency>
         
-        <!-- 高性能WebSocket支持 -->
-        <dependency>
-            <groupId>org.springframework.boot</groupId>
-            <artifactId>spring-boot-starter-websocket</artifactId>
-        </dependency>
         
         <!-- Netty高性能网络框架 -->
         <dependency>

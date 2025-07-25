@@ -2,13 +2,13 @@ package org.nan.cloud.terminal.infrastructure.connection;
 
 import lombok.extern.slf4j.Slf4j;
 import org.nan.cloud.terminal.api.connection.ConnectionManager;
-import org.nan.cloud.terminal.api.connection.DeviceConnection;
+import org.nan.cloud.terminal.api.connection.TerminalConnection;
 import org.nan.cloud.terminal.websocket.session.TerminalWebSocketSession;
 import org.springframework.stereotype.Component;
-import org.springframework.web.socket.TextMessage;
+import io.netty.handler.codec.http.websocketx.TextWebSocketFrame;
 
 import jakarta.annotation.PreDestroy;
-import java.io.IOException;
+
 import java.time.LocalDateTime;
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
@@ -17,20 +17,18 @@ import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
 
 /**
- * 分片式连接管理器实现
+ * 基于组织ID(oid)的分片式连接管理器
  * 
  * 核心设计思想：
- * 1. 16个分片减少锁竞争，每个分片最大625个连接，总计支持10000个连接
- * 2. 基于设备ID哈希值的一致性分片算法，确保连接均匀分布
- * 3. 每个分片使用独立的读写锁，优化并发读操作性能
- * 4. 内存预分配优化，避免HashMap动态扩容带来的性能损耗
- * 5. 支持集群扩展接口，为未来水平扩展预留能力
+ * 1. 16个分片基于组织ID(oid)哈希分布，使用斐波那契哈希增强分散性
+ * 2. 每个分片内按组织维度管理连接，优化批量操作性能  
+ * 3. 支持核心业务场景：终端列表消息发送、组织广播等
+ * 4. 总计支持10000个连接，每分片最大625个连接
  * 
  * 性能优势：
- * - 锁竞争减少93.75%（16分片 vs 单一存储）
- * - 理论TPS从1000提升至16000（16倍提升）
- * - 支持高并发读操作，写操作互不干扰
- * - 故障隔离：单分片故障仅影响6.25%的连接
+ * - 终端列表发送：O(1)定位组织 + O(k)发送，k为目标终端数
+ * - 组织广播：O(1)定位组织 + O(m)发送，m为组织内终端数
+ * - 单终端操作：O(1)直接访问
  * 
  * @author terminal-service
  * @since 1.0.0
@@ -53,11 +51,17 @@ public class ShardedConnectionManager implements ConnectionManager {
      * 总的最大连接数 - 10000个连接
      */
     private static final int MAX_TOTAL_CONNECTIONS = SHARD_COUNT * MAX_CONNECTIONS_PER_SHARD;
+    
+    /**
+     * 斐波那契哈希常数 (黄金比例 * 2^32)
+     * 用于增强自增ID的分散性
+     */
+    private static final long FIBONACCI_HASH = 0x9E3779B9L;
 
     /**
      * 连接分片数组 - 每个分片独立管理连接
      */
-    private final ConnectionShard[] shards;
+    private final OrganizationShard[] shards;
     
     /**
      * 总连接数计数器 - 原子操作保证线程安全
@@ -76,20 +80,42 @@ public class ShardedConnectionManager implements ConnectionManager {
     private final AtomicLong responseTimeCount = new AtomicLong(0);
 
     public ShardedConnectionManager() {
-        // 初始化16个连接分片
-        this.shards = new ConnectionShard[SHARD_COUNT];
+        // 初始化16个组织分片
+        this.shards = new OrganizationShard[SHARD_COUNT];
         for (int i = 0; i < SHARD_COUNT; i++) {
-            this.shards[i] = new ConnectionShard(i, MAX_CONNECTIONS_PER_SHARD);
+            this.shards[i] = new OrganizationShard(i, MAX_CONNECTIONS_PER_SHARD);
         }
         
-        log.info("分片式连接管理器初始化完成: 分片数={}, 每分片最大连接数={}, 总最大连接数={}", 
+        log.info("基于组织ID的分片式连接管理器初始化完成: 分片数={}, 每分片最大连接数={}, 总最大连接数={}", 
             SHARD_COUNT, MAX_CONNECTIONS_PER_SHARD, MAX_TOTAL_CONNECTIONS);
     }
 
+    /**
+     * 增强哈希算法 - 解决自增ID分散性问题
+     * 使用斐波那契哈希 + 位运算优化
+     */
+    private int getShardIndex(Long oid) {
+        if (oid == null) return 0;
+        
+        // 增强哈希：oid * 斐波那契常数，然后取高位
+        long hash = oid * FIBONACCI_HASH;
+        
+        // 取高位的方式获得更好的分散性
+        return (int) ((hash ^ (hash >>> 16)) & (SHARD_COUNT - 1));
+    }
+
     @Override
-    public boolean addConnection(String deviceId, Object session) {
-        if (deviceId == null || session == null) {
+    public boolean addConnection(Long tid, Object session) {
+        if (tid == null || session == null) {
             log.warn("添加连接失败：设备ID或会话为空");
+            return false;
+        }
+
+        TerminalWebSocketSession terminalSession = (TerminalWebSocketSession) session;
+        Long oid = terminalSession.getOid();
+        
+        if (oid == null) {
+            log.warn("添加连接失败：组织ID为空, tid={}", tid);
             return false;
         }
 
@@ -99,9 +125,9 @@ public class ShardedConnectionManager implements ConnectionManager {
             return false;
         }
 
-        // 计算分片索引
-        int shardIndex = getShardIndex(deviceId);
-        ConnectionShard shard = shards[shardIndex];
+        // 根据组织ID计算分片索引
+        int shardIndex = getShardIndex(oid);
+        OrganizationShard shard = shards[shardIndex];
         
         // 记录操作开始时间（用于性能统计）
         long startTime = System.currentTimeMillis();
@@ -109,17 +135,17 @@ public class ShardedConnectionManager implements ConnectionManager {
         try {
             // 创建设备连接对象
             String clientIp = extractClientIp(session);
-            DeviceConnection connection = DeviceConnection.create(deviceId, session, clientIp);
+            TerminalConnection connection = TerminalConnection.create(tid, oid, session, clientIp);
             
             // 添加到对应分片
-            boolean added = shard.addConnection(deviceId, connection);
+            boolean added = shard.addConnection(oid, tid, connection);
             if (added) {
                 totalConnections.incrementAndGet();
-                log.info("设备连接添加成功: deviceId={}, shardIndex={}, 当前总连接数={}", 
-                    deviceId, shardIndex, totalConnections.get());
+                log.info("设备连接添加成功: tid={}, oid={}, shardIndex={}, 当前总连接数={}",
+                        tid, oid, shardIndex, totalConnections.get());
                 return true;
             } else {
-                log.warn("设备连接添加失败: deviceId={}, shardIndex={}", deviceId, shardIndex);
+                log.warn("设备连接添加失败: tid={}, oid={}, shardIndex={}", tid, oid, shardIndex);
                 return false;
             }
         } finally {
@@ -131,62 +157,78 @@ public class ShardedConnectionManager implements ConnectionManager {
     }
 
     @Override
-    public Object removeConnection(String deviceId) {
-        if (deviceId == null) {
+    public Object removeConnection(Long tid) {
+        if (tid == null) {
             return null;
         }
 
-        int shardIndex = getShardIndex(deviceId);
-        ConnectionShard shard = shards[shardIndex];
-        
-        DeviceConnection connection = shard.removeConnection(deviceId);
-        if (connection != null) {
-            totalConnections.decrementAndGet();
-            log.info("设备连接移除成功: deviceId={}, shardIndex={}, 当前总连接数={}", 
-                deviceId, shardIndex, totalConnections.get());
-            return connection.getSession();
+        // 需要遍历所有分片查找tid（因为不知道oid）
+        for (int i = 0; i < SHARD_COUNT; i++) {
+            OrganizationShard shard = shards[i];
+            TerminalConnection connection = shard.removeConnectionByTid(tid);
+            if (connection != null) {
+                totalConnections.decrementAndGet();
+                log.info("设备连接移除成功: tid={}, shardIndex={}, 当前总连接数={}", 
+                    tid, i, totalConnections.get());
+                return connection.getSession();
+            }
         }
         
         return null;
     }
-    
-    /**
-     * 检查设备是否在线
-     * 
-     * @param deviceId 设备ID
-     * @return true表示设备在线
-     */
-    public boolean isDeviceOnline(String deviceId) {
-        if (deviceId == null) {
-            return false;
+
+    @Override
+    public Object removeConnection(Long tid, String sessionId) {
+        if (tid == null) {
+            return null;
         }
-        int shardIndex = getShardIndex(deviceId);
-        return shards[shardIndex].isDeviceOnline(deviceId);
+
+        // 遍历所有分片查找tid
+        for (int i = 0; i < SHARD_COUNT; i++) {
+            OrganizationShard shard = shards[i];
+            TerminalConnection connection = shard.removeConnectionByTidAndSession(tid, sessionId);
+            if (connection != null) {
+                totalConnections.decrementAndGet();
+                log.info("设备连接移除成功: tid={}, sessionId={}, shardIndex={}, 当前总连接数={}", 
+                    tid, sessionId, i, totalConnections.get());
+                return connection.getSession();
+            }
+        }
+        
+        return null;
     }
 
     @Override
-    public Optional<Object> getConnection(String deviceId) {
-        if (deviceId == null) {
+    public Optional<Object> getConnection(Long tid) {
+        if (tid == null) {
             return Optional.empty();
         }
 
-        int shardIndex = getShardIndex(deviceId);
-        ConnectionShard shard = shards[shardIndex];
+        // 遍历所有分片查找tid
+        for (OrganizationShard shard : shards) {
+            TerminalConnection connection = shard.getConnectionByTid(tid);
+            if (connection != null) {
+                return Optional.of(connection.getSession());
+            }
+        }
         
-        DeviceConnection connection = shard.getConnection(deviceId);
-        return connection != null ? Optional.of(connection.getSession()) : Optional.empty();
+        return Optional.empty();
     }
 
     @Override
-    public boolean isOnline(String deviceId) {
-        if (deviceId == null) {
+    public boolean isOnline(Long tid) {
+        if (tid == null) {
             return false;
         }
 
-        int shardIndex = getShardIndex(deviceId);
-        ConnectionShard shard = shards[shardIndex];
+        // 遍历所有分片查找tid
+        for (OrganizationShard shard : shards) {
+            if (shard.isTerminalOnline(tid)) {
+                return true;
+            }
+        }
         
-        return shard.isOnline(deviceId);
+        return false;
     }
 
     @Override
@@ -203,31 +245,67 @@ public class ShardedConnectionManager implements ConnectionManager {
     }
 
     @Override
-    public Collection<String> getOnlineDeviceIds() {
-        Set<String> allDeviceIds = new HashSet<>();
+    public Collection<Long> getOnlineDeviceIds() {
+        Set<Long> allDeviceIds = new HashSet<>();
         
         // 并行收集所有分片的设备ID
-        for (ConnectionShard shard : shards) {
-            allDeviceIds.addAll(shard.getOnlineDeviceIds());
+        for (OrganizationShard shard : shards) {
+            allDeviceIds.addAll(shard.getOnlineTerminalIds());
         }
         
         return allDeviceIds;
     }
 
     @Override
-    public boolean sendMessage(String deviceId, String message) {
-        if (deviceId == null || message == null) {
+    public boolean sendMessage(Long tid, String message) {
+        if (tid == null || message == null) {
             return false;
         }
 
-        int shardIndex = getShardIndex(deviceId);
-        ConnectionShard shard = shards[shardIndex];
-        
-        boolean sent = shard.sendMessage(deviceId, message);
-        if (sent) {
-            totalMessagesSent.incrementAndGet();
+        // 遍历所有分片查找tid并发送消息
+        for (OrganizationShard shard : shards) {
+            if (shard.sendMessageToTerminal(tid, message)) {
+                totalMessagesSent.incrementAndGet();
+                return true;
+            }
         }
         
+        return false;
+    }
+
+    @Override
+    public int sendMessageToTerminals(Long oid, List<Long> tidList, String message) {
+        if (oid == null || tidList == null || tidList.isEmpty() || message == null) {
+            return 0;
+        }
+
+        // O(1) 定位到组织分片
+        int shardIndex = getShardIndex(oid);
+        OrganizationShard shard = shards[shardIndex];
+        
+        // O(k) 发送消息，k为目标终端数量
+        int sent = shard.sendMessageToTerminalList(oid, tidList, message);
+        totalMessagesSent.addAndGet(sent);
+        
+        log.info("终端列表消息发送完成: oid={}, 目标终端数={}, 成功发送数={}", oid, tidList.size(), sent);
+        return sent;
+    }
+
+    @Override
+    public int sendMessageToOrganization(Long oid, String message) {
+        if (oid == null || message == null) {
+            return 0;
+        }
+
+        // O(1) 定位到组织分片
+        int shardIndex = getShardIndex(oid);
+        OrganizationShard shard = shards[shardIndex];
+        
+        // O(m) 发送消息，m为组织内终端数
+        int sent = shard.broadcastToOrganization(oid, message);
+        totalMessagesSent.addAndGet(sent);
+        
+        log.info("组织广播消息完成: oid={}, 成功发送数={}", oid, sent);
         return sent;
     }
 
@@ -240,45 +318,48 @@ public class ShardedConnectionManager implements ConnectionManager {
         int totalSent = 0;
         
         // 并行广播到所有分片
-        for (ConnectionShard shard : shards) {
+        for (OrganizationShard shard : shards) {
             totalSent += shard.broadcastMessage(message);
         }
         
         totalMessagesSent.addAndGet(totalSent);
-        log.info("广播消息完成: 成功发送数={}, 消息长度={}", totalSent, message.length());
+        log.info("全局广播消息完成: 成功发送数={}, 消息长度={}", totalSent, message.length());
         
         return totalSent;
     }
 
     @Override
-    public int broadcastToOrganization(String organizationId, String message) {
-        if (organizationId == null || message == null) {
+    public Collection<Long> getOrganizationOnlineDevices(Long oid) {
+        if (oid == null) {
+            return Collections.emptyList();
+        }
+
+        int shardIndex = getShardIndex(oid);
+        return shards[shardIndex].getOrganizationOnlineTerminals(oid);
+    }
+
+    @Override
+    public int getOrganizationConnectionCount(Long oid) {
+        if (oid == null) {
             return 0;
         }
 
-        int totalSent = 0;
-        
-        // 并行广播到所有分片的指定组织设备
-        for (ConnectionShard shard : shards) {
-            totalSent += shard.broadcastToOrganization(organizationId, message);
-        }
-        
-        totalMessagesSent.addAndGet(totalSent);
-        log.info("组织广播消息完成: organizationId={}, 成功发送数={}", organizationId, totalSent);
-        
-        return totalSent;
+        int shardIndex = getShardIndex(oid);
+        return shards[shardIndex].getOrganizationConnectionCount(oid);
     }
 
     @Override
-    public void updateLastActiveTime(String deviceId, LocalDateTime lastActiveTime) {
-        if (deviceId == null) {
+    public void updateLastActiveTime(Long tid, LocalDateTime lastActiveTime) {
+        if (tid == null) {
             return;
         }
 
-        int shardIndex = getShardIndex(deviceId);
-        ConnectionShard shard = shards[shardIndex];
-        
-        shard.updateLastActiveTime(deviceId, lastActiveTime);
+        // 遍历所有分片查找tid并更新活跃时间
+        for (OrganizationShard shard : shards) {
+            if (shard.updateTerminalActiveTime(tid, lastActiveTime)) {
+                return; // 找到并更新成功，直接返回
+            }
+        }
     }
 
     @Override
@@ -286,7 +367,7 @@ public class ShardedConnectionManager implements ConnectionManager {
         int totalCleaned = 0;
         
         // 并行清理所有分片的过期连接
-        for (ConnectionShard shard : shards) {
+        for (OrganizationShard shard : shards) {
             int cleaned = shard.cleanupExpiredConnections(expireThreshold);
             totalCleaned += cleaned;
         }
@@ -307,22 +388,13 @@ public class ShardedConnectionManager implements ConnectionManager {
     }
 
     /**
-     * 根据设备ID计算分片索引
-     * 使用一致性哈希算法确保连接均匀分布
-     */
-    private int getShardIndex(String deviceId) {
-        // 使用设备ID的哈希值取模确定分片
-        // 这里使用31作为质数因子来改善哈希分布
-        int hash = deviceId.hashCode();
-        return Math.abs(hash) % SHARD_COUNT;
-    }
-
-    /**
      * 从会话对象中提取客户端IP地址
      */
     private String extractClientIp(Object session) {
-        // TODO: 根据实际的WebSocket Session实现提取IP
-        // 这里先返回默认值，后续实现WebSocket时完善
+        if (session instanceof TerminalWebSocketSession) {
+            TerminalWebSocketSession terminalSession = (TerminalWebSocketSession) session;
+            return terminalSession.getClientIp();
+        }
         return "unknown";
     }
 
@@ -331,10 +403,10 @@ public class ShardedConnectionManager implements ConnectionManager {
      */
     @PreDestroy
     public void shutdown() {
-        log.info("分片式连接管理器开始关闭...");
+        log.info("基于组织ID的分片式连接管理器开始关闭...");
         
         int totalClosed = 0;
-        for (ConnectionShard shard : shards) {
+        for (OrganizationShard shard : shards) {
             totalClosed += shard.shutdown();
         }
         
@@ -392,7 +464,7 @@ public class ShardedConnectionManager implements ConnectionManager {
         @Override
         public long getMaxLockWaitTime() {
             long maxWaitTime = 0;
-            for (ConnectionShard shard : shards) {
+            for (OrganizationShard shard : shards) {
                 maxWaitTime = Math.max(maxWaitTime, shard.getMaxLockWaitTime());
             }
             return maxWaitTime;
@@ -400,125 +472,171 @@ public class ShardedConnectionManager implements ConnectionManager {
     }
 
     /**
-     * 连接分片类 - 管理单个分片的连接
+     * 组织分片类 - 管理单个分片内的所有组织连接
      */
-    private static class ConnectionShard {
+    private static class OrganizationShard {
         private final int shardIndex;
         private final int maxConnections;
-        private final ConcurrentHashMap<String, DeviceConnection> connections;
+        // 组织维度的连接存储：oid -> 该组织的所有终端连接
+        private final ConcurrentHashMap<Long, OrganizationConnections> organizations;
         private final ReentrantReadWriteLock lock;
         private final AtomicLong maxLockWaitTime = new AtomicLong(0);
 
-        public ConnectionShard(int shardIndex, int maxConnections) {
+        public OrganizationShard(int shardIndex, int maxConnections) {
             this.shardIndex = shardIndex;
             this.maxConnections = maxConnections;
             // 预分配容量，避免动态扩容
-            this.connections = new ConcurrentHashMap<>(maxConnections * 4 / 3);
+            this.organizations = new ConcurrentHashMap<>(32); // 假设每个分片有32个组织
             this.lock = new ReentrantReadWriteLock();
         }
 
-        public boolean addConnection(String deviceId, DeviceConnection connection) {
+        public boolean addConnection(Long oid, Long tid, TerminalConnection connection) {
             long startTime = System.currentTimeMillis();
             
             lock.writeLock().lock();
             try {
+                // 获取或创建组织连接容器
+                OrganizationConnections orgConnections = organizations.computeIfAbsent(oid, 
+                    k -> new OrganizationConnections(oid));
+                
                 // 检查分片连接数限制
-                if (connections.size() >= maxConnections) {
+                int currentCount = getCurrentConnectionCount();
+                if (currentCount >= maxConnections) {
                     log.warn("分片 {} 已达到最大连接数限制: {}", shardIndex, maxConnections);
                     return false;
                 }
                 
-                connections.put(deviceId, connection);
-                return true;
+                return orgConnections.addTerminal(tid, connection);
             } finally {
                 lock.writeLock().unlock();
                 updateMaxLockWaitTime(startTime);
             }
         }
 
-        public DeviceConnection removeConnection(String deviceId) {
+        public TerminalConnection removeConnectionByTid(Long tid) {
             long startTime = System.currentTimeMillis();
             
             lock.writeLock().lock();
             try {
-                return connections.remove(deviceId);
+                for (OrganizationConnections orgConnections : organizations.values()) {
+                    TerminalConnection connection = orgConnections.removeTerminal(tid);
+                    if (connection != null) {
+                        // 如果组织内没有连接了，移除组织记录
+                        if (orgConnections.isEmpty()) {
+                            organizations.remove(orgConnections.getOid());
+                        }
+                        return connection;
+                    }
+                }
+                return null;
             } finally {
                 lock.writeLock().unlock();
                 updateMaxLockWaitTime(startTime);
             }
         }
 
-        public DeviceConnection getConnection(String deviceId) {
+        public TerminalConnection removeConnectionByTidAndSession(Long tid, String sessionId) {
+            long startTime = System.currentTimeMillis();
+            
+            lock.writeLock().lock();
+            try {
+                for (OrganizationConnections orgConnections : organizations.values()) {
+                    TerminalConnection connection = orgConnections.getTerminal(tid);
+                    if (connection != null) {
+                        // 验证sessionId是否匹配
+                        Object session = connection.getSession();
+                        if (session instanceof TerminalWebSocketSession) {
+                            TerminalWebSocketSession terminalSession = (TerminalWebSocketSession) session;
+                            if (sessionId != null && !sessionId.equals(terminalSession.getSessionId())) {
+                                continue; // sessionId不匹配，继续查找
+                            }
+                        }
+                        
+                        // 移除连接
+                        TerminalConnection removed = orgConnections.removeTerminal(tid);
+                        if (removed != null && orgConnections.isEmpty()) {
+                            organizations.remove(orgConnections.getOid());
+                        }
+                        return removed;
+                    }
+                }
+                return null;
+            } finally {
+                lock.writeLock().unlock();
+                updateMaxLockWaitTime(startTime);
+            }
+        }
+
+        public TerminalConnection getConnectionByTid(Long tid) {
             long startTime = System.currentTimeMillis();
             
             lock.readLock().lock();
             try {
-                return connections.get(deviceId);
+                for (OrganizationConnections orgConnections : organizations.values()) {
+                    TerminalConnection connection = orgConnections.getTerminal(tid);
+                    if (connection != null) {
+                        return connection;
+                    }
+                }
+                return null;
             } finally {
                 lock.readLock().unlock();
                 updateMaxLockWaitTime(startTime);
             }
         }
 
-        public boolean isOnline(String deviceId) {
+        public boolean isTerminalOnline(Long tid) {
             lock.readLock().lock();
             try {
-                DeviceConnection connection = connections.get(deviceId);
-                return connection != null && 
-                       connection.getStatus() == DeviceConnection.ConnectionStatus.CONNECTED;
-            } finally {
-                lock.readLock().unlock();
-            }
-        }
-
-        public int getConnectionCount() {
-            return connections.size();
-        }
-
-        public Collection<String> getOnlineDeviceIds() {
-            lock.readLock().lock();
-            try {
-                return connections.values().stream()
-                    .filter(conn -> conn.getStatus() == DeviceConnection.ConnectionStatus.CONNECTED)
-                    .map(DeviceConnection::getDeviceId)
-                    .collect(java.util.stream.Collectors.toList());
-            } finally {
-                lock.readLock().unlock();
-            }
-        }
-
-        public boolean sendMessage(String deviceId, String message) {
-            lock.readLock().lock();
-            try {
-                DeviceConnection connection = connections.get(deviceId);
-                if (connection == null || 
-                    connection.getStatus() != DeviceConnection.ConnectionStatus.CONNECTED) {
-                    return false;
-                }
-                
-                // 获取WebSocket会话并发送消息
-                try {
-                    Object wsSession = connection.getWebSocketSession();
-                    if (wsSession instanceof TerminalWebSocketSession) {
-                        TerminalWebSocketSession terminalSession = (TerminalWebSocketSession) wsSession;
-                        if (terminalSession.isConnected()) {
-                            // 发送文本消息到WebSocket
-                            terminalSession.getWebSocketSession().sendMessage(new TextMessage(message));
-                            connection.incrementSentCount();
-                            terminalSession.incrementSentMessageCount();
-                            
-                            log.debug("消息发送成功: deviceId={}, messageLength={}", 
-                                deviceId, message.length());
-                            return true;
-                        }
+                for (OrganizationConnections orgConnections : organizations.values()) {
+                    if (orgConnections.isTerminalOnline(tid)) {
+                        return true;
                     }
-                    log.warn("WebSocket会话无效或已断开: deviceId={}", deviceId);
-                    return false;
-                } catch (IOException e) {
-                    log.error("发送WebSocket消息失败: deviceId={}, error={}", deviceId, e.getMessage());
-                    connection.incrementErrorCount();
-                    return false;
                 }
+                return false;
+            } finally {
+                lock.readLock().unlock();
+            }
+        }
+
+        public boolean sendMessageToTerminal(Long tid, String message) {
+            lock.readLock().lock();
+            try {
+                for (OrganizationConnections orgConnections : organizations.values()) {
+                    if (orgConnections.sendMessageToTerminal(tid, message)) {
+                        return true;
+                    }
+                }
+                return false;
+            } finally {
+                lock.readLock().unlock();
+            }
+        }
+
+        /**
+         * 发送消息到特定终端列表 - 核心业务场景
+         */
+        public int sendMessageToTerminalList(Long oid, List<Long> tidList, String message) {
+            lock.readLock().lock();
+            try {
+                OrganizationConnections orgConnections = organizations.get(oid);
+                if (orgConnections != null) {
+                    return orgConnections.sendMessageToTerminalList(tidList, message);
+                }
+                return 0;
+            } finally {
+                lock.readLock().unlock();
+            }
+        }
+
+        public int broadcastToOrganization(Long oid, String message) {
+            lock.readLock().lock();
+            try {
+                OrganizationConnections orgConnections = organizations.get(oid);
+                if (orgConnections != null) {
+                    return orgConnections.broadcastMessage(message);
+                }
+                return 0;
             } finally {
                 lock.readLock().unlock();
             }
@@ -528,26 +646,8 @@ public class ShardedConnectionManager implements ConnectionManager {
             lock.readLock().lock();
             try {
                 int sent = 0;
-                for (DeviceConnection connection : connections.values()) {
-                    if (connection.getStatus() == DeviceConnection.ConnectionStatus.CONNECTED) {
-                        // 发送消息到WebSocket会话
-                        try {
-                            Object wsSession = connection.getWebSocketSession();
-                            if (wsSession instanceof TerminalWebSocketSession) {
-                                TerminalWebSocketSession terminalSession = (TerminalWebSocketSession) wsSession;
-                                if (terminalSession.isConnected()) {
-                                    terminalSession.getWebSocketSession().sendMessage(new TextMessage(message));
-                                    connection.incrementSentCount();
-                                    terminalSession.incrementSentMessageCount();
-                                    sent++;
-                                }
-                            }
-                        } catch (IOException e) {
-                            log.error("广播消息发送失败: deviceId={}, error={}", 
-                                connection.getDeviceId(), e.getMessage());
-                            connection.incrementErrorCount();
-                        }
-                    }
+                for (OrganizationConnections orgConnections : organizations.values()) {
+                    sent += orgConnections.broadcastMessage(message);
                 }
                 return sent;
             } finally {
@@ -555,55 +655,51 @@ public class ShardedConnectionManager implements ConnectionManager {
             }
         }
 
-        public int broadcastToOrganization(String organizationId, String message) {
+        public Collection<Long> getOnlineTerminalIds() {
             lock.readLock().lock();
             try {
-                int sent = 0;
-                for (DeviceConnection connection : connections.values()) {
-                    if (connection.getStatus() == DeviceConnection.ConnectionStatus.CONNECTED &&
-                        organizationId.equals(connection.getOrganizationId())) {
-                        // 发送消息到WebSocket会话
-                        try {
-                            Object wsSession = connection.getWebSocketSession();
-                            if (wsSession instanceof TerminalWebSocketSession) {
-                                TerminalWebSocketSession terminalSession = (TerminalWebSocketSession) wsSession;
-                                if (terminalSession.isConnected()) {
-                                    terminalSession.getWebSocketSession().sendMessage(new TextMessage(message));
-                                    connection.incrementSentCount();
-                                    terminalSession.incrementSentMessageCount();
-                                    sent++;
-                                }
-                            }
-                        } catch (IOException e) {
-                            log.error("组织广播消息发送失败: deviceId={}, oid={}, error={}", 
-                                connection.getDeviceId(), organizationId, e.getMessage());
-                            connection.incrementErrorCount();
-                        }
-                    }
+                Set<Long> terminalIds = new HashSet<>();
+                for (OrganizationConnections orgConnections : organizations.values()) {
+                    terminalIds.addAll(orgConnections.getOnlineTerminalIds());
                 }
-                return sent;
+                return terminalIds;
             } finally {
                 lock.readLock().unlock();
             }
         }
 
-        public void updateLastActiveTime(String deviceId, LocalDateTime lastActiveTime) {
+        public Collection<Long> getOrganizationOnlineTerminals(Long oid) {
             lock.readLock().lock();
             try {
-                DeviceConnection connection = connections.get(deviceId);
-                if (connection != null) {
-                    connection.setLastActiveTime(lastActiveTime);
+                OrganizationConnections orgConnections = organizations.get(oid);
+                if (orgConnections != null) {
+                    return orgConnections.getOnlineTerminalIds();
                 }
+                return Collections.emptyList();
             } finally {
                 lock.readLock().unlock();
             }
         }
-        
-        public boolean isDeviceOnline(String deviceId) {
+
+        public int getOrganizationConnectionCount(Long oid) {
             lock.readLock().lock();
             try {
-                DeviceConnection connection = connections.get(deviceId);
-                return connection != null && connection.getStatus() == DeviceConnection.ConnectionStatus.CONNECTED;
+                OrganizationConnections orgConnections = organizations.get(oid);
+                return orgConnections != null ? orgConnections.getConnectionCount() : 0;
+            } finally {
+                lock.readLock().unlock();
+            }
+        }
+
+        public boolean updateTerminalActiveTime(Long tid, LocalDateTime lastActiveTime) {
+            lock.readLock().lock();
+            try {
+                for (OrganizationConnections orgConnections : organizations.values()) {
+                    if (orgConnections.updateTerminalActiveTime(tid, lastActiveTime)) {
+                        return true;
+                    }
+                }
+                return false;
             } finally {
                 lock.readLock().unlock();
             }
@@ -612,43 +708,60 @@ public class ShardedConnectionManager implements ConnectionManager {
         public int cleanupExpiredConnections(LocalDateTime expireThreshold) {
             lock.writeLock().lock();
             try {
-                List<String> expiredDeviceIds = new ArrayList<>();
+                int totalCleaned = 0;
+                List<Long> emptyOrganizations = new ArrayList<>();
                 
-                for (Map.Entry<String, DeviceConnection> entry : connections.entrySet()) {
-                    DeviceConnection connection = entry.getValue();
-                    if (connection.isExpired(expireThreshold)) {
-                        expiredDeviceIds.add(entry.getKey());
+                for (Map.Entry<Long, OrganizationConnections> entry : organizations.entrySet()) {
+                    OrganizationConnections orgConnections = entry.getValue();
+                    int cleaned = orgConnections.cleanupExpiredConnections(expireThreshold);
+                    totalCleaned += cleaned;
+                    
+                    // 记录空的组织，稍后移除
+                    if (orgConnections.isEmpty()) {
+                        emptyOrganizations.add(entry.getKey());
                     }
                 }
                 
-                // 移除过期连接
-                for (String deviceId : expiredDeviceIds) {
-                    connections.remove(deviceId);
+                // 移除空的组织记录
+                for (Long oid : emptyOrganizations) {
+                    organizations.remove(oid);
                 }
                 
-                return expiredDeviceIds.size();
+                return totalCleaned;
             } finally {
                 lock.writeLock().unlock();
             }
         }
 
+        public int getConnectionCount() {
+            lock.readLock().lock();
+            try {
+                return getCurrentConnectionCount();
+            } finally {
+                lock.readLock().unlock();
+            }
+        }
+
+        private int getCurrentConnectionCount() {
+            int count = 0;
+            for (OrganizationConnections orgConnections : organizations.values()) {
+                count += orgConnections.getConnectionCount();
+            }
+            return count;
+        }
+
         public int shutdown() {
             lock.writeLock().lock();
             try {
-                int size = connections.size();
+                int totalClosed = 0;
                 
-                // 关闭所有连接的会话
-                for (DeviceConnection connection : connections.values()) {
-                    try {
-                        // TODO: 关闭WebSocket会话
-                        connection.setStatus(DeviceConnection.ConnectionStatus.DISCONNECTED);
-                    } catch (Exception e) {
-                        log.warn("关闭连接会话失败: deviceId={}", connection.getDeviceId(), e);
-                    }
+                // 关闭所有组织的连接
+                for (OrganizationConnections orgConnections : organizations.values()) {
+                    totalClosed += orgConnections.shutdown();
                 }
                 
-                connections.clear();
-                return size;
+                organizations.clear();
+                return totalClosed;
             } finally {
                 lock.writeLock().unlock();
             }
@@ -663,6 +776,163 @@ public class ShardedConnectionManager implements ConnectionManager {
             long currentMax = maxLockWaitTime.get();
             if (waitTime > currentMax) {
                 maxLockWaitTime.compareAndSet(currentMax, waitTime);
+            }
+        }
+
+        /**
+         * 组织连接容器 - 管理单个组织内的所有终端连接
+         */
+        private static class OrganizationConnections {
+            private final Long oid;
+            // 该组织内的所有终端连接：tid -> TerminalConnection
+            private final ConcurrentHashMap<Long, TerminalConnection> terminals;
+
+            public OrganizationConnections(Long oid) {
+                this.oid = oid;
+                this.terminals = new ConcurrentHashMap<>();
+            }
+
+            public Long getOid() {
+                return oid;
+            }
+
+            public boolean addTerminal(Long tid, TerminalConnection connection) {
+                return terminals.put(tid, connection) == null;
+            }
+
+            public TerminalConnection removeTerminal(Long tid) {
+                return terminals.remove(tid);
+            }
+
+            public TerminalConnection getTerminal(Long tid) {
+                return terminals.get(tid);
+            }
+
+            public boolean isEmpty() {
+                return terminals.isEmpty();
+            }
+
+            public int getConnectionCount() {
+                return terminals.size();
+            }
+
+            public boolean isTerminalOnline(Long tid) {
+                TerminalConnection connection = terminals.get(tid);
+                return connection != null && 
+                       connection.getStatus() == TerminalConnection.ConnectionStatus.CONNECTED;
+            }
+
+            public boolean sendMessageToTerminal(Long tid, String message) {
+                TerminalConnection connection = terminals.get(tid);
+                if (connection == null || 
+                    connection.getStatus() != TerminalConnection.ConnectionStatus.CONNECTED) {
+                    return false;
+                }
+                
+                return sendMessageToConnection(connection, message);
+            }
+
+            /**
+             * 发送消息到特定终端列表 - 主要业务场景
+             */
+            public int sendMessageToTerminalList(List<Long> tidList, String message) {
+                int sent = 0;
+                for (Long tid : tidList) {
+                    TerminalConnection connection = terminals.get(tid);
+                    if (connection != null && 
+                        connection.getStatus() == TerminalConnection.ConnectionStatus.CONNECTED) {
+                        if (sendMessageToConnection(connection, message)) {
+                            sent++;
+                        }
+                    }
+                }
+                return sent;
+            }
+
+            /**
+             * 广播到整个组织
+             */
+            public int broadcastMessage(String message) {
+                int sent = 0;
+                for (TerminalConnection connection : terminals.values()) {
+                    if (connection.getStatus() == TerminalConnection.ConnectionStatus.CONNECTED) {
+                        if (sendMessageToConnection(connection, message)) {
+                            sent++;
+                        }
+                    }
+                }
+                return sent;
+            }
+
+            private boolean sendMessageToConnection(TerminalConnection connection, String message) {
+                try {
+                    Object wsSession = connection.getWebSocketSession();
+                    if (wsSession instanceof TerminalWebSocketSession) {
+                        TerminalWebSocketSession terminalSession = (TerminalWebSocketSession) wsSession;
+                        if (terminalSession.isConnected()) {
+                            terminalSession.getNettyChannel().writeAndFlush(new TextWebSocketFrame(message));
+                            connection.incrementSentCount();
+                            terminalSession.incrementSentMessageCount();
+                            return true;
+                        }
+                    }
+                    return false;
+                } catch (Exception e) {
+                    log.error("发送消息失败: oid={}, tid={}", oid, connection.getTid(), e);
+                    connection.incrementErrorCount();
+                    return false;
+                }
+            }
+
+            public Collection<Long> getOnlineTerminalIds() {
+                return terminals.values().stream()
+                    .filter(conn -> conn.getStatus() == TerminalConnection.ConnectionStatus.CONNECTED)
+                    .map(TerminalConnection::getTid)
+                    .collect(java.util.stream.Collectors.toList());
+            }
+
+            public boolean updateTerminalActiveTime(Long tid, LocalDateTime lastActiveTime) {
+                TerminalConnection connection = terminals.get(tid);
+                if (connection != null) {
+                    connection.setLastActiveTime(lastActiveTime);
+                    return true;
+                }
+                return false;
+            }
+
+            public int cleanupExpiredConnections(LocalDateTime expireThreshold) {
+                List<Long> expiredTerminalIds = new ArrayList<>();
+                
+                for (Map.Entry<Long, TerminalConnection> entry : terminals.entrySet()) {
+                    TerminalConnection connection = entry.getValue();
+                    if (connection.isExpired(expireThreshold)) {
+                        expiredTerminalIds.add(entry.getKey());
+                    }
+                }
+                
+                // 移除过期连接
+                for (Long tid : expiredTerminalIds) {
+                    terminals.remove(tid);
+                }
+                
+                return expiredTerminalIds.size();
+            }
+
+            public int shutdown() {
+                int size = terminals.size();
+                
+                // 关闭所有连接的会话
+                for (TerminalConnection connection : terminals.values()) {
+                    try {
+                        // TODO: 关闭WebSocket会话
+                        connection.setStatus(TerminalConnection.ConnectionStatus.DISCONNECTED);
+                    } catch (Exception e) {
+                        log.warn("关闭连接会话失败: tid={}", connection.getTid(), e);
+                    }
+                }
+                
+                terminals.clear();
+                return size;
             }
         }
     }

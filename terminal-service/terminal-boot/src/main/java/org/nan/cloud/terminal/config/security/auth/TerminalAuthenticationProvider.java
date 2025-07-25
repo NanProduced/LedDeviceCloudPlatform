@@ -2,10 +2,12 @@ package org.nan.cloud.terminal.config.security.auth;
 
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.nan.cloud.terminal.application.domain.TerminalAccount;
+import org.nan.cloud.terminal.application.domain.TerminalInfo;
+import org.nan.cloud.terminal.application.repository.TerminalRepository;
 import org.nan.cloud.terminal.infrastructure.entity.auth.TerminalAccountDO;
 import org.nan.cloud.terminal.infrastructure.mapper.auth.TerminalAccountMapper;
 import org.nan.cloud.terminal.infrastructure.persistence.mysql.entity.TerminalInfoDO;
-import org.nan.cloud.terminal.infrastructure.persistence.mysql.repository.TerminalInfoRepository;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.security.authentication.AuthenticationProvider;
 import org.springframework.security.authentication.BadCredentialsException;
@@ -40,62 +42,61 @@ import static org.nan.cloud.terminal.infrastructure.config.RedisConfig.RedisKeys
 @RequiredArgsConstructor
 public class TerminalAuthenticationProvider implements AuthenticationProvider {
 
-    private final TerminalAccountMapper terminalAccountMapper;
-    private final TerminalInfoRepository terminalInfoRepository;
+    private final TerminalRepository terminalRepository;
     private final PasswordEncoder passwordEncoder;
     private final StringRedisTemplate redisTemplate;
 
     @Override
     public Authentication authenticate(Authentication authentication) throws AuthenticationException {
-        String account = authentication.getName();
+        String accountName = authentication.getName();
         String password = (String) authentication.getCredentials();
 
-        if (!StringUtils.hasText(account) || !StringUtils.hasText(password)) {
+        if (!StringUtils.hasText(accountName) || !StringUtils.hasText(password)) {
             throw new BadCredentialsException("用户名和密码不能为空");
         }
 
 
         try {
             // 1. 先检查Redis缓存
-            TerminalPrincipal cachedPrincipal = checkAuthenticationCache(account, password);
+            TerminalPrincipal cachedPrincipal = checkAuthenticationCache(accountName, password);
             if (cachedPrincipal != null) {
-                log.debug("终端认证缓存命中: account={}, tid={}", account, cachedPrincipal.getTid());
+                log.debug("终端认证缓存命中: accountName={}, tid={}", accountName, cachedPrincipal.getTid());
                 return new UsernamePasswordAuthenticationToken(cachedPrincipal, password, cachedPrincipal.getAuthorities());
             }
 
             // 2. 缓存未命中，查询数据库进行完整认证
-            TerminalAccountDO accountDO = findTerminalAccount(account);
-            if (accountDO == null) {
+            TerminalAccount account = terminalRepository.getAccountByName(accountName);
+            if (account == null) {
                 throw new BadCredentialsException("账号不存在");
             }
 
             // 3. 验证密码
-            if (!passwordEncoder.matches(password, accountDO.getPassword())) {
+            if (!passwordEncoder.matches(password, account.getPassword())) {
                 throw new BadCredentialsException("密码错误");
             }
 
             // 4. 检查账号状态
-            if (accountDO.getStatus() != 0) {
+            if (account.getStatus() != 0) {
                 throw new DisabledException("账号已被禁用");
             }
 
             // 5. 查询终端详细信息
-            TerminalInfoDO terminalInfo = terminalInfoRepository.getInfoByTid(accountDO.getTid());
+            TerminalInfo terminalInfo = terminalRepository.getInfoByTid(account.getTid());
             if (terminalInfo == null) {
                 throw new BadCredentialsException("终端信息不存在");
             }
 
             // 6. 创建认证主体
-            TerminalPrincipal principal = createTerminalPrincipal(accountDO, terminalInfo);
+            TerminalPrincipal principal = createTerminalPrincipal(account, terminalInfo);
 
             // 7. 更新最后登录信息
-            updateLastLoginInfo(accountDO, getClientIp(authentication));
+            terminalRepository.updateLastLogin(principal.getTid(), getClientIp(authentication));
 
             // 8. 缓存认证结果（包含完整的principal信息）
-            cacheAuthenticationResult(account, password, principal);
+            cacheAuthenticationResult(account, terminalInfo);
 
-            log.info("终端认证成功: account={}, tid={}, terminalName={}", 
-                account, accountDO.getTid(), terminalInfo.getTerminalName());
+            log.info("终端认证成功: accountName={}, tid={}, terminalName={}",
+                accountName, account.getTid(), terminalInfo.getTerminalName());
 
             return new UsernamePasswordAuthenticationToken(principal, password, principal.getAuthorities());
 
@@ -103,7 +104,7 @@ public class TerminalAuthenticationProvider implements AuthenticationProvider {
             // 重新抛出认证异常
             throw e;
         } catch (Exception e) {
-            log.error("终端认证过程异常: account={}", account, e);
+            log.error("终端认证过程异常: accountName={}", accountName, e);
             throw new BadCredentialsException("认证服务异常");
         }
     }
@@ -114,51 +115,15 @@ public class TerminalAuthenticationProvider implements AuthenticationProvider {
     }
 
     /**
-     * 查询终端账号信息
-     * 根据账号名称查询，这里需要根据实际数据库字段调整
-     */
-    private TerminalAccountDO findTerminalAccount(String account) {
-        try {
-            // 这里假设账号字段对应account，您可能需要根据实际情况调整查询方法
-            return terminalAccountMapper.selectOne(
-                new com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper<TerminalAccountDO>()
-                    .eq(TerminalAccountDO::getAccount, account)
-                    .eq(TerminalAccountDO::getDeleted, false)
-            );
-        } catch (Exception e) {
-            log.error("查询终端账号异常: account={}", account, e);
-            return null;
-        }
-    }
-
-    /**
      * 创建终端认证主体
      */
-    private TerminalPrincipal createTerminalPrincipal(TerminalAccountDO accountDO, TerminalInfoDO terminalInfo) {
+    private TerminalPrincipal createTerminalPrincipal(TerminalAccount account, TerminalInfo terminalInfo) {
         TerminalPrincipal principal = new TerminalPrincipal();
-        principal.setTid(accountDO.getTid());
+        principal.setTid(account.getTid());
         principal.setTerminalName(terminalInfo.getTerminalName());
         principal.setOid(terminalInfo.getOid());
-        principal.setTgid(terminalInfo.getTgid());
-        principal.setStatus(accountDO.getStatus());
+        principal.setStatus(account.getStatus());
         return principal;
-    }
-
-    /**
-     * 更新最后登录信息
-     */
-    private void updateLastLoginInfo(TerminalAccountDO accountDO, String clientIp) {
-        try {
-            LocalDateTime now = LocalDateTime.now();
-            terminalAccountMapper.updateLastLogin(
-                accountDO.getTid(),
-                now,
-                clientIp,
-                now
-            );
-        } catch (Exception e) {
-            log.warn("更新最后登录信息失败: tid={}", accountDO.getTid(), e);
-        }
     }
 
     /**
@@ -177,9 +142,9 @@ public class TerminalAuthenticationProvider implements AuthenticationProvider {
                 return null; // 缓存未命中
             }
             
-            // 解析缓存数据 (格式: password_hash|tid|terminalName|oid|tgid|status)
+            // 解析缓存数据 (格式: password_hash|tid|terminalName|oid)
             String[] parts = cachedData.split("\\|");
-            if (parts.length != 6) {
+            if (parts.length != 4) {
                 log.warn("认证缓存数据格式错误: account={}", account);
                 redisTemplate.delete(cacheKey); // 删除无效缓存
                 return null;
@@ -197,8 +162,6 @@ public class TerminalAuthenticationProvider implements AuthenticationProvider {
             principal.setTid(Long.parseLong(parts[1]));
             principal.setTerminalName(parts[2]);
             principal.setOid(Long.parseLong(parts[3]));
-            principal.setTgid(Long.parseLong(parts[4]));
-            principal.setStatus(Integer.parseInt(parts[5]));
             
             return principal;
             
@@ -211,34 +174,25 @@ public class TerminalAuthenticationProvider implements AuthenticationProvider {
     /**
      * 缓存认证结果
      * 
-     * @param account 账号名
-     * @param password 原始密码
-     * @param principal 认证主体
+     * @param account 账号信息
+     * @param terminalInfo 终端信息
      */
-    private void cacheAuthenticationResult(String account, String password, TerminalPrincipal principal) {
+    private void cacheAuthenticationResult(TerminalAccount account, TerminalInfo terminalInfo) {
         try {
-            String cacheKey = AUTH_CACHE_PREFIX + account;
+            String cacheKey = AUTH_CACHE_PREFIX + account.getAccount();
             
-            // 获取密码哈希（需要从数据库重新获取，因为principal中不包含密码）
-            TerminalAccountDO accountDO = findTerminalAccount(account);
-            if (accountDO == null) {
-                return;
-            }
-            
-            // 构建缓存数据 (格式: password_hash|tid|terminalName|oid|tgid|status)
+            // 构建缓存数据 (格式: password_hash|tid|terminalName|oid)
             String cacheValue = String.join("|",
-                accountDO.getPassword(), // 已加密的密码
-                principal.getTid().toString(),
-                principal.getTerminalName() != null ? principal.getTerminalName() : "",
-                principal.getOid().toString(),
-                principal.getTgid().toString(),
-                principal.getStatus().toString()
+                account.getPassword(), // 已加密的密码
+                account.getTid().toString(),
+                terminalInfo.getTerminalName(),
+                terminalInfo.getOid().toString()
             );
             
             // 缓存30分钟
             redisTemplate.opsForValue().set(cacheKey, cacheValue, 30, TimeUnit.MINUTES);
             
-            log.debug("认证结果已缓存: account={}, tid={}", account, principal.getTid());
+            log.debug("认证结果已缓存: account={}, tid={}, terminalName={}", account.getAccount(), terminalInfo.getTid(), terminalInfo.getTerminalName());
             
         } catch (Exception e) {
             log.warn("缓存认证结果失败: account={}", account, e);

@@ -14,6 +14,13 @@
     <description>LED设备终端基础设施层 - 数据访问和外部集成</description>
 
     <dependencies>
+        <!-- 依赖API层 (接口定义) -->
+        <dependency>
+            <groupId>org.nan</groupId>
+            <artifactId>terminal-api</artifactId>
+            <version>${project.version}</version>
+        </dependency>
+        
         <!-- 依赖应用层 -->
         <dependency>
             <groupId>org.nan</groupId>
@@ -49,8 +56,6 @@
             <artifactId>spring-boot-starter-data-redis</artifactId>
         </dependency>
         
-        <!-- Redis连接池已经包含在starter中，无需额外配置 -->
-        
         <!-- MongoDB文档存储 -->
         <dependency>
             <groupId>org.springframework.boot</groupId>
@@ -63,11 +68,6 @@
             <artifactId>mongodb-driver-reactivestreams</artifactId>
         </dependency>
         
-        <!-- Spring WebSocket支持 -->
-        <dependency>
-            <groupId>org.springframework</groupId>
-            <artifactId>spring-websocket</artifactId>
-        </dependency>
         
         <!-- Spring Security支持 -->
         <dependency>
@@ -78,6 +78,25 @@
         <dependency>
             <groupId>org.springframework.security</groupId>
             <artifactId>spring-security-web</artifactId>
+        </dependency>
+        
+        <!-- Netty支持 (用于独立WebSocket服务器) -->
+        <dependency>
+            <groupId>io.netty</groupId>
+            <artifactId>netty-all</artifactId>
+            <version>${netty.version}</version>
+        </dependency>
+        
+        <!-- Netty WebSocket支持 -->
+        <dependency>
+            <groupId>io.netty</groupId>
+            <artifactId>netty-codec-http</artifactId>
+            <version>${netty.version}</version>
+        </dependency>
+
+        <dependency>
+            <groupId>org.mapstruct</groupId>
+            <artifactId>mapstruct</artifactId>
         </dependency>
     </dependencies>
 </project>

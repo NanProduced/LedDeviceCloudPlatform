@@ -44,14 +44,12 @@ public class TestController {
         result.put("authenticated", authentication.isAuthenticated());
         result.put("authType", authentication.getClass().getSimpleName());
         
-        if (authentication.getPrincipal() instanceof TerminalPrincipal) {
-            TerminalPrincipal principal = (TerminalPrincipal) authentication.getPrincipal();
-            
+        if (authentication.getPrincipal() instanceof TerminalPrincipal principal) {
+
             Map<String, Object> terminalInfo = new HashMap<>();
             terminalInfo.put("tid", principal.getTid());
             terminalInfo.put("terminalName", principal.getTerminalName());
             terminalInfo.put("oid", principal.getOid());
-            terminalInfo.put("tgid", principal.getTgid());
             terminalInfo.put("status", principal.getStatus());
             terminalInfo.put("authorities", principal.getAuthorities());
             
@@ -104,13 +102,11 @@ public class TestController {
             result.put("details", authentication.getDetails());
             result.put("authenticated", true);
             
-            if (authentication.getPrincipal() instanceof TerminalPrincipal) {
-                TerminalPrincipal principal = (TerminalPrincipal) authentication.getPrincipal();
+            if (authentication.getPrincipal() instanceof TerminalPrincipal principal) {
                 result.put("principalType", "TerminalPrincipal");
                 result.put("terminalId", principal.getTid());
                 result.put("terminalName", principal.getTerminalName());
                 result.put("organizationId", principal.getOid());
-                result.put("terminalGroupId", principal.getTgid());
                 result.put("terminalStatus", principal.getStatus());
             } else {
                 result.put("principalType", authentication.getPrincipal().getClass().getSimpleName());
@@ -135,9 +131,8 @@ public class TestController {
     public ResponseEntity<Map<String, Object>> testSecure() {
         Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
         
-        if (authentication != null && authentication.getPrincipal() instanceof TerminalPrincipal) {
-            TerminalPrincipal principal = (TerminalPrincipal) authentication.getPrincipal();
-            
+        if (authentication != null && authentication.getPrincipal() instanceof TerminalPrincipal principal) {
+
             Map<String, Object> result = new HashMap<>();
             result.put("timestamp", LocalDateTime.now());
             result.put("message", "安全端点访问成功");

@@ -37,11 +37,6 @@ public class TerminalPrincipal implements UserDetails {
     private Long oid;
 
     /**
-     * 终端组ID
-     */
-    private Long tgid;
-
-    /**
      * 终端状态：0-正常，1-禁用
      */
     private Integer status;
@@ -110,23 +105,10 @@ public class TerminalPrincipal implements UserDetails {
         return status != null && status == 0;
     }
 
-    /**
-     * 获取终端显示名称
-     */
-    public String getDisplayName() {
-        return terminalName != null ? terminalName : "Terminal-" + tid;
-    }
-
-    /**
-     * 检查终端是否可用
-     */
-    public boolean isTerminalAvailable() {
-        return isEnabled() && isAccountNonLocked();
-    }
 
     @Override
     public String toString() {
-        return String.format("TerminalPrincipal{tid=%d, terminalName='%s', oid=%d, tgid=%d, status=%d}", 
-            tid, terminalName, oid, tgid, status);
+        return String.format("TerminalPrincipal{tid=%d, terminalName='%s', oid=%d, status=%d}",
+            tid, terminalName, oid, status);
     }
 }

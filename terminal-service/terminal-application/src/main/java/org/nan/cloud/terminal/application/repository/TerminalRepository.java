@@ -1,6 +1,7 @@
-package org.nan.cloud.terminal.infrastructure.persistence.mysql.repository;
+package org.nan.cloud.terminal.application.repository;
 
-import org.nan.cloud.terminal.infrastructure.persistence.mysql.entity.TerminalInfoDO;
+import org.nan.cloud.terminal.application.domain.TerminalAccount;
+import org.nan.cloud.terminal.application.domain.TerminalInfo;
 
 /**
  * 终端设备MySQL数据访问层
@@ -15,7 +16,7 @@ import org.nan.cloud.terminal.infrastructure.persistence.mysql.entity.TerminalIn
  * @author terminal-service
  * @since 1.0.0
  */
-public interface TerminalInfoRepository {
+public interface TerminalRepository {
 
     /**
      * 根据终端ID获取终端信息
@@ -23,6 +24,10 @@ public interface TerminalInfoRepository {
      * @param tid 终端ID
      * @return 终端信息，不存在返回null
      */
-    TerminalInfoDO getInfoByTid(Long tid);
+    TerminalInfo getInfoByTid(Long tid);
+
+    TerminalAccount getAccountByName(String accountName);
+
+    void updateLastLogin(Long tid, String clientIp);
 
 }
