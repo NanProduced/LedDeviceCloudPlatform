@@ -20,7 +20,7 @@ import org.springframework.util.StringUtils;
 import java.time.LocalDateTime;
 import java.util.concurrent.TimeUnit;
 
-import static org.nan.cloud.terminal.config.database.RedisConfig.RedisKeys.AUTH_CACHE_PREFIX;
+import static org.nan.cloud.terminal.infrastructure.config.RedisConfig.RedisKeys.AUTH_CACHE_PREFIX;
 
 /**
  * 终端设备认证提供者

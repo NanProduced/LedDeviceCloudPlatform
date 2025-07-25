@@ -8,7 +8,7 @@ import org.springframework.stereotype.Service;
 
 import java.util.concurrent.TimeUnit;
 
-import static org.nan.cloud.terminal.config.database.RedisConfig.RedisKeys.*;
+import static org.nan.cloud.terminal.infrastructure.config.RedisConfig.RedisKeys.*;
 
 /**
  * Redis缓存服务

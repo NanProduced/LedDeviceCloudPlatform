@@ -44,7 +44,6 @@ public class TerminalWebSocketHandler implements WebSocketHandler {
 
     private final ConnectionManager connectionManager;
     private final StringRedisTemplate redisTemplate;
-    private final ObjectMapper objectMapper;
     
     // 心跳检测定时器
     private final ScheduledExecutorService heartbeatExecutor = 

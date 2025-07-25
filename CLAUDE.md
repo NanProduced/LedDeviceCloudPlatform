@@ -20,6 +20,8 @@ LedDeviceCloudPlatform 是一个基于 Spring Boot 3.3.11 和 Spring Cloud 2023.
 - **Casbin** - 权限引擎
 - **Redis** - 缓存和会话存储
 - **MySQL** - 主数据库
+- **MongoDB** - 文档存储
+- **RabbitMQ** - 消息队列
 
 ### 常用开发命令
 
@@ -39,9 +41,11 @@ mvn test
 mvn test -pl auth-server/auth-boot
 
 # 启动服务 (需要先启动 Nacos)
-mvn spring-boot:run -pl gateway                    # 网关服务 (8080)
+mvn spring-boot:run -pl gateway                    # 网关服务 (8082)
 mvn spring-boot:run -pl auth-server/auth-boot       # 认证服务 (8081)
 mvn spring-boot:run -pl core-service/core-boot      # 核心服务
+mvn spring-boot:run -pl message-service/message-boot # 消息服务 (8084)
+mvn spring-boot:run -pl terminal-service/terminal-boot # 终端服务
 
 # 使用指定环境启动
 mvn spring-boot:run -Dspring.profiles.active=dev
@@ -96,6 +100,23 @@ mvn clean package
    - 请求拦截器
    - 链路追踪
 
+6. **message-service** - 统一消息中心服务
+   - 实时消息推送
+   - 事件处理
+   - WebSocket连接管理
+   - MongoDB消息持久化
+
+7. **terminal-service** - LED设备终端通信服务
+   - 支持10K并发WebSocket连接
+   - 分片式连接管理(16个分片)
+   - 独立Basic Auth体系
+   - HTTP轮询 + WebSocket长连接
+
+8. **common-mq** - 通用RabbitMQ客户端模块
+   - 分离式设计(core, producer, consumer)
+   - 标准化的消息模型和API接口
+   - 事件驱动架构支持
+
 ### 分层架构
 
 每个业务服务遵循DDD分层架构：
@@ -128,6 +149,18 @@ mvn clean package
 - 支持多租户和组织架构
 - 权限模型：Subject-Domain-URL-Action
 
+## 消息队列架构
+
+### RabbitMQ事件体系
+- **交换器设计**: device.topic, user.topic, message.topic, business.topic, system.topic
+- **路由键规范**: {event}.{action}.{orgId}.{entityId}
+- **死信处理**: 支持失败消息重试和死信队列
+
+### Common-MQ模块设计
+- **分离式架构**: core, producer, consumer三层分离
+- **最小依赖**: 按需引入，避免不必要的依赖
+- **统一抽象**: 标准化的消息模型和API接口
+
 ## 开发规范
 
 ### 命名约定
@@ -153,6 +186,7 @@ mvn clean package
 - 集成测试：使用TestContainers
 - 测试方法命名：shouldReturnUserWhenValidIdProvided
 - 目标代码覆盖率：80%以上
+- 测试环境：独立的application-test.yml配置，禁用外部依赖
 
 ## 配置管理
 
@@ -162,10 +196,15 @@ mvn clean package
 - 支持配置热刷新
 
 ### 数据库配置
-- MySQL：主数据库
-- Redis：缓存和会话存储
-- MongoDB：文档存储
+- MySQL：主数据库，用户、设备、权限等核心数据
+- Redis：缓存、会话存储、在线状态管理
+- MongoDB：文档存储，消息持久化、设备详情数据
 - 使用HikariCP连接池
+
+### 缓存策略
+- **本地缓存**: Caffeine，支持统计和监控
+- **分布式缓存**: Redis，支持TTL和键空间通知
+- **多级缓存**: 本地+Redis的缓存同步机制
 
 ### 安全配置
 - JWT密钥存储在`demo-jwt.jks`
@@ -185,6 +224,27 @@ mvn clean package
 - **Logback** - 日志框架
 - **Micrometer** - 指标收集
 - **Zipkin** - 链路追踪
+
+## 性能优化
+
+### Terminal-Service高并发优化
+- **分片式连接存储**: 16个分片，减少93.75%锁竞争
+- **系统级调优**: linux-system-tuning.sh脚本
+- **JVM优化**: G1GC，专门的内存和Netty参数调优
+- **性能指标**: 10K并发连接，<200ms GC暂停时间
+
+### 系统参数优化
+- **网络参数**: TCP连接队列、缓冲区大小优化
+- **文件句柄**: 支持65535个文件描述符
+- **内存管理**: 虚拟内存和脏页参数调优
+
+## 服务端口分配
+
+- **Gateway**: 8082
+- **Auth-Server**: 8081
+- **Core-Service**: 默认随机
+- **Message-Service**: 8084
+- **Terminal-Service**: 与Gateway共享8082端口，通过路由区分
 
 ## 迁移计划
 

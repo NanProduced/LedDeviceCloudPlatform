@@ -17,6 +17,8 @@ import java.util.concurrent.TimeUnit;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
+import static org.nan.cloud.terminal.infrastructure.config.RedisConfig.RedisKeys.*;
+
 /**
  * Terminal WebSocket握手拦截器
  * 
@@ -48,8 +50,6 @@ public class TerminalWebSocketInterceptor implements HandshakeInterceptor {
     
     // Redis键前缀定义
     private static final String AUTH_SUCCESS_PREFIX = "terminal:auth:success:";
-    private static final String WS_CONNECTION_LIMIT_PREFIX = "terminal:ws:limit:";
-    private static final String WS_CONNECTION_COUNT_PREFIX = "terminal:ws:count:";
 
     @Override
     public boolean beforeHandshake(@NonNull ServerHttpRequest request, 
@@ -164,7 +164,7 @@ public class TerminalWebSocketInterceptor implements HandshakeInterceptor {
             redisTemplate.expire(countKey, 24, TimeUnit.HOURS);
             
             // 增加全局连接计数
-            redisTemplate.opsForValue().increment("terminal:ws:total:connections");
+            redisTemplate.opsForValue().increment(WS_TOTAL_CONNECTIONS);
             
         } catch (Exception e) {
             log.error("更新连接统计异常: deviceId={}", deviceId, e);
@@ -190,10 +190,8 @@ public class TerminalWebSocketInterceptor implements HandshakeInterceptor {
         }
         
         // 使用远程地址
-        if (request.getRemoteAddress() != null) {
-            return request.getRemoteAddress().getAddress().getHostAddress();
-        }
-        
-        return "unknown";
+        request.getRemoteAddress();
+        return request.getRemoteAddress().getAddress().getHostAddress();
+
     }
 }

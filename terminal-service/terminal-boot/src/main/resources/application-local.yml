@@ -54,23 +54,6 @@ spring:
       authentication-database: admin
       auto-index-creation: true
 
-# WebSocket本地环境配置
-websocket:
-  endpoint: /terminal/ws
-  heartbeat:
-    interval: 30
-    timeout: 60
-  connection:
-    max-connections: 100
-    shard-count: 2
-
-# Netty本地环境配置
-netty:
-  boss-threads: 1
-  worker-threads: 2
-  socket:
-    backlog: 512
-
 # 本地环境日志配置 - 更详细的日志便于调试
 logging:
   level:
@@ -111,18 +94,3 @@ springdoc:
   swagger-ui:
     enabled: true
 
-# 本地环境业务配置
-terminal:
-  device:
-    command-timeout: 5
-    status-update-interval: 15
-    offline-threshold: 30
-  file:
-    upload-path: ./target/terminal-files-local
-    max-file-size: 10
-    total-size-limit: 0.5
-    md5-check-enabled: false
-  cache:
-    device-status-ttl: 30
-    command-ttl: 120
-    auth-ttl: 300

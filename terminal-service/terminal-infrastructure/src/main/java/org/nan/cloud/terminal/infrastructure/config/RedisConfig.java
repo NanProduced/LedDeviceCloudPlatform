@@ -1,4 +1,4 @@
-package org.nan.cloud.terminal.config.database;
+package org.nan.cloud.terminal.infrastructure.config;
 
 import com.fasterxml.jackson.annotation.JsonAutoDetect;
 import com.fasterxml.jackson.annotation.PropertyAccessor;
@@ -71,6 +71,11 @@ public class RedisConfig {
     public static class RedisKeys {
         // 认证相关键前缀
         public static final String AUTH_CACHE_PREFIX = "terminal:auth:cache:";
+
+        // websocket连接管理
+        public static final String WS_TOTAL_CONNECTIONS = "terminal:ws:total:connections";
+        public static final String WS_CONNECTION_LIMIT_PREFIX = "terminal:ws:limit:";
+        public static final String WS_CONNECTION_COUNT_PREFIX = "terminal:ws:count:";
         
         // 设备在线状态键前缀  
         public static final String DEVICE_ONLINE_PREFIX = "terminal:device:online:";
