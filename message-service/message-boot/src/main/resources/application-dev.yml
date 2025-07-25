@@ -6,7 +6,7 @@ spring:
 
   config:
     import:
-      - nacos:message-service-dev.yml?group=DEFAULT_GROUP&refresh=true
+      - optional:nacos:message-service-dev.yml?group=DEFAULT_GROUP&refresh=true
 
   cloud:
     nacos:

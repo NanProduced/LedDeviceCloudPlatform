@@ -1,0 +1,104 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+    <modelVersion>4.0.0</modelVersion>
+    
+    <parent>
+        <groupId>org.nan</groupId>
+        <artifactId>LedDeviceCloudPlatform</artifactId>
+        <version>1.0-SNAPSHOT</version>
+    </parent>
+    
+    <artifactId>file-service</artifactId>
+    <packaging>pom</packaging>
+    <description>文件服务 - 素材上传、视频转码和存储管理中心</description>
+    
+    <modules>
+        <module>file-api</module>
+        <module>file-application</module>
+        <module>file-infrastructure</module>
+        <module>file-boot</module>
+    </modules>
+    
+    <properties>
+        <maven.compiler.source>17</maven.compiler.source>
+        <maven.compiler.target>17</maven.compiler.target>
+        <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+        
+        <!-- 文件服务相关版本 -->
+        <aliyun.oss.version>3.17.4</aliyun.oss.version>
+        <tika.version>2.9.1</tika.version>
+        <thumbnailator.version>0.4.19</thumbnailator.version>
+    </properties>
+    
+    <dependencies>
+        <!-- Web支持 -->
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-web</artifactId>
+        </dependency>
+        
+        <!-- 异步任务支持 -->
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-amqp</artifactId>
+        </dependency>
+        
+        <!-- MongoDB 文件元数据存储 -->
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-data-mongodb</artifactId>
+        </dependency>
+        
+        <!-- Redis 缓存和任务状态 -->
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-data-redis</artifactId>
+        </dependency>
+        
+        <!-- 阿里云OSS SDK -->
+        <dependency>
+            <groupId>com.aliyun.oss</groupId>
+            <artifactId>aliyun-sdk-oss</artifactId>
+            <version>${aliyun.oss.version}</version>
+        </dependency>
+        
+        <!-- Apache Tika - 文件类型检测 -->
+        <dependency>
+            <groupId>org.apache.tika</groupId>
+            <artifactId>tika-core</artifactId>
+            <version>${tika.version}</version>
+        </dependency>
+        
+        <!-- Thumbnailator - 图片缩略图生成 -->
+        <dependency>
+            <groupId>net.coobird</groupId>
+            <artifactId>thumbnailator</artifactId>
+            <version>${thumbnailator.version}</version>
+        </dependency>
+        
+        <!-- WebSocket 进度推送支持 -->
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-websocket</artifactId>
+        </dependency>
+        
+        <!-- 通用模块依赖 -->
+        <dependency>
+            <groupId>org.nan</groupId>
+            <artifactId>common-basic</artifactId>
+        </dependency>
+        
+        <dependency>
+            <groupId>org.nan</groupId>
+            <artifactId>common-web</artifactId>
+        </dependency>
+        
+        <!-- 通用MQ模块 -->
+        <dependency>
+            <groupId>org.nan</groupId>
+            <artifactId>common-mq-core</artifactId>
+        </dependency>
+    </dependencies>
+</project>

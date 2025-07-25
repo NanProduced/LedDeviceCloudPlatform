@@ -7,6 +7,8 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
 import org.springframework.web.socket.WebSocketSession;
 
+import org.springframework.http.HttpHeaders;
+
 import java.util.Base64;
 import java.util.List;
 import java.util.Map;
@@ -145,6 +147,47 @@ public class GatewayAuthValidator {
         return valid;
     }
     
+    /**
+     * 从HTTP头中验证Gateway用户身份（用于STOMP握手拦截器）
+     * 
+     * @param headers HTTP请求头
+     * @return Gateway用户信息，验证失败时返回null
+     */
+    public GatewayUserInfo validateUserFromHeaders(HttpHeaders headers) {
+        try {
+            log.debug("开始从HTTP头中验证Gateway用户身份");
+            
+            // 从HTTP头中获取CLOUD-AUTH头
+            List<String> authHeaders = headers.get(CLOUD_AUTH_HEADER);
+            if (authHeaders == null || authHeaders.isEmpty()) {
+                log.warn("HTTP请求头缺少CLOUD-AUTH头，可能未通过Gateway代理");
+                return null;
+            }
+            
+            String authHeader = authHeaders.get(0);
+            if (authHeader == null || authHeader.trim().isEmpty()) {
+                log.warn("CLOUD-AUTH头为空");
+                return null;
+            }
+            
+            // 解析CLOUD-AUTH头中的用户信息
+            GatewayUserInfo userInfo = parseCloudAuthHeader(authHeader);
+            if (userInfo == null) {
+                log.warn("无法解析CLOUD-AUTH头中的用户信息");
+                return null;
+            }
+            
+            log.info("Gateway用户验证成功（HTTP头） - 用户ID: {}, 组织ID: {}, 用户类型: {}", 
+                    userInfo.getUid(), userInfo.getOid(), userInfo.getUserType());
+            
+            return userInfo;
+            
+        } catch (Exception e) {
+            log.error("Gateway用户验证异常（HTTP头）: {}", e.getMessage(), e);
+            return null;
+        }
+    }
+
     /**
      * 检查WebSocket连接权限
      * 由于Gateway已经完成认证，这里主要做业务级权限检查

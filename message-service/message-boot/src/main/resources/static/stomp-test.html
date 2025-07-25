@@ -1,0 +1,639 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>STOMP消息中心测试页面</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #f5f5f5;
+        }
+        
+        .container {
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            margin-bottom: 20px;
+        }
+        
+        .form-group {
+            margin-bottom: 15px;
+        }
+        
+        label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: bold;
+        }
+        
+        input, textarea, select {
+            width: 100%;
+            padding: 8px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            box-sizing: border-box;
+        }
+        
+        button {
+            background-color: #007bff;
+            color: white;
+            padding: 10px 20px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            margin-right: 10px;
+            margin-bottom: 5px;
+        }
+        
+        button:hover {
+            background-color: #0056b3;
+        }
+        
+        button:disabled {
+            background-color: #ccc;
+            cursor: not-allowed;
+        }
+        
+        .status {
+            padding: 10px;
+            border-radius: 4px;
+            margin-bottom: 15px;
+        }
+        
+        .status.connected {
+            background-color: #d4edda;
+            border: 1px solid #c3e6cb;
+            color: #155724;
+        }
+        
+        .status.disconnected {
+            background-color: #f8d7da;
+            border: 1px solid #f5c6cb;
+            color: #721c24;
+        }
+        
+        .message-log {
+            height: 300px;
+            overflow-y: auto;
+            border: 1px solid #ddd;
+            padding: 10px;
+            background-color: #f8f9fa;
+            font-family: monospace;
+            font-size: 12px;
+        }
+        
+        .message-item {
+            margin-bottom: 5px;
+            padding: 5px;
+            border-left: 3px solid #007bff;
+            background-color: white;
+        }
+        
+        .timestamp {
+            color: #666;
+            font-size: 11px;
+        }
+
+        .subscription-item {
+            background-color: #e9ecef;
+            padding: 8px;
+            margin: 5px 0;
+            border-radius: 4px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .subscription-item button {
+            padding: 5px 10px;
+            font-size: 12px;
+            margin: 0;
+        }
+    </style>
+</head>
+<body>
+    <h1>🚀 STOMP消息中心测试页面</h1>
+    
+    <!-- 连接控制面板 -->
+    <div class="container">
+        <h2>📡 STOMP连接控制</h2>
+        
+        <div id="connectionStatus" class="status disconnected">
+            状态: 未连接
+        </div>
+        
+        <div class="form-group">
+            <label for="serverUrl">STOMP服务器地址:</label>
+            <input type="text" id="serverUrl" value="ws://localhost:8084/ws" placeholder="STOMP WebSocket端点">
+        </div>
+        
+        <div class="form-group">
+            <label for="userId">用户ID:</label>
+            <input type="text" id="userId" value="123" placeholder="输入用户ID">
+        </div>
+        
+        <div class="form-group">
+            <label for="orgId">组织ID:</label>
+            <input type="text" id="orgId" value="456" placeholder="输入组织ID">
+        </div>
+        
+        <div class="form-group">
+            <label for="userType">用户类型:</label>
+            <select id="userType">
+                <option value="0">普通用户</option>
+                <option value="1">管理员</option>
+            </select>
+        </div>
+        
+        <button id="connectBtn" onclick="connectStomp()">连接STOMP</button>
+        <button id="disconnectBtn" onclick="disconnectStomp()" disabled>断开连接</button>
+        <button onclick="sendPing()">发送心跳</button>
+    </div>
+    
+    <!-- 订阅管理 -->
+    <div class="container">
+        <h2>📬 主题订阅管理</h2>
+        
+        <div class="form-group">
+            <label for="customTopic">自定义订阅主题:</label>
+            <input type="text" id="customTopic" placeholder="例如: /topic/terminal/123/status">
+        </div>
+        
+        <button onclick="subscribeToTopic()">订阅主题</button>
+        <button onclick="unsubscribeFromTopic()">取消订阅</button>
+        <button onclick="subscribeToTerminal()">订阅终端状态</button>
+        
+        <h3>📋 当前订阅列表:</h3>
+        <div id="subscriptionList">
+            <div style="color: #666; font-style: italic;">暂无订阅</div>
+        </div>
+    </div>
+    
+    <!-- 消息发送面板 -->
+    <div class="container">
+        <h2>📤 STOMP消息发送测试</h2>
+        
+        <div class="form-group">
+            <label for="messageDestination">消息目的地:</label>
+            <select id="messageDestination">
+                <option value="/app/user/message">用户消息</option>
+                <option value="/app/system/ping">系统心跳</option>
+                <option value="/app/terminal/command/123">终端指令</option>
+                <option value="/app/terminal/subscribe/123">订阅终端</option>
+            </select>
+        </div>
+        
+        <div class="form-group">
+            <label for="messageContent">消息内容:</label>
+            <textarea id="messageContent" rows="4" placeholder='例如: {"command": "start", "parameters": "test"}'>{
+  "content": "这是一条测试消息",
+  "type": "test"
+}</textarea>
+        </div>
+        
+        <button onclick="sendStompMessage()">发送STOMP消息</button>
+        <button onclick="sendTerminalCommand()">发送终端指令</button>
+        <button onclick="sendUserMessage()">发送用户消息</button>
+    </div>
+    
+    <!-- 消息接收日志 -->
+    <div class="container">
+        <h2>📥 消息接收日志</h2>
+        <button onclick="clearMessages()">清空日志</button>
+        <div id="messageLog" class="message-log">
+            <div class="message-item">
+                <div class="timestamp">[等待连接...]</div>
+                <div>STOMP连接建立后，接收到的消息将显示在这里</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 引入STOMP.js库 -->
+    <script src="https://cdn.jsdelivr.net/npm/@stomp/stompjs@7.0.0/bundles/stomp.umd.min.js"></script>
+    
+    <script>
+        // STOMP客户端对象
+        let stompClient = null;
+        let isConnected = false;
+        let subscriptions = new Map(); // 存储订阅对象
+        
+        /**
+         * 建立STOMP连接
+         */
+        function connectStomp() {
+            const serverUrl = document.getElementById('serverUrl').value;
+            const userId = document.getElementById('userId').value;
+            const orgId = document.getElementById('orgId').value;
+            const userType = document.getElementById('userType').value;
+            
+            if (!serverUrl || !userId || !orgId) {
+                alert('请填写服务器地址、用户ID和组织ID');
+                return;
+            }
+            
+            logMessage('系统', `正在连接到STOMP服务器: ${serverUrl}`);
+            
+            try {
+                // 创建STOMP客户端
+                stompClient = new StompJs.Client({
+                    brokerURL: serverUrl,
+                    connectHeaders: {
+                        // 模拟Gateway传递的CLOUD-AUTH头
+                        'CLOUD-AUTH': btoa(JSON.stringify({
+                            uid: parseInt(userId),
+                            oid: parseInt(orgId),
+                            ugid: 100,
+                            userType: parseInt(userType)
+                        }))
+                    },
+                    debug: function (str) {
+                        logMessage('STOMP调试', str);
+                    },
+                    reconnectDelay: 5000,
+                    heartbeatIncoming: 4000,
+                    heartbeatOutgoing: 4000
+                });
+                
+                // 连接成功回调
+                stompClient.onConnect = function (frame) {
+                    isConnected = true;
+                    updateConnectionStatus(true);
+                    logMessage('系统', '✅ STOMP连接已建立');
+                    logMessage('系统', `会话ID: ${frame.headers.session}`);
+                    
+                    // 启用/禁用按钮
+                    document.getElementById('connectBtn').disabled = true;
+                    document.getElementById('disconnectBtn').disabled = false;
+                    
+                    // 订阅系统队列接收自动订阅消息和欢迎消息
+                    subscribeToSystemQueues();
+                };
+                
+                // 连接错误回调
+                stompClient.onStompError = function (frame) {
+                    logMessage('系统', `❌ STOMP错误: ${frame.headers.message}`);
+                    logMessage('系统', `错误详情: ${frame.body}`);
+                };
+                
+                // 断开连接回调
+                stompClient.onDisconnect = function () {
+                    isConnected = false;
+                    updateConnectionStatus(false);
+                    logMessage('系统', '❌ STOMP连接已断开');
+                    
+                    // 启用/禁用按钮
+                    document.getElementById('connectBtn').disabled = false;
+                    document.getElementById('disconnectBtn').disabled = true;
+                    
+                    // 清空订阅列表
+                    subscriptions.clear();
+                    updateSubscriptionList();
+                };
+                
+                // 激活连接
+                stompClient.activate();
+                
+            } catch (error) {
+                logMessage('系统', `❌ 创建STOMP客户端失败: ${error}`);
+            }
+        }
+        
+        /**
+         * 断开STOMP连接
+         */
+        function disconnectStomp() {
+            if (stompClient && isConnected) {
+                stompClient.deactivate();
+                logMessage('系统', '🔌 主动断开STOMP连接');
+            }
+        }
+        
+        /**
+         * 订阅系统队列
+         */
+        function subscribeToSystemQueues() {
+            // 订阅自动订阅建议队列
+            const autoSubSubscription = stompClient.subscribe('/user/queue/auto-subscribe', function (message) {
+                const data = JSON.parse(message.body);
+                logMessage('自动订阅', `💡 系统建议订阅: ${data.topic} - ${data.description}`);
+                
+                // 自动订阅推荐的主题
+                autoSubscribeToTopic(data.topic);
+            });
+            subscriptions.set('/user/queue/auto-subscribe', autoSubSubscription);
+            
+            // 订阅欢迎消息队列
+            const welcomeSubscription = stompClient.subscribe('/user/queue/welcome', function (message) {
+                const data = JSON.parse(message.body);
+                logMessage('欢迎消息', `🎉 ${data.title}: ${data.content}`);
+            });
+            subscriptions.set('/user/queue/welcome', welcomeSubscription);
+            
+            // 订阅错误消息队列
+            const errorSubscription = stompClient.subscribe('/user/queue/error', function (message) {
+                const data = JSON.parse(message.body);
+                logMessage('错误', `❌ ${data.error}`);
+            });
+            subscriptions.set('/user/queue/error', errorSubscription);
+            
+            // 订阅心跳响应队列
+            const pongSubscription = stompClient.subscribe('/user/queue/pong', function (message) {
+                const data = JSON.parse(message.body);
+                const latency = Date.now() - data.clientTimestamp;
+                logMessage('心跳', `💓 心跳响应 - 延迟: ${latency}ms`);
+            });
+            subscriptions.set('/user/queue/pong', pongSubscription);
+            
+            // 订阅消息处理结果队列
+            const messageResultSubscription = stompClient.subscribe('/user/queue/message-result', function (message) {
+                const data = JSON.parse(message.body);
+                logMessage('消息结果', `📨 ${data.message} (${data.success ? '成功' : '失败'})`);
+            });
+            subscriptions.set('/user/queue/message-result', messageResultSubscription);
+            
+            updateSubscriptionList();
+        }
+        
+        /**
+         * 自动订阅主题
+         */
+        function autoSubscribeToTopic(topic) {
+            if (!subscriptions.has(topic)) {
+                const subscription = stompClient.subscribe(topic, function (message) {
+                    const data = JSON.parse(message.body);
+                    logMessage(`主题: ${topic}`, `📬 ${JSON.stringify(data, null, 2)}`);
+                });
+                subscriptions.set(topic, subscription);
+                logMessage('订阅', `🔔 自动订阅主题: ${topic}`);
+                updateSubscriptionList();
+            }
+        }
+        
+        /**
+         * 订阅自定义主题
+         */
+        function subscribeToTopic() {
+            const topic = document.getElementById('customTopic').value.trim();
+            if (!topic) {
+                alert('请输入要订阅的主题');
+                return;
+            }
+            
+            if (!isConnected) {
+                alert('请先建立STOMP连接');
+                return;
+            }
+            
+            if (subscriptions.has(topic)) {
+                alert('该主题已经订阅');
+                return;
+            }
+            
+            try {
+                const subscription = stompClient.subscribe(topic, function (message) {
+                    const data = JSON.parse(message.body);
+                    logMessage(`主题: ${topic}`, `📬 ${JSON.stringify(data, null, 2)}`);
+                });
+                
+                subscriptions.set(topic, subscription);
+                logMessage('订阅', `🔔 订阅主题: ${topic}`);
+                updateSubscriptionList();
+                
+                // 清空输入框
+                document.getElementById('customTopic').value = '';
+                
+            } catch (error) {
+                logMessage('订阅', `❌ 订阅失败: ${error}`);
+            }
+        }
+        
+        /**
+         * 取消订阅主题
+         */
+        function unsubscribeFromTopic() {
+            const topic = document.getElementById('customTopic').value.trim();
+            if (!topic) {
+                alert('请输入要取消订阅的主题');
+                return;
+            }
+            
+            if (subscriptions.has(topic)) {
+                subscriptions.get(topic).unsubscribe();
+                subscriptions.delete(topic);
+                logMessage('取消订阅', `🔕 取消订阅主题: ${topic}`);
+                updateSubscriptionList();
+            } else {
+                alert('该主题未订阅');
+            }
+        }
+        
+        /**
+         * 订阅终端状态
+         */
+        function subscribeToTerminal() {
+            const terminalId = prompt('请输入终端ID:', '123');
+            if (terminalId) {
+                const topic = `/topic/terminal/${terminalId}/status`;
+                document.getElementById('customTopic').value = topic;
+                subscribeToTopic();
+            }
+        }
+        
+        /**
+         * 发送STOMP消息
+         */
+        function sendStompMessage() {
+            if (!isConnected) {
+                alert('请先建立STOMP连接');
+                return;
+            }
+            
+            const destination = document.getElementById('messageDestination').value;
+            const content = document.getElementById('messageContent').value;
+            
+            try {
+                const messageData = JSON.parse(content);
+                stompClient.publish({
+                    destination: destination,
+                    body: JSON.stringify(messageData)
+                });
+                
+                logMessage('发送', `📤 发送到 ${destination}: ${content}`);
+                
+            } catch (error) {
+                logMessage('发送', `❌ 发送消息失败: ${error}`);
+            }
+        }
+        
+        /**
+         * 发送心跳消息
+         */
+        function sendPing() {
+            if (!isConnected) {
+                alert('请先建立STOMP连接');
+                return;
+            }
+            
+            const pingMessage = {
+                timestamp: Date.now()
+            };
+            
+            stompClient.publish({
+                destination: '/app/system/ping',
+                body: JSON.stringify(pingMessage)
+            });
+            
+            logMessage('发送', '💓 发送心跳消息');
+        }
+        
+        /**
+         * 发送终端指令
+         */
+        function sendTerminalCommand() {
+            const terminalId = prompt('请输入终端ID:', '123');
+            const command = prompt('请输入指令:', 'start');
+            
+            if (terminalId && command) {
+                const commandMessage = {
+                    command: command,
+                    parameters: 'test-params'
+                };
+                
+                stompClient.publish({
+                    destination: `/app/terminal/command/${terminalId}`,
+                    body: JSON.stringify(commandMessage)
+                });
+                
+                logMessage('发送', `🎮 发送终端指令到 ${terminalId}: ${command}`);
+                
+                // 自动订阅指令结果主题
+                const resultTopic = `/topic/terminal/${terminalId}/command-result`;
+                if (!subscriptions.has(resultTopic)) {
+                    document.getElementById('customTopic').value = resultTopic;
+                    subscribeToTopic();
+                }
+            }
+        }
+        
+        /**
+         * 发送用户消息
+         */
+        function sendUserMessage() {
+            const content = document.getElementById('messageContent').value;
+            
+            try {
+                const messageData = JSON.parse(content);
+                stompClient.publish({
+                    destination: '/app/user/message',
+                    body: JSON.stringify(messageData)
+                });
+                
+                logMessage('发送', `👤 发送用户消息: ${content}`);
+                
+            } catch (error) {
+                logMessage('发送', `❌ 发送用户消息失败: ${error}`);
+            }
+        }
+        
+        /**
+         * 更新连接状态显示
+         */
+        function updateConnectionStatus(connected) {
+            const statusElement = document.getElementById('connectionStatus');
+            if (connected) {
+                statusElement.className = 'status connected';
+                statusElement.textContent = '状态: STOMP已连接 ✅';
+            } else {
+                statusElement.className = 'status disconnected';
+                statusElement.textContent = '状态: 未连接 ❌';
+            }
+        }
+        
+        /**
+         * 更新订阅列表显示
+         */
+        function updateSubscriptionList() {
+            const listElement = document.getElementById('subscriptionList');
+            
+            if (subscriptions.size === 0) {
+                listElement.innerHTML = '<div style="color: #666; font-style: italic;">暂无订阅</div>';
+                return;
+            }
+            
+            let html = '';
+            subscriptions.forEach((subscription, topic) => {
+                html += `
+                    <div class="subscription-item">
+                        <span>📬 ${topic}</span>
+                        <button onclick="unsubscribeSpecific('${topic}')">取消订阅</button>
+                    </div>
+                `;
+            });
+            
+            listElement.innerHTML = html;
+        }
+        
+        /**
+         * 取消订阅特定主题
+         */
+        function unsubscribeSpecific(topic) {
+            if (subscriptions.has(topic)) {
+                subscriptions.get(topic).unsubscribe();
+                subscriptions.delete(topic);
+                logMessage('取消订阅', `🔕 取消订阅主题: ${topic}`);
+                updateSubscriptionList();
+            }
+        }
+        
+        /**
+         * 记录消息到日志
+         */
+        function logMessage(source, content, data = null) {
+            const messageLog = document.getElementById('messageLog');
+            const messageItem = document.createElement('div');
+            messageItem.className = 'message-item';
+            
+            const timestamp = new Date().toLocaleTimeString();
+            const dataStr = data ? `\n数据: ${JSON.stringify(data, null, 2)}` : '';
+            
+            messageItem.innerHTML = `
+                <div class="timestamp">[${timestamp}] ${source}</div>
+                <div>${content}${dataStr}</div>
+            `;
+            
+            messageLog.appendChild(messageItem);
+            messageLog.scrollTop = messageLog.scrollHeight;
+        }
+        
+        /**
+         * 清空消息日志
+         */
+        function clearMessages() {
+            const firstMessage = document.getElementById('messageLog').firstElementChild;
+            document.getElementById('messageLog').innerHTML = '';
+            if (firstMessage) {
+                document.getElementById('messageLog').appendChild(firstMessage);
+            }
+        }
+        
+        // 页面加载完成后的初始化
+        document.addEventListener('DOMContentLoaded', function() {
+            logMessage('系统', '📋 STOMP测试页面已加载');
+            logMessage('系统', '💡 请填写连接信息并点击"连接STOMP"开始测试');
+            logMessage('系统', '🔧 本页面将模拟Gateway的CLOUD-AUTH头进行认证');
+        });
+        
+        // 页面关闭前清理连接
+        window.addEventListener('beforeunload', function() {
+            if (stompClient && isConnected) {
+                stompClient.deactivate();
+            }
+        });
+    </script>
+</body>
+</html>

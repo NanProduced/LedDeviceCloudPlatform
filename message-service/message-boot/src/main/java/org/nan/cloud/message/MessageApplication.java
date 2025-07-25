@@ -22,7 +22,11 @@ import org.springframework.cloud.client.discovery.EnableDiscoveryClient;
  * @since 2025-01-20
  */
 @Slf4j
-@SpringBootApplication
+@SpringBootApplication(exclude = {
+    org.springframework.boot.autoconfigure.jdbc.DataSourceAutoConfiguration.class,
+    org.springframework.boot.autoconfigure.data.mongo.MongoDataAutoConfiguration.class,
+    org.springframework.boot.autoconfigure.amqp.RabbitAutoConfiguration.class
+})
 @EnableDiscoveryClient
 public class MessageApplication {
 

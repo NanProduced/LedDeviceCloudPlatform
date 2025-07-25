@@ -10,6 +10,7 @@ spring:
       discovery:
         enabled: false    # 本地测试时也禁用服务发现
   datasource:
+    driver-class-name: com.mysql.cj.jdbc.Driver
     username: root
     password: Nan12091209
     url: jdbc:mysql://192.168.1.185:3306/nan_test?zeroDateTimeBehavior=convertToNull&characterEncoding=utf-8&allowPublicKeyRetrieval=true

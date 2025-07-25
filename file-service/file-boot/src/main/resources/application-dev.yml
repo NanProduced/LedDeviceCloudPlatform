@@ -1,0 +1,231 @@
+server:
+  port: 8085
+
+spring:
+  application:
+    name: file-service
+
+  config:
+    import:
+      - optional:nacos:file-service-dev.yml?group=DEFAULT_GROUP&refresh=true
+
+  cloud:
+    nacos:
+      discovery:
+        server-addr: 192.168.1.185:8848
+        namespace: 1e90921e-70cf-4745-87ed-dd165319ff3a
+        group: DEFAULT_GROUP
+        username: Nan
+        password: Nan12091209
+        access-key: nan_nacos
+        secret-key: nanproduced
+        fail-fast: false
+      config:
+        server-addr: 192.168.1.185:8848
+        namespace: 1e90921e-70cf-4745-87ed-dd165319ff3a
+        group: DEFAULT_GROUP
+        username: Nan
+        password: Nan12091209
+        access-key: nan_nacos
+        secret-key: nanproduced
+        timeout: 5000
+        config-long-poll-timeout: 1000
+        config-retry-time: 100000
+        max-retry: 3
+        refresh-enabled: true
+        file-extension: yml
+
+  # 文件上传配置
+  servlet:
+    multipart:
+      enabled: true
+      max-file-size: 1GB
+      max-request-size: 1GB
+      file-size-threshold: 10MB
+      location: /tmp/file-uploads
+
+  # 数据源配置
+  datasource:
+    driver-class-name: com.mysql.cj.jdbc.Driver
+    url: jdbc:mysql://192.168.1.185:3306/nan_test?zeroDateTimeBehavior=convertToNull&characterEncoding=utf-8&allowPublicKeyRetrieval=true
+    username: root
+    password: Nan12091209
+    hikari:
+      maximum-pool-size: 20
+      minimum-idle: 5
+      connection-timeout: 30000
+      idle-timeout: 600000
+      max-lifetime: 1800000
+
+  # JPA配置
+  jpa:
+    hibernate:
+      ddl-auto: update
+    show-sql: false
+    properties:
+      hibernate:
+        dialect: org.hibernate.dialect.MySQL8Dialect
+        format_sql: false
+
+  # MongoDB配置
+  data:
+    mongodb:
+      host: 192.168.1.185
+      port: 27017
+      database: nan_test
+      username: root
+      password: Nan12091209
+      authentication-database: admin
+      auto-index-creation: true
+
+  # Redis配置
+  data:
+    redis:
+      host: 192.168.1.185
+      port: 6379
+      database: 2
+      password: Nan12091209
+      timeout: 3000
+      lettuce:
+        pool:
+          max-active: 50
+          max-idle: 48
+          min-idle: 0
+          max-wait: 5s
+
+  # RabbitMQ配置
+  rabbitmq:
+    host: 192.168.1.185
+    port: 5672
+    username: admin
+    password: Nan12091209
+    virtual-host: /led-platform-dev
+
+# 文件服务配置
+file:
+  # 存储配置
+  storage:
+    # 默认存储策略 (LOCAL/OSS/AUTO)
+    default-strategy: AUTO
+    # 本地存储配置
+    local:
+      base-path: /data/files
+      temp-path: /data/temp
+      url-prefix: http://localhost:8085/files
+    # 阿里云OSS配置
+    oss:
+      endpoint: oss-cn-hangzhou.aliyuncs.com
+      access-key-id: ${ALI_OSS_ACCESS_KEY:your-access-key}
+      access-key-secret: ${ALI_OSS_ACCESS_SECRET:your-access-secret}
+      bucket-name: led-device-files
+      url-prefix: https://led-device-files.oss-cn-hangzhou.aliyuncs.com
+
+  # 转码配置
+  transcoding:
+    # FFmpeg路径
+    ffmpeg:
+      path: /usr/local/bin/ffmpeg
+      threads: 8
+      timeout: 3600
+      enable-gpu: true
+    # 临时目录
+    temp:
+      dir: /data/transcoding
+    # 队列配置
+    queue:
+      max-concurrent-tasks: 3
+      max-queue-size: 100
+      priority-enabled: true
+    # 预设配置
+    presets:
+      - id: preset_sd
+        name: 标清
+        video-codec: libx264
+        audio-codec: aac
+        width: 720
+        height: 480
+        video-bitrate: 1000
+        audio-bitrate: 128
+        crf: 28
+        preset: fast
+      - id: preset_hd
+        name: 高清
+        video-codec: libx264
+        audio-codec: aac
+        width: 1280
+        height: 720
+        video-bitrate: 2500
+        audio-bitrate: 128
+        crf: 23
+        preset: fast
+      - id: preset_fullhd
+        name: 全高清
+        video-codec: libx264
+        audio-codec: aac
+        width: 1920
+        height: 1080
+        video-bitrate: 5000
+        audio-bitrate: 192
+        crf: 23
+        preset: medium
+
+  # 文件验证配置
+  validation:
+    # 支持的文件类型
+    supported-types:
+      video: [mp4, avi, mov, mkv, flv, webm, wmv, m4v, ts]
+      image: [jpg, jpeg, png, gif, bmp, webp, svg, tiff]
+      audio: [mp3, wav, flac, aac, ogg, m4a, wma]
+      document: [pdf, doc, docx, xls, xlsx, ppt, pptx, txt]
+    # 文件大小限制 (字节)
+    max-file-size:
+      video: 5368709120  # 5GB
+      image: 104857600   # 100MB  
+      audio: 524288000   # 500MB
+      document: 104857600 # 100MB
+      default: 1073741824 # 1GB
+
+  # 缩略图配置
+  thumbnail:
+    enabled: true
+    sizes: [150x150, 300x300, 600x600]
+    quality: 0.8
+    format: jpg
+
+  # 进度推送配置
+  progress:
+    websocket:
+      enabled: true
+      endpoint: /file/progress
+    redis:
+      key-prefix: file:progress
+      expire-seconds: 3600
+
+# 监控配置
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,metrics,prometheus
+  endpoint:
+    health:
+      show-details: always
+  metrics:
+    export:
+      prometheus:
+        enabled: true
+
+# 日志配置
+logging:
+  level:
+    org.nan.cloud.file: DEBUG
+    org.springframework.web.multipart: DEBUG
+    org.hibernate.SQL: INFO
+    org.springframework.data.mongodb: INFO
+    org.springframework.data.redis: INFO
+    root: INFO
+  pattern:
+    console: "%d{yyyy-MM-dd HH:mm:ss.SSS} [%thread] %-5level %logger{36} - %msg%n"
+    file: "%d{yyyy-MM-dd HH:mm:ss.SSS} [%thread] %-5level %logger{36} - %msg%n"
+  file:
+    name: logs/file-service-dev.log

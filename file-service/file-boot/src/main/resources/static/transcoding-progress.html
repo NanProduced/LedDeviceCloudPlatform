@@ -1,0 +1,513 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>转码进度监控</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 1000px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #f5f5f5;
+        }
+
+        .container {
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            margin-bottom: 20px;
+        }
+
+        .progress-container {
+            margin: 20px 0;
+        }
+
+        .progress-bar {
+            width: 100%;
+            height: 20px;
+            background-color: #e0e0e0;
+            border-radius: 10px;
+            overflow: hidden;
+            position: relative;
+        }
+
+        .progress-fill {
+            height: 100%;
+            background: linear-gradient(90deg, #4CAF50, #81C784);
+            width: 0%;
+            transition: width 0.3s ease;
+            border-radius: 10px;
+        }
+
+        .progress-text {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            color: #333;
+            font-weight: bold;
+            font-size: 12px;
+        }
+
+        .status-info {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 15px;
+            margin: 20px 0;
+        }
+
+        .info-card {
+            background: #f8f9fa;
+            padding: 15px;
+            border-radius: 6px;
+            border-left: 4px solid #007bff;
+        }
+
+        .info-label {
+            font-size: 12px;
+            color: #666;
+            margin-bottom: 5px;
+        }
+
+        .info-value {
+            font-size: 16px;
+            font-weight: bold;
+            color: #333;
+        }
+
+        .connection-status {
+            padding: 10px;
+            border-radius: 4px;
+            margin-bottom: 15px;
+            text-align: center;
+            font-weight: bold;
+        }
+
+        .connected {
+            background-color: #d4edda;
+            color: #155724;
+            border: 1px solid #c3e6cb;
+        }
+
+        .disconnected {
+            background-color: #f8d7da;
+            color: #721c24;
+            border: 1px solid #f5c6cb;
+        }
+
+        .log-container {
+            max-height: 300px;
+            overflow-y: auto;
+            background: #f8f9fa;
+            border: 1px solid #dee2e6;
+            border-radius: 4px;
+            padding: 10px;
+        }
+
+        .log-entry {
+            margin-bottom: 5px;
+            font-family: monospace;
+            font-size: 12px;
+        }
+
+        .log-timestamp {
+            color: #666;
+        }
+
+        .log-type-progress {
+            color: #007bff;
+        }
+
+        .log-type-error {
+            color: #dc3545;
+        }
+
+        .log-type-success {
+            color: #28a745;
+        }
+
+        button {
+            background: #007bff;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 4px;
+            cursor: pointer;
+            margin-right: 10px;
+        }
+
+        button:hover {
+            background: #0056b3;
+        }
+
+        button:disabled {
+            background: #ccc;
+            cursor: not-allowed;
+        }
+
+        .task-controls {
+            margin: 20px 0;
+        }
+
+        input[type="text"] {
+            padding: 8px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            margin-right: 10px;
+            width: 300px;
+        }
+    </style>
+</head>
+<body>
+    <h1>🎬 转码进度实时监控</h1>
+
+    <!-- 连接状态 -->
+    <div class="container">
+        <div id="connectionStatus" class="connection-status disconnected">
+            WebSocket连接状态: 未连接
+        </div>
+        
+        <div class="task-controls">
+            <input type="text" id="taskIdInput" placeholder="输入转码任务ID" value="transcode_test123">
+            <button onclick="connectWebSocket()">连接WebSocket</button>
+            <button onclick="disconnectWebSocket()">断开连接</button>
+            <button onclick="subscribeTask()">订阅任务</button>
+            <button onclick="unsubscribeTask()">取消订阅</button>
+        </div>
+    </div>
+
+    <!-- 进度显示 -->
+    <div class="container">
+        <h2>📊 转码进度</h2>
+        
+        <div class="progress-container">
+            <div class="progress-bar">
+                <div id="progressFill" class="progress-fill"></div>
+                <div id="progressText" class="progress-text">0%</div>
+            </div>
+        </div>
+
+        <div class="status-info">
+            <div class="info-card">
+                <div class="info-label">任务ID</div>
+                <div id="currentTaskId" class="info-value">-</div>
+            </div>
+            <div class="info-card">
+                <div class="info-label">任务状态</div>
+                <div id="taskStatus" class="info-value">-</div>
+            </div>
+            <div class="info-card">
+                <div class="info-label">处理速度</div>
+                <div id="processSpeed" class="info-value">-</div>
+            </div>
+            <div class="info-card">
+                <div class="info-label">剩余时间</div>
+                <div id="remainingTime" class="info-value">-</div>
+            </div>
+            <div class="info-card">
+                <div class="info-label">当前时间</div>
+                <div id="currentTime" class="info-value">-</div>
+            </div>
+            <div class="info-card">
+                <div class="info-label">处理帧数</div>
+                <div id="frameCount" class="info-value">-</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 实时日志 -->
+    <div class="container">
+        <h2>📋 实时日志</h2>
+        <button onclick="clearLogs()">清空日志</button>
+        <div id="logContainer" class="log-container">
+            <div class="log-entry">
+                <span class="log-timestamp">[等待连接...]</span>
+                <span>WebSocket连接建立后，转码进度将实时显示在这里</span>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // WebSocket连接对象
+        let websocket = null;
+        let isConnected = false;
+        let currentTaskId = null;
+
+        /**
+         * 连接WebSocket
+         */
+        function connectWebSocket() {
+            if (isConnected) {
+                addLog('警告', 'WebSocket已经连接');
+                return;
+            }
+
+            const wsUrl = 'ws://localhost:8085/file/progress';
+            addLog('系统', `正在连接到: ${wsUrl}`);
+
+            try {
+                websocket = new WebSocket(wsUrl);
+
+                websocket.onopen = function(event) {
+                    isConnected = true;
+                    updateConnectionStatus(true);
+                    addLog('系统', '✅ WebSocket连接已建立');
+                };
+
+                websocket.onmessage = function(event) {
+                    const message = JSON.parse(event.data);
+                    handleProgressMessage(message);
+                };
+
+                websocket.onclose = function(event) {
+                    isConnected = false;
+                    updateConnectionStatus(false);
+                    addLog('系统', `❌ WebSocket连接已关闭 (代码: ${event.code})`);
+                };
+
+                websocket.onerror = function(error) {
+                    addLog('错误', `❌ WebSocket连接错误: ${error}`);
+                };
+
+            } catch (error) {
+                addLog('错误', `❌ 创建WebSocket连接失败: ${error}`);
+            }
+        }
+
+        /**
+         * 断开WebSocket连接
+         */
+        function disconnectWebSocket() {
+            if (websocket && isConnected) {
+                websocket.close();
+                addLog('系统', '🔌 主动断开WebSocket连接');
+            }
+        }
+
+        /**
+         * 订阅转码任务
+         */
+        function subscribeTask() {
+            if (!isConnected) {
+                alert('请先建立WebSocket连接');
+                return;
+            }
+
+            const taskId = document.getElementById('taskIdInput').value.trim();
+            if (!taskId) {
+                alert('请输入任务ID');
+                return;
+            }
+
+            currentTaskId = taskId;
+            document.getElementById('currentTaskId').textContent = taskId;
+
+            const subscribeMessage = {
+                action: 'SUBSCRIBE',
+                taskId: taskId
+            };
+
+            websocket.send(JSON.stringify(subscribeMessage));
+            addLog('订阅', `📡 订阅转码任务: ${taskId}`);
+        }
+
+        /**
+         * 取消订阅任务
+         */
+        function unsubscribeTask() {
+            if (!isConnected || !currentTaskId) {
+                return;
+            }
+
+            const unsubscribeMessage = {
+                action: 'UNSUBSCRIBE',
+                taskId: currentTaskId
+            };
+
+            websocket.send(JSON.stringify(unsubscribeMessage));
+            addLog('取消订阅', `📡 取消订阅任务: ${currentTaskId}`);
+
+            // 重置显示
+            resetProgressDisplay();
+        }
+
+        /**
+         * 处理进度消息
+         */
+        function handleProgressMessage(message) {
+            const { type, taskId, data, message: msg, timestamp } = message;
+
+            switch (type) {
+                case 'CONNECT':
+                    addLog('连接', msg);
+                    break;
+
+                case 'SUBSCRIBE_CONFIRM':
+                    addLog('订阅确认', `${msg} - 任务: ${taskId}`);
+                    break;
+
+                case 'PROGRESS':
+                    updateProgressDisplay(data);
+                    addLog('进度', `任务 ${taskId} 进度更新`);
+                    break;
+
+                case 'HEARTBEAT':
+                    // 心跳消息，不需要显示
+                    break;
+
+                case 'ERROR':
+                    addLog('错误', msg);
+                    break;
+
+                default:
+                    addLog('未知', `类型: ${type}, 消息: ${msg}`);
+            }
+        }
+
+        /**
+         * 更新进度显示
+         */
+        function updateProgressDisplay(progressData) {
+            if (!progressData) return;
+
+            // 更新进度条
+            const progress = progressData.progress || 0;
+            document.getElementById('progressFill').style.width = progress + '%';
+            document.getElementById('progressText').textContent = progress + '%';
+
+            // 更新状态信息
+            document.getElementById('taskStatus').textContent = progressData.status || '-';
+            document.getElementById('processSpeed').textContent = progressData.fps ? progressData.fps + ' fps' : '-';
+            document.getElementById('remainingTime').textContent = progressData.estimatedTimeRemaining ? 
+                formatTime(progressData.estimatedTimeRemaining) : '-';
+            document.getElementById('currentTime').textContent = progressData.currentTime || '-';
+            document.getElementById('frameCount').textContent = progressData.frameCount || '-';
+
+            // 根据状态改变进度条颜色
+            const progressFill = document.getElementById('progressFill');
+            if (progressData.status === 'COMPLETED') {
+                progressFill.style.background = 'linear-gradient(90deg, #28a745, #5cb85c)';
+            } else if (progressData.status === 'FAILED') {
+                progressFill.style.background = 'linear-gradient(90deg, #dc3545, #e74c3c)';
+            } else {
+                progressFill.style.background = 'linear-gradient(90deg, #4CAF50, #81C784)';
+            }
+        }
+
+        /**
+         * 重置进度显示
+         */
+        function resetProgressDisplay() {
+            document.getElementById('progressFill').style.width = '0%';
+            document.getElementById('progressText').textContent = '0%';
+            document.getElementById('currentTaskId').textContent = '-';
+            document.getElementById('taskStatus').textContent = '-';
+            document.getElementById('processSpeed').textContent = '-';
+            document.getElementById('remainingTime').textContent = '-';
+            document.getElementById('currentTime').textContent = '-';
+            document.getElementById('frameCount').textContent = '-';
+            currentTaskId = null;
+        }
+
+        /**
+         * 更新连接状态显示
+         */
+        function updateConnectionStatus(connected) {
+            const statusElement = document.getElementById('connectionStatus');
+            if (connected) {
+                statusElement.className = 'connection-status connected';
+                statusElement.textContent = 'WebSocket连接状态: 已连接 ✅';
+            } else {
+                statusElement.className = 'connection-status disconnected';
+                statusElement.textContent = 'WebSocket连接状态: 未连接 ❌';
+            }
+        }
+
+        /**
+         * 添加日志
+         */
+        function addLog(type, message) {
+            const logContainer = document.getElementById('logContainer');
+            const logEntry = document.createElement('div');
+            logEntry.className = 'log-entry';
+
+            const timestamp = new Date().toLocaleTimeString();
+            const typeClass = getLogTypeClass(type);
+
+            logEntry.innerHTML = `
+                <span class="log-timestamp">[${timestamp}]</span>
+                <span class="${typeClass}">[${type}]</span>
+                <span>${message}</span>
+            `;
+
+            logContainer.appendChild(logEntry);
+            logContainer.scrollTop = logContainer.scrollHeight;
+
+            // 限制日志数量
+            const maxLogs = 100;
+            while (logContainer.children.length > maxLogs) {
+                logContainer.removeChild(logContainer.firstChild);
+            }
+        }
+
+        /**
+         * 获取日志类型样式类
+         */
+        function getLogTypeClass(type) {
+            switch (type.toLowerCase()) {
+                case '进度':
+                case '订阅':
+                case '订阅确认':
+                    return 'log-type-progress';
+                case '错误':
+                    return 'log-type-error';
+                case '系统':
+                case '连接':
+                    return 'log-type-success';
+                default:
+                    return '';
+            }
+        }
+
+        /**
+         * 格式化时间
+         */
+        function formatTime(seconds) {
+            if (!seconds || seconds <= 0) return '-';
+            
+            const hours = Math.floor(seconds / 3600);
+            const minutes = Math.floor((seconds % 3600) / 60);
+            const secs = Math.floor(seconds % 60);
+            
+            if (hours > 0) {
+                return `${hours}:${minutes.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
+            } else {
+                return `${minutes}:${secs.toString().padStart(2, '0')}`;
+            }
+        }
+
+        /**
+         * 清空日志
+         */
+        function clearLogs() {
+            document.getElementById('logContainer').innerHTML = '';
+        }
+
+        // 页面加载完成后的初始化
+        document.addEventListener('DOMContentLoaded', function() {
+            addLog('系统', '📋 转码进度监控页面已加载');
+            addLog('系统', '💡 请点击"连接WebSocket"建立连接，然后输入任务ID订阅进度');
+        });
+
+        // 页面关闭前清理连接
+        window.addEventListener('beforeunload', function() {
+            if (websocket && isConnected) {
+                websocket.close();
+            }
+        });
+    </script>
+</body>
+</html>
