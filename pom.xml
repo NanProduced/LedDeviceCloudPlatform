@@ -13,6 +13,7 @@
         <module>core-service</module>
         <module>message-service</module>
         <module>terminal-service</module>
+        <module>file-service</module>
         <module>common-basic</module>
         <module>common-web</module>
         <module>common-mq</module>
@@ -167,6 +168,22 @@
             <dependency>
                 <groupId>org.nan</groupId>
                 <artifactId>common-mq-consumer</artifactId>
+                <version>${project.version}</version>
+            </dependency>
+            <!-- file-service 模块依赖管理 -->
+            <dependency>
+                <groupId>org.nan</groupId>
+                <artifactId>file-api</artifactId>
+                <version>${project.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>org.nan</groupId>
+                <artifactId>file-application</artifactId>
+                <version>${project.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>org.nan</groupId>
+                <artifactId>file-infrastructure</artifactId>
                 <version>${project.version}</version>
             </dependency>
         </dependencies>
