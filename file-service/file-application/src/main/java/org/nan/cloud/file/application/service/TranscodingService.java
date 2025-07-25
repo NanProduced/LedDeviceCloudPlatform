@@ -14,6 +14,12 @@ import java.util.List;
  * - 转码参数配置
  * - 转码性能优化
  * 
+ * TODO: 创建 TranscodingServiceImpl 实现类
+ * TODO: 实现异步转码任务处理和队列管理
+ * TODO: 集成 RabbitMQ 消息队列进行任务分发
+ * TODO: 完善转码预设和配置管理功能
+ * TODO: 实现转码失败重试机制
+ * 
  * @author LedDeviceCloudPlatform Team
  * @since 1.0.0
  */

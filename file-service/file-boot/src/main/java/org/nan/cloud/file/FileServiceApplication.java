@@ -28,6 +28,13 @@ import org.springframework.scheduling.annotation.EnableAsync;
  * - WebSocket实时进度推送
  * - 高并发和大文件处理优化
  * 
+ * TODO: 创建REST控制器实现API接口
+ * TODO: 完善数据库配置和连接池设置
+ * TODO: 添加Redis缓存配置
+ * TODO: 配置异步任务执行器
+ * TODO: 添加文件存储路径配置
+ * TODO: 完善监控和健康检查端点
+ * 
  * @author LedDeviceCloudPlatform Team
  * @since 1.0.0
  */

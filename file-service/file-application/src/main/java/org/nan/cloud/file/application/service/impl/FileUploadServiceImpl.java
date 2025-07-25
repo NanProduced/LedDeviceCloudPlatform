@@ -24,6 +24,14 @@ import java.util.UUID;
 /**
  * 文件上传服务实现
  * 
+ * TODO: 实现以下核心依赖服务：
+ * - StorageService: 文件存储服务（本地存储、OSS存储）
+ * - FileValidationService: 文件验证服务（格式、大小、安全检查）
+ * - ProgressTrackingService: 进度跟踪服务（上传进度管理）
+ * - ThumbnailService: 缩略图生成服务（图片/视频缩略图）
+ * - FileInfoRepository: 数据访问层（文件元数据持久化）
+ * - FileInfo领域对象: 核心领域模型
+ * 
  * @author LedDeviceCloudPlatform Team
  * @since 1.0.0
  */
@@ -32,10 +40,19 @@ import java.util.UUID;
 @RequiredArgsConstructor
 public class FileUploadServiceImpl implements FileUploadService {
 
+    // TODO: 实现 FileInfoRepository 接口和对应的实体类
     private final FileInfoRepository fileInfoRepository;
+    
+    // TODO: 实现 StorageService 接口，支持多种存储策略
     private final StorageService storageService;
+    
+    // TODO: 实现 FileValidationService 接口，文件格式和安全验证
     private final FileValidationService fileValidationService;
+    
+    // TODO: 实现 ProgressTrackingService 接口，上传进度跟踪
     private final ProgressTrackingService progressTrackingService;
+    
+    // TODO: 实现 ThumbnailService 接口，缩略图生成
     private final ThumbnailService thumbnailService;
     private final TranscodingService transcodingService;
 
