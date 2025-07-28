@@ -35,7 +35,7 @@ public class FileInfoResponse {
      * 原始文件名
      */
     @Schema(description = "原始文件名")
-    private String originalFileName;
+    private String originalFilename;
 
     /**
      * 文件类型

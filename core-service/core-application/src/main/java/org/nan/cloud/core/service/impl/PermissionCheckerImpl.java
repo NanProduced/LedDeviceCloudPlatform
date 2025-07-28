@@ -76,6 +76,11 @@ public class PermissionCheckerImpl implements PermissionChecker {
         return bindingRepository.hasTerminalGroupPermission(ugid, targetTgid);
     }
 
+    @Override
+    public boolean ifHasPermissionOnTargetTerminalGroup(Long oid, Long ugid, Long targetTgid) {
+        if (PermissionCheckSkipContext.isSkip()) return ifTargetTerminalGroupTheSameOrg(oid, targetTgid);
+        return bindingRepository.hasTerminalGroupPermission(ugid, targetTgid);
+    }
 
     @Override
     public boolean ifRolesExist(List<Long> roles) {

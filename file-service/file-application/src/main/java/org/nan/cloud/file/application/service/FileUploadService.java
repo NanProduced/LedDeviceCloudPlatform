@@ -90,7 +90,7 @@ public interface FileUploadService {
      * @param request 上传请求
      * @return 验证结果
      */
-    FileValidationResult validateFile(MultipartFile file, FileUploadRequest request);
+    FileValidationService.FileValidationResult validateFile(MultipartFile file, FileUploadRequest request);
 
     /**
      * 计算文件MD5哈希值

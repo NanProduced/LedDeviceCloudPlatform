@@ -14,6 +14,9 @@ public class FolderCreateRequest {
     @Schema(description = "父文件夹路径")
     private String parentPath;
     
+    @Schema(description = "父文件夹ID")
+    private String parentFolderId;
+    
     @Schema(description = "组织ID")
     private String organizationId;
 }

@@ -35,7 +35,7 @@ public class ChunkUploadCompleteRequest {
      * 文件MD5 (可选，用于校验)
      */
     @Schema(description = "完整文件MD5哈希值")
-    private String fileMd5;
+    private String fileMD5;
 
     /**
      * 是否立即处理

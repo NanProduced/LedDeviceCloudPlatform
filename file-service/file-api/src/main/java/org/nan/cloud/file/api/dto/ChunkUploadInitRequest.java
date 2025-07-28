@@ -21,7 +21,7 @@ public class ChunkUploadInitRequest {
      */
     @NotBlank(message = "文件名不能为空")
     @Schema(description = "文件名", required = true, example = "video.mp4")
-    private String fileName;
+    private String filename;
 
     /**
      * 文件大小 (字节)
@@ -41,7 +41,19 @@ public class ChunkUploadInitRequest {
      * 文件类型
      */
     @Schema(description = "文件MIME类型", example = "video/mp4")
-    private String contentType;
+    private String mimeType;
+
+    /**
+     * 文件夹ID
+     */
+    @Schema(description = "目标文件夹ID")
+    private String folderId;
+
+    /**
+     * 文件类型枚举
+     */
+    @Schema(description = "文件类型", example = "VIDEO")
+    private FileUploadRequest.FileType fileType;
 
     /**
      * 分块大小 (字节)

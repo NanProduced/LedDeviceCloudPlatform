@@ -64,7 +64,7 @@ public class FileUploadServiceImpl implements FileUploadService {
 
         try {
             // 1. 文件验证
-            FileValidationResult validationResult = validateFile(file, request);
+            FileValidationService.FileValidationResult validationResult = validateFile(file, request);
             if (!validationResult.isValid()) {
                 throw new IllegalArgumentException("文件验证失败: " + validationResult.getErrorMessage());
             }
@@ -317,7 +317,7 @@ public class FileUploadServiceImpl implements FileUploadService {
     }
 
     @Override
-    public FileValidationResult validateFile(MultipartFile file, FileUploadRequest request) {
+    public FileValidationService.FileValidationResult validateFile(MultipartFile file, FileUploadRequest request) {
         return fileValidationService.validate(file, request);
     }
 
@@ -373,7 +373,8 @@ public class FileUploadServiceImpl implements FileUploadService {
                 .folderId(request.getFolderId())
                 .fileType(request.getFileType().toString())
                 .description(request.getDescription())
-                .tags(request.getTags())
+                .tags(request.getTags() != null ? 
+                      java.util.Arrays.asList(request.getTags().split(",")) : null)
                 .isPublic(request.getIsPublic())
                 .storageStrategy(request.getStorageStrategy().toString())
                 .uploadTime(LocalDateTime.now())

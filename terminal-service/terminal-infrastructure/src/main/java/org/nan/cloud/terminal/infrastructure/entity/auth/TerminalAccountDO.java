@@ -8,7 +8,7 @@ import java.time.LocalDateTime;
 /**
  * 终端设备账号实体
  * 
- * @author terminal-service
+ * @author Nan
  * @since 1.0.0
  */
 @Data

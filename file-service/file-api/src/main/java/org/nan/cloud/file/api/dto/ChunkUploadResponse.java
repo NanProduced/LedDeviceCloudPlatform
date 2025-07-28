@@ -78,6 +78,18 @@ public class ChunkUploadResponse {
     private Long totalSize;
 
     /**
+     * 分片路径
+     */
+    @Schema(description = "分片存储路径")
+    private String chunkPath;
+
+    /**
+     * 分片MD5
+     */
+    @Schema(description = "分片MD5哈希值")
+    private String chunkMD5;
+
+    /**
      * 上传时间
      */
     @Schema(description = "分块上传时间")

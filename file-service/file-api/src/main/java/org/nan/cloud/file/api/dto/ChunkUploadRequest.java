@@ -35,7 +35,13 @@ public class ChunkUploadRequest {
      * 分块MD5
      */
     @Schema(description = "分块数据MD5哈希值")
-    private String chunkMd5;
+    private String chunkMD5;
+
+    /**
+     * 总分片数
+     */
+    @Schema(description = "总分片数", example = "10")
+    private Integer totalChunks;
 
     /**
      * 分块大小 (字节)

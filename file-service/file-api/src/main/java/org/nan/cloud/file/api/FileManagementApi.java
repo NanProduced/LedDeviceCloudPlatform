@@ -3,7 +3,6 @@ package org.nan.cloud.file.api;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.tags.Tag;
-import org.nan.cloud.common.web.DynamicResponse;
 import org.nan.cloud.file.api.dto.*;
 import org.springframework.web.bind.annotation.*;
 
@@ -35,7 +34,7 @@ public interface FileManagementApi {
      */
     @Operation(summary = "获取文件信息", description = "根据文件ID获取文件的详细信息")
     @GetMapping("/{fileId}")
-    DynamicResponse<FileInfoResponse> getFileInfo(
+    FileInfoResponse getFileInfo(
             @Parameter(description = "文件ID") @PathVariable String fileId);
 
     /**
@@ -46,7 +45,7 @@ public interface FileManagementApi {
      */
     @Operation(summary = "获取文件列表", description = "分页查询文件列表")
     @PostMapping("/list")
-    DynamicResponse<FileListResponse> getFileList(
+    FileListResponse getFileList(
             @RequestBody FileListRequest request);
 
     /**
@@ -57,7 +56,7 @@ public interface FileManagementApi {
      */
     @Operation(summary = "搜索文件", description = "根据关键词搜索文件")
     @PostMapping("/search")
-    DynamicResponse<FileSearchResponse> searchFiles(
+    FileSearchResponse searchFiles(
             @RequestBody FileSearchRequest request);
 
     /**
@@ -81,7 +80,7 @@ public interface FileManagementApi {
      */
     @Operation(summary = "获取预览URL", description = "获取文件的预览访问URL")
     @PostMapping("/preview-url/{fileId}")
-    DynamicResponse<FilePreviewUrlResponse> getPreviewUrl(
+    FilePreviewUrlResponse getPreviewUrl(
             @Parameter(description = "文件ID") @PathVariable String fileId,
             @RequestBody FilePreviewRequest request);
 
@@ -93,7 +92,7 @@ public interface FileManagementApi {
      */
     @Operation(summary = "删除文件", description = "删除指定的文件")
     @DeleteMapping("/{fileId}")
-    DynamicResponse<Void> deleteFile(
+    void deleteFile(
             @Parameter(description = "文件ID") @PathVariable String fileId);
 
     /**
@@ -104,7 +103,7 @@ public interface FileManagementApi {
      */
     @Operation(summary = "批量删除文件", description = "批量删除多个文件")
     @PostMapping("/batch-delete")
-    DynamicResponse<BatchFileDeleteResponse> batchDeleteFiles(
+    BatchFileDeleteResponse batchDeleteFiles(
             @RequestBody BatchFileDeleteRequest request);
 
     /**
@@ -115,7 +114,7 @@ public interface FileManagementApi {
      */
     @Operation(summary = "移动文件", description = "将文件移动到指定目录")
     @PostMapping("/move")
-    DynamicResponse<Void> moveFile(
+    void moveFile(
             @RequestBody FileMoveRequest request);
 
     /**
@@ -126,7 +125,7 @@ public interface FileManagementApi {
      */
     @Operation(summary = "复制文件", description = "复制文件到指定目录")
     @PostMapping("/copy")
-    DynamicResponse<FileCopyResponse> copyFile(
+    FileCopyResponse copyFile(
             @RequestBody FileCopyRequest request);
 
     /**
@@ -137,7 +136,7 @@ public interface FileManagementApi {
      */
     @Operation(summary = "重命名文件", description = "修改文件名称")
     @PostMapping("/rename")
-    DynamicResponse<Void> renameFile(
+    void renameFile(
             @RequestBody FileRenameRequest request);
 
     /**
@@ -148,7 +147,7 @@ public interface FileManagementApi {
      */
     @Operation(summary = "创建文件夹", description = "创建新的文件夹")
     @PostMapping("/folder/create")
-    DynamicResponse<FolderCreateResponse> createFolder(
+    FolderCreateResponse createFolder(
             @RequestBody FolderCreateRequest request);
 
     /**
@@ -159,7 +158,7 @@ public interface FileManagementApi {
      */
     @Operation(summary = "获取文件夹树", description = "获取组织的文件夹树形结构")
     @GetMapping("/folder/tree/{organizationId}")
-    DynamicResponse<List<FolderTreeResponse>> getFolderTree(
+    List<FolderTreeResponse> getFolderTree(
             @Parameter(description = "组织ID") @PathVariable String organizationId);
 
     /**
@@ -170,7 +169,7 @@ public interface FileManagementApi {
      */
     @Operation(summary = "文件统计信息", description = "获取文件的统计信息")
     @PostMapping("/statistics")
-    DynamicResponse<FileStatisticsResponse> getFileStatistics(
+    FileStatisticsResponse getFileStatistics(
             @RequestBody FileStatisticsRequest request);
 
     /**
@@ -181,7 +180,7 @@ public interface FileManagementApi {
      */
     @Operation(summary = "文件版本历史", description = "获取文件的版本历史记录")
     @GetMapping("/versions/{fileId}")
-    DynamicResponse<List<FileVersionResponse>> getFileVersions(
+    List<FileVersionResponse> getFileVersions(
             @Parameter(description = "文件ID") @PathVariable String fileId);
 
     /**
@@ -192,6 +191,6 @@ public interface FileManagementApi {
      */
     @Operation(summary = "恢复文件版本", description = "将文件恢复到指定版本")
     @PostMapping("/versions/restore")
-    DynamicResponse<Void> restoreFileVersion(
+    void restoreFileVersion(
             @RequestBody FileVersionRestoreRequest request);
 }

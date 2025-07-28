@@ -17,7 +17,7 @@ import java.time.LocalDateTime;
  * 
  * 与MongoDB存储的复杂设备详情互补，MySQL负责结构化查询和关联关系
  * 
- * @author terminal-service
+ * @author Nan
  * @since 1.0.0
  */
 @Data

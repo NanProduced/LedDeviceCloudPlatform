@@ -13,5 +13,5 @@ public class FileRenameRequest {
     
     @NotBlank(message = "新文件名不能为空")
     @Schema(description = "新文件名", required = true)
-    private String newFileName;
+    private String newFilename;
 }

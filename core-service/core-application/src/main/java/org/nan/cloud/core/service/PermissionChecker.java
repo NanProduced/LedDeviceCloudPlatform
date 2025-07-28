@@ -22,6 +22,8 @@ public interface PermissionChecker {
 
     boolean ifHasPermissionOnTargetTerminalGroup(Long ugid, Long targetTgid);
 
+    boolean ifHasPermissionOnTargetTerminalGroup(Long oid, Long ugid, Long targetTgid);
+
     boolean ifRolesExist(List<Long> roles);
 
     boolean ifTargetUserIsTheSameOrg(Long oid, Long targetUid);

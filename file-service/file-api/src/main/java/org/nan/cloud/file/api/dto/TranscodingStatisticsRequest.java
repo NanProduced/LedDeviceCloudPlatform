@@ -4,6 +4,7 @@ import lombok.Data;
 import io.swagger.v3.oas.annotations.media.Schema;
 
 import java.time.LocalDateTime;
+import java.time.LocalDate;
 
 /**
  * 转码统计查询请求
@@ -38,6 +39,18 @@ public class TranscodingStatisticsRequest {
      */
     @Schema(description = "统计结束时间")
     private LocalDateTime endTime;
+    
+    /**
+     * 统计开始日期
+     */
+    @Schema(description = "统计开始日期")
+    private LocalDate startDate;
+    
+    /**
+     * 统计结束日期
+     */
+    @Schema(description = "统计结束日期")
+    private LocalDate endDate;
 
     /**
      * 统计维度

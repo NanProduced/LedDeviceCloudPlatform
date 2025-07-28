@@ -3,7 +3,6 @@ package org.nan.cloud.file.api;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.tags.Tag;
-import org.nan.cloud.common.web.DynamicResponse;
 import org.nan.cloud.file.api.dto.*;
 import org.springframework.web.bind.annotation.*;
 
@@ -34,7 +33,7 @@ public interface TranscodingApi {
      */
     @Operation(summary = "提交转码任务", description = "提交视频转码任务到队列")
     @PostMapping("/submit")
-    DynamicResponse<TranscodingTaskResponse> submitTranscodingTask(
+    TranscodingTaskResponse submitTranscodingTask(
             @RequestBody TranscodingTaskRequest request);
 
     /**
@@ -45,7 +44,7 @@ public interface TranscodingApi {
      */
     @Operation(summary = "批量转码任务", description = "批量提交多个视频转码任务")
     @PostMapping("/batch-submit")
-    DynamicResponse<BatchTranscodingResponse> submitBatchTranscodingTasks(
+    BatchTranscodingResponse submitBatchTranscodingTasks(
             @RequestBody BatchTranscodingRequest request);
 
     /**
@@ -56,7 +55,7 @@ public interface TranscodingApi {
      */
     @Operation(summary = "查询转码进度", description = "查询指定转码任务的进度")
     @GetMapping("/progress/{taskId}")
-    DynamicResponse<TranscodingProgressResponse> getTranscodingProgress(
+    TranscodingProgressResponse getTranscodingProgress(
             @Parameter(description = "转码任务ID") @PathVariable String taskId);
 
     /**
@@ -67,7 +66,7 @@ public interface TranscodingApi {
      */
     @Operation(summary = "获取转码任务列表", description = "分页查询转码任务列表")
     @PostMapping("/tasks")
-    DynamicResponse<TranscodingTaskListResponse> getTranscodingTasks(
+    TranscodingTaskListResponse getTranscodingTasks(
             @RequestBody TranscodingTaskQueryRequest request);
 
     /**
@@ -78,7 +77,7 @@ public interface TranscodingApi {
      */
     @Operation(summary = "取消转码任务", description = "取消正在进行的转码任务")
     @PostMapping("/cancel/{taskId}")
-    DynamicResponse<Void> cancelTranscodingTask(
+    void cancelTranscodingTask(
             @Parameter(description = "转码任务ID") @PathVariable String taskId);
 
     /**
@@ -89,7 +88,7 @@ public interface TranscodingApi {
      */
     @Operation(summary = "重试转码任务", description = "重新执行失败的转码任务")
     @PostMapping("/retry/{taskId}")
-    DynamicResponse<TranscodingTaskResponse> retryTranscodingTask(
+    TranscodingTaskResponse retryTranscodingTask(
             @Parameter(description = "转码任务ID") @PathVariable String taskId);
 
     /**
@@ -99,7 +98,7 @@ public interface TranscodingApi {
      */
     @Operation(summary = "获取转码预设", description = "获取系统预设的转码配置")
     @GetMapping("/presets")
-    DynamicResponse<List<TranscodingPresetResponse>> getTranscodingPresets();
+    List<TranscodingPresetResponse> getTranscodingPresets();
 
     /**
      * 获取转码统计信息
@@ -109,7 +108,7 @@ public interface TranscodingApi {
      */
     @Operation(summary = "转码统计信息", description = "获取转码任务的统计信息")
     @PostMapping("/statistics")
-    DynamicResponse<TranscodingStatisticsResponse> getTranscodingStatistics(
+    TranscodingStatisticsResponse getTranscodingStatistics(
             @RequestBody TranscodingStatisticsRequest request);
 
     /**
@@ -119,7 +118,7 @@ public interface TranscodingApi {
      */
     @Operation(summary = "转码系统状态", description = "获取转码服务的系统状态")
     @GetMapping("/system-status")
-    DynamicResponse<TranscodingSystemStatusResponse> getSystemStatus();
+    TranscodingSystemStatusResponse getSystemStatus();
 
     /**
      * 暂停转码任务
@@ -129,7 +128,7 @@ public interface TranscodingApi {
      */
     @Operation(summary = "暂停转码任务", description = "暂停正在进行的转码任务")
     @PostMapping("/pause/{taskId}")
-    DynamicResponse<Void> pauseTranscodingTask(
+    void pauseTranscodingTask(
             @Parameter(description = "转码任务ID") @PathVariable String taskId);
 
     /**
@@ -140,6 +139,6 @@ public interface TranscodingApi {
      */
     @Operation(summary = "恢复转码任务", description = "恢复已暂停的转码任务")
     @PostMapping("/resume/{taskId}")
-    DynamicResponse<Void> resumeTranscodingTask(
+    void resumeTranscodingTask(
             @Parameter(description = "转码任务ID") @PathVariable String taskId);
 }

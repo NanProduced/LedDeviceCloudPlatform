@@ -20,4 +20,7 @@ public class BatchFileDeleteResponse {
     
     @Schema(description = "失败数量")
     private Integer failedCount;
+    
+    @Schema(description = "总文件数量")
+    private Integer totalFiles;
 }

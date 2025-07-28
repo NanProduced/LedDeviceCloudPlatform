@@ -20,17 +20,15 @@
     </properties>
     
     <dependencies>
+        <dependency>
+            <groupId>org.nan</groupId>
+            <artifactId>file-api</artifactId>
+        </dependency>
         <!-- 依赖基础设施层 -->
         <dependency>
             <groupId>org.nan</groupId>
             <artifactId>file-infrastructure</artifactId>
             <version>${project.version}</version>
-        </dependency>
-        
-        <!-- Spring Boot Starter -->
-        <dependency>
-            <groupId>org.springframework.boot</groupId>
-            <artifactId>spring-boot-starter</artifactId>
         </dependency>
         
         <!-- Spring Boot Web Starter -->
@@ -45,6 +43,17 @@
             <artifactId>spring-boot-starter-actuator</artifactId>
         </dependency>
         
+        <!-- WebSocket 进度推送支持 -->
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-websocket</artifactId>
+        </dependency>
+        
+        <!-- 异步任务支持 -->
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-amqp</artifactId>
+        </dependency>
         <!-- Spring Cloud Starter -->
         <dependency>
             <groupId>org.springframework.cloud</groupId>
@@ -63,10 +72,55 @@
             <artifactId>spring-cloud-starter-alibaba-nacos-config</artifactId>
         </dependency>
         
+        <!-- 阿里云OSS SDK -->
+        <dependency>
+            <groupId>com.aliyun.oss</groupId>
+            <artifactId>aliyun-sdk-oss</artifactId>
+            <version>${aliyun.oss.version}</version>
+        </dependency>
+        
+        <!-- Apache Tika - 文件类型检测 -->
+        <dependency>
+            <groupId>org.apache.tika</groupId>
+            <artifactId>tika-core</artifactId>
+            <version>${tika.version}</version>
+        </dependency>
+        
+        <!-- Thumbnailator - 图片缩略图生成 -->
+        <dependency>
+            <groupId>net.coobird</groupId>
+            <artifactId>thumbnailator</artifactId>
+            <version>${thumbnailator.version}</version>
+        </dependency>
+        
+        <!-- 通用模块依赖 -->
+        <dependency>
+            <groupId>org.nan</groupId>
+            <artifactId>common-basic</artifactId>
+        </dependency>
+        
+        <dependency>
+            <groupId>org.nan</groupId>
+            <artifactId>common-web</artifactId>
+        </dependency>
+        
+        <!-- 通用MQ模块 -->
+        <dependency>
+            <groupId>org.nan</groupId>
+            <artifactId>common-mq-core</artifactId>
+        </dependency>
+        
         <!-- SpringDoc OpenAPI -->
         <dependency>
             <groupId>org.springdoc</groupId>
             <artifactId>springdoc-openapi-starter-webmvc-ui</artifactId>
+        </dependency>
+        
+        <!-- Spring Boot Configuration Processor - 支持自定义配置类 -->
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-configuration-processor</artifactId>
+            <optional>true</optional>
         </dependency>
         
         <!-- Spring Boot Test -->

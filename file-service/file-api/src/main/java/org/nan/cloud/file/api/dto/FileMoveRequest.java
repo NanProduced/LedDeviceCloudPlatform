@@ -14,4 +14,7 @@ public class FileMoveRequest {
     @NotBlank(message = "目标路径不能为空")
     @Schema(description = "目标路径", required = true)
     private String targetPath;
+    
+    @Schema(description = "目标文件夹ID")
+    private String targetFolderId;
 }

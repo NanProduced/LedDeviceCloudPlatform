@@ -1,5 +1,5 @@
 server:
-  port: 8085
+  port: 8086
 
 spring:
   application:
@@ -46,7 +46,6 @@ spring:
 
   # 数据源配置
   datasource:
-    driver-class-name: com.mysql.cj.jdbc.Driver
     url: jdbc:mysql://192.168.1.185:3306/nan_test?zeroDateTimeBehavior=convertToNull&characterEncoding=utf-8&allowPublicKeyRetrieval=true
     username: root
     password: Nan12091209
@@ -56,19 +55,19 @@ spring:
       connection-timeout: 30000
       idle-timeout: 600000
       max-lifetime: 1800000
-
-  # JPA配置
-  jpa:
-    hibernate:
-      ddl-auto: update
-    show-sql: false
-    properties:
-      hibernate:
-        dialect: org.hibernate.dialect.MySQL8Dialect
-        format_sql: false
-
-  # MongoDB配置
   data:
+    redis:
+      host: 192.168.1.185
+      port: 6379
+      database: 1
+      password: Nan12091209
+      timeout: 3000
+      lettuce:
+        pool:
+          max-active: 50
+          max-idle: 48
+          min-idle: 0
+          max-wait: 5s
     mongodb:
       host: 192.168.1.185
       port: 27017
@@ -78,20 +77,18 @@ spring:
       authentication-database: admin
       auto-index-creation: true
 
-  # Redis配置
-  data:
-    redis:
-      host: 192.168.1.185
-      port: 6379
-      database: 2
-      password: Nan12091209
-      timeout: 3000
-      lettuce:
-        pool:
-          max-active: 50
-          max-idle: 48
-          min-idle: 0
-          max-wait: 5s
+  # MyBatis Plus配置
+mybatis-plus:
+  mapper-locations: classpath*:/mapper/**/*.xml
+  type-aliases-package: org.nan.cloud.file.infrastructure.repository.mysql.DO
+  configuration:
+    map-underscore-to-camel-case: true
+    log-impl: org.apache.ibatis.logging.stdout.StdOutImpl
+  global-config:
+    db-config:
+      logic-delete-field: deleted
+      logic-delete-value: 1
+      logic-not-delete-value: 0
 
   # RabbitMQ配置
   rabbitmq:
@@ -210,9 +207,9 @@ management:
   endpoint:
     health:
       show-details: always
-  metrics:
-    export:
-      prometheus:
+  prometheus:
+    metrics:
+      export:
         enabled: true
 
 # 日志配置
@@ -224,8 +221,3 @@ logging:
     org.springframework.data.mongodb: INFO
     org.springframework.data.redis: INFO
     root: INFO
-  pattern:
-    console: "%d{yyyy-MM-dd HH:mm:ss.SSS} [%thread] %-5level %logger{36} - %msg%n"
-    file: "%d{yyyy-MM-dd HH:mm:ss.SSS} [%thread] %-5level %logger{36} - %msg%n"
-  file:
-    name: logs/file-service-dev.log

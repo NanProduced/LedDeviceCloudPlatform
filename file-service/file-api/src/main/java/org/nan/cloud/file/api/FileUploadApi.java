@@ -3,7 +3,6 @@ package org.nan.cloud.file.api;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.tags.Tag;
-import org.nan.cloud.common.web.DynamicResponse;
 import org.nan.cloud.file.api.dto.*;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
@@ -34,7 +33,7 @@ public interface FileUploadApi {
      */
     @Operation(summary = "单文件上传", description = "上传单个文件到服务器")
     @PostMapping("/single")
-    DynamicResponse<FileUploadResponse> uploadSingle(
+    FileUploadResponse uploadSingle(
             @Parameter(description = "上传的文件") @RequestParam("file") MultipartFile file,
             @Parameter(description = "上传参数") @ModelAttribute FileUploadRequest uploadRequest);
 
@@ -47,7 +46,7 @@ public interface FileUploadApi {
      */
     @Operation(summary = "批量文件上传", description = "批量上传多个文件")
     @PostMapping("/batch")
-    DynamicResponse<BatchFileUploadResponse> uploadBatch(
+    BatchFileUploadResponse uploadBatch(
             @Parameter(description = "上传的文件列表") @RequestParam("files") MultipartFile[] files,
             @Parameter(description = "上传参数") @ModelAttribute FileUploadRequest uploadRequest);
 
@@ -59,7 +58,7 @@ public interface FileUploadApi {
      */
     @Operation(summary = "初始化分片上传", description = "为大文件创建分片上传任务")
     @PostMapping("/chunk/init")
-    DynamicResponse<ChunkUploadInitResponse> initChunkUpload(
+    ChunkUploadInitResponse initChunkUpload(
             @RequestBody ChunkUploadInitRequest request);
 
     /**
@@ -71,7 +70,7 @@ public interface FileUploadApi {
      */
     @Operation(summary = "上传文件分片", description = "上传文件的一个分片")
     @PostMapping("/chunk/upload")
-    DynamicResponse<ChunkUploadResponse> uploadChunk(
+    ChunkUploadResponse uploadChunk(
             @Parameter(description = "文件分片") @RequestParam("chunk") MultipartFile chunk,
             @Parameter(description = "分片信息") @ModelAttribute ChunkUploadRequest request);
 
@@ -83,7 +82,7 @@ public interface FileUploadApi {
      */
     @Operation(summary = "完成分片上传", description = "合并所有分片完成文件上传")
     @PostMapping("/chunk/complete")
-    DynamicResponse<FileUploadResponse> completeChunkUpload(
+    FileUploadResponse completeChunkUpload(
             @RequestBody ChunkUploadCompleteRequest request);
 
     /**
@@ -94,7 +93,7 @@ public interface FileUploadApi {
      */
     @Operation(summary = "取消分片上传", description = "取消正在进行的分片上传任务")
     @PostMapping("/chunk/cancel/{uploadId}")
-    DynamicResponse<Void> cancelChunkUpload(
+    void cancelChunkUpload(
             @Parameter(description = "上传任务ID") @PathVariable String uploadId);
 
     /**
@@ -105,7 +104,7 @@ public interface FileUploadApi {
      */
     @Operation(summary = "查询上传进度", description = "查询文件上传任务的进度")
     @GetMapping("/progress/{taskId}")
-    DynamicResponse<UploadProgressResponse> getUploadProgress(
+    UploadProgressResponse getUploadProgress(
             @Parameter(description = "上传任务ID") @PathVariable String taskId);
 
     /**
@@ -115,5 +114,5 @@ public interface FileUploadApi {
      */
     @Operation(summary = "获取支持的文件类型", description = "获取系统支持上传的文件类型")
     @GetMapping("/supported-types")
-    DynamicResponse<SupportedFileTypesResponse> getSupportedFileTypes();
+    SupportedFileTypesResponse getSupportedFileTypes();
 }

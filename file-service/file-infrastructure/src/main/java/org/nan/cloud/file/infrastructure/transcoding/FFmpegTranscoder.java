@@ -375,7 +375,7 @@ public class FFmpegTranscoder {
      * 解析视频信息
      */
     private VideoInfo parseVideoInfo(String ffmpegOutput) {
-        VideoInfo.VideoInfoBuilder builder = VideoInfo.builder();
+        VideoInfo.Builder builder = VideoInfo.builder();
 
         // 解析时长
         Matcher durationMatcher = DURATION_PATTERN.matcher(ffmpegOutput);

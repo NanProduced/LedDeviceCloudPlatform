@@ -17,4 +17,7 @@ public class FileCopyRequest {
     
     @Schema(description = "新文件名")
     private String newFileName;
+    
+    @Schema(description = "目标文件夹ID")
+    private String targetFolderId;
 }

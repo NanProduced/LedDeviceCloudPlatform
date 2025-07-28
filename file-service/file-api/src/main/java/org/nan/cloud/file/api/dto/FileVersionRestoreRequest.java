@@ -27,6 +27,12 @@ public class FileVersionRestoreRequest {
     @NotBlank(message = "版本ID不能为空")
     @Schema(description = "要恢复的版本ID", required = true)
     private String versionId;
+    
+    /**
+     * 版本号
+     */
+    @Schema(description = "版本号")
+    private String versionNumber;
 
     /**
      * 恢复方式

@@ -21,6 +21,12 @@ public class TranscodingTaskQueryRequest {
      */
     @Schema(description = "任务状态列表", example = "[\"PENDING\", \"PROCESSING\"]")
     private List<String> statusList;
+    
+    /**
+     * 任务状态
+     */
+    @Schema(description = "任务状态")
+    private String status;
 
     /**
      * 组织ID

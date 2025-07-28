@@ -38,7 +38,12 @@ public enum ExceptionEnum {
     NAME_DUPLICATE_ERROR(5009, "Already has the same name"),
     HAS_USER_WITH_ONLY_ROLE(5010, "There are users with only role"),
     HAS_USER_IN_TARGET_GROUP(5011, "There are users in target group"),
-    TERMINAL_GROUP_PERMISSION_DENIED(5012, "terminal group permission denied");
+    TERMINAL_GROUP_PERMISSION_DENIED(5012, "terminal group permission denied"),
+    CREATE_TERMINAL_ACCOUNT_FAILED(5012, "create terminal account failed"),
+
+    /* websocket\STOMP 异常 */
+    STOMP_ACCESS_DENIED(6001, "stomp access denied");
+
 
     private final Integer code;
     private final String message;

@@ -33,6 +33,12 @@ public class FileStatisticsRequest {
      */
     @Schema(description = "统计维度", example = "DAILY")
     private String dimension = "DAILY";
+    
+    /**
+     * 统计类型
+     */
+    @Schema(description = "统计类型")
+    private String statisticsType;
 
     /**
      * 统计开始时间
