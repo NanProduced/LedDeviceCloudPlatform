@@ -274,17 +274,15 @@ public class ShardedConnectionManager implements ConnectionManager {
     }
 
     @Override
-    public boolean sendMessage(Long tid, String message) {
+    public boolean sendMessage(Long oid, Long tid, String message) {
         if (tid == null || message == null) {
             return false;
         }
-
-        // 遍历所有分片查找tid并发送消息
-        for (OrganizationShard shard : shards) {
-            if (shard.sendMessageToTerminal(tid, message)) {
-                totalMessagesSent.incrementAndGet();
-                return true;
-            }
+        int shardIndex = getShardIndex(oid);
+        OrganizationShard shard = shards[shardIndex];
+        if (shard.sendMessageToTerminal(tid, message)) {
+            totalMessagesSent.incrementAndGet();
+            return true;
         }
         
         return false;
@@ -370,13 +368,10 @@ public class ShardedConnectionManager implements ConnectionManager {
         if (tid == null) {
             return;
         }
-
-        // 遍历所有分片查找tid并更新活跃时间
-        for (OrganizationShard shard : shards) {
-            if (shard.updateTerminalActiveTime(tid, lastActiveTime)) {
-                return; // 找到并更新成功，直接返回
-            }
-        }
+        Long oid = websocketConnectionCacheHandler.getOidByTid(tid);
+        int shardIndex = getShardIndex(oid);
+        OrganizationShard shard = shards[shardIndex];
+        shard.updateTerminalActiveTime(tid, lastActiveTime);
     }
 
     @Override

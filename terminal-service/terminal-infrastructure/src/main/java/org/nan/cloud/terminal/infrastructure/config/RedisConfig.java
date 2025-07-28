@@ -82,9 +82,15 @@ public class RedisConfig {
         // 设备在线状态键前缀  
         public static final String DEVICE_ONLINE_PREFIX = "terminal:device:online:";
         
-        // 指令队列键前缀
-        public static final String COMMAND_QUEUE_PREFIX = "terminal:command:queue:";
-        public static final String COMMAND_STATUS_PREFIX = "terminal:command:status:";
+        /* 指令队列键前缀 */
+        // 待执行指令队列 (Sorted Set)
+        public static final String COMMAND_QUEUE_PATTERN= "terminal:cmd:queue:%d:%d";
+        // 去重索引映射 (Hash: author_url -> command_id)
+        public static final String COMMAND_DEDUPLICATION_PATTERN = "terminal:cmd:dedup:%d:%d";
+        // 指令详情缓存 (String)
+        public static final String COMMAND_DETAIL_PATTERN = "terminal:cmd:detail:%d:%d:%d";
+        // 指令执行情况 (Hash)
+        public static final String COMMAND_EXECUTE_STATUS_PATTERN = "terminal:cmd:status:%d:%d";
         
         // 设备状态键前缀（存储Java对象）
         public static final String DEVICE_STATUS_PREFIX = "terminal:device:status:";

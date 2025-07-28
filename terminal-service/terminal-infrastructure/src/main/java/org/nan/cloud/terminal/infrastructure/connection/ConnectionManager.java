@@ -82,12 +82,13 @@ public interface ConnectionManager {
 
     /**
      * 发送消息到指定设备
-     * 
+     *
+     * @param oid 组织ID
      * @param tid 设备ID
      * @param message 消息内容
      * @return 是否发送成功
      */
-    boolean sendMessage(Long tid, String message);
+    boolean sendMessage(Long oid, Long tid, String message);
 
     /**
      * 发送消息到指定设备列表（核心业务场景）

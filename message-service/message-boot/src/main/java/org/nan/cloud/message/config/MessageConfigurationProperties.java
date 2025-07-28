@@ -1,6 +1,7 @@
 package org.nan.cloud.message.config;
 
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
+import org.springframework.cloud.context.config.annotation.RefreshScope;
 import org.springframework.context.annotation.Configuration;
 
 /**
@@ -12,10 +13,11 @@ import org.springframework.context.annotation.Configuration;
  * 注意：配置属性类定义在application层，Boot层只负责启用它们，
  * 这样遵循了DDD分层架构原则。
  * 
- * @author LedDeviceCloudPlatform Team
+ * @author Nan
  * @since 1.0.0
  */
 @Configuration
+@RefreshScope
 @EnableConfigurationProperties({
     org.nan.cloud.message.config.WebSocketProperties.class,
     org.nan.cloud.message.config.MessageProperties.class
