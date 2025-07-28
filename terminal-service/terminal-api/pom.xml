@@ -19,13 +19,6 @@
             <groupId>org.springframework.boot</groupId>
             <artifactId>spring-boot-starter-web</artifactId>
         </dependency>
-        
-        <!-- 内部基础模块 -->
-        <dependency>
-            <groupId>org.nan</groupId>
-            <artifactId>common-basic</artifactId>
-        </dependency>
-        
         <!-- API文档 -->
         <dependency>
             <groupId>io.swagger.core.v3</groupId>

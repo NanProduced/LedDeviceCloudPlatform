@@ -14,13 +14,12 @@
     <description>LED设备终端业务逻辑层</description>
 
     <dependencies>
-        <!-- 依赖API层 -->
+        <!-- 内部基础模块 -->
         <dependency>
             <groupId>org.nan</groupId>
-            <artifactId>terminal-api</artifactId>
-            <version>${project.version}</version>
+            <artifactId>common-basic</artifactId>
         </dependency>
-        
+
         <!-- Spring Boot相关 -->
         <dependency>
             <groupId>org.springframework.boot</groupId>

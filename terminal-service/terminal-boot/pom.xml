@@ -26,6 +26,11 @@
             <groupId>org.nan</groupId>
             <artifactId>common-web</artifactId>
         </dependency>
+
+        <dependency>
+            <groupId>org.nan</groupId>
+            <artifactId>terminal-api</artifactId>
+        </dependency>
         
         <!-- 消息队列消费者依赖 -->
         <dependency>

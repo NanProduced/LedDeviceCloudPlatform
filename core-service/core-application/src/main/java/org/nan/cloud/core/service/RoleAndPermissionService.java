@@ -1,6 +1,7 @@
 package org.nan.cloud.core.service;
 
 import org.nan.cloud.core.DTO.UpdateRoleDTO;
+import org.nan.cloud.core.domain.OperationPermission;
 import org.nan.cloud.core.domain.Permission;
 import org.nan.cloud.core.domain.Role;
 import org.nan.cloud.core.domain.User;
@@ -19,21 +20,27 @@ public interface RoleAndPermissionService {
 
     void updateRole(UpdateRoleDTO updateRoleDTO);
 
+    void updateRoleOperationPermissionRel(Long rid, List<Long> operationPermissionIds);
+
     void deleteRole(Long oid, Long rid);
 
-    void createRolePermissionRel(Long rid, Set<Long> permissionIds);
+    void createRoleOperationPermissionRel(Long rid, Set<Long> operationPermissionIds);
 
     List<Permission> getPermissionsByIds(List<Long> permissionIds);
 
-    List<Permission> getPermissionsByUid(Long oid, Long uid);
+    List<Permission> getPermissionsByOperationPermissionIds(List<Long> operationPermissionIds);
 
-    List<Long> getPermissionIdsByRid(Long rid);
+    List<OperationPermission> getOperationPermissionByUid(Long uid);
+
+    Set<Long> getOperationPermissionIdByUid(Long uid);
 
     /**
      * 组织管理员使用的获取全部权限接口
      * @return
      */
     List<Permission> getAllPermissions();
+
+    List<OperationPermission> getAllOperations();
 
     Map<Long, List<Role>> getRolesByUids(List<Long> userIds);
 

@@ -7,9 +7,11 @@ import org.nan.cloud.common.basic.exception.BusinessRefuseException;
 import org.nan.cloud.common.basic.exception.ExceptionEnum;
 import org.nan.cloud.common.basic.utils.JsonUtils;
 import org.nan.cloud.core.DTO.UpdateRoleDTO;
+import org.nan.cloud.core.domain.OperationPermission;
 import org.nan.cloud.core.domain.Permission;
 import org.nan.cloud.core.domain.Role;
 import org.nan.cloud.core.domain.User;
+import org.nan.cloud.core.repository.OperationPermissionRepository;
 import org.nan.cloud.core.repository.PermissionRepository;
 import org.nan.cloud.core.repository.RoleRepository;
 import org.nan.cloud.core.service.RoleAndPermissionService;
@@ -28,6 +30,8 @@ public class RoleAndPermissionServiceImpl implements RoleAndPermissionService {
     private final RoleRepository roleRepository;
 
     private final PermissionRepository permissionRepository;
+
+    private final OperationPermissionRepository operationPermissionRepository;
 
     @Override
     public Role createRole(Role role) {
@@ -61,6 +65,11 @@ public class RoleAndPermissionServiceImpl implements RoleAndPermissionService {
     }
 
     @Override
+    public void updateRoleOperationPermissionRel(Long rid, List<Long> operationPermissionIds) {
+        operationPermissionRepository.updateRoleOperationRel(rid, new HashSet<>(operationPermissionIds));
+    }
+
+    @Override
     public void deleteRole(Long oid, Long rid) {
         List<Long> userWithOnlyRole = roleRepository.getUserWithOnlyRole(oid, rid);
         if (!CollectionUtils.isEmpty(userWithOnlyRole)) {
@@ -72,8 +81,8 @@ public class RoleAndPermissionServiceImpl implements RoleAndPermissionService {
     }
 
     @Override
-    public void createRolePermissionRel(Long rid, Set<Long> permissionIds) {
-        permissionRepository.insertRolePermissionRel(rid, permissionIds);
+    public void createRoleOperationPermissionRel(Long rid, Set<Long> operationPermissionIds) {
+        operationPermissionRepository.insertRoleOperationRel(rid, operationPermissionIds);
     }
 
     @Override
@@ -82,20 +91,31 @@ public class RoleAndPermissionServiceImpl implements RoleAndPermissionService {
     }
 
     @Override
-    public List<Permission> getPermissionsByUid(Long oid, Long uid) {
-        List<Long> rids = roleRepository.getRidsByUid(uid);
-        return permissionRepository.getPermissionsByRids(oid, rids);
+    public List<Permission> getPermissionsByOperationPermissionIds(List<Long> operationPermissionIds) {
+        Set<Long> permissionIds = operationPermissionRepository.getPermissionIdsByOperationPermissionIds(operationPermissionIds);
+        return permissionRepository.getPermissionsByIds(permissionIds);
     }
 
+    @Override
+    public List<OperationPermission> getOperationPermissionByUid(Long uid) {
+        List<Long> rids = roleRepository.getRidsByUid(uid);
+        return operationPermissionRepository.getOperationPermissionByRids(rids);
+    }
 
     @Override
-    public List<Long> getPermissionIdsByRid(Long rid) {
-        return permissionRepository.getPermissionIdsByRid(rid);
+    public Set<Long> getOperationPermissionIdByUid(Long uid) {
+        List<Long> rids = roleRepository.getRidsByUid(uid);
+        return new HashSet<>(operationPermissionRepository.getOperationPermissionIdByRids(rids));
     }
 
     @Override
     public List<Permission> getAllPermissions() {
         return permissionRepository.getAllPermissions();
+    }
+
+    @Override
+    public List<OperationPermission> getAllOperations() {
+        return operationPermissionRepository.getAllOperationPermissions();
     }
 
     @Override

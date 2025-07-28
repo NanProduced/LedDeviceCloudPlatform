@@ -72,7 +72,9 @@ public class RedisConfig {
         // 认证相关键前缀
         public static final String AUTH_CACHE_PREFIX = "terminal:auth:cache:";
 
-        // websocket连接管理
+        /* websocket连接管理 */
+        // tid与oid映射缓存
+        public static final String TID_TO_OID_PATTERN = "terminal:tid_oid_map:%d";
         public static final String WS_TOTAL_CONNECTIONS = "terminal:ws:total:connections";
         public static final String WS_CONNECTION_LIMIT_PREFIX = "terminal:ws:limit:";
         public static final String WS_CONNECTION_COUNT_PREFIX = "terminal:ws:count:";
@@ -89,6 +91,12 @@ public class RedisConfig {
         
         // 配置缓存键前缀（存储Java对象）
         public static final String CONFIG_CACHE_PREFIX = "terminal:config:cache:";
+
+        /* 终端信息缓存 */
+        // 终端状态信息上报(led_status)
+        public static final String TERMINAL_STATUS_REPORT_PATTERN = "terminal:report:status:%d:%d";
+        public static final String TERMINAL_ONLINE_KEY_PATTERN = "terminal:online:org:%d";
+        public static final String TERMINAL_ONLINE_COUNT_PATTERN = "terminal:online:count:org:%d";
         
         private RedisKeys() {
             // 工具类，禁止实例化

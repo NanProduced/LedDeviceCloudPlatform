@@ -22,7 +22,9 @@ import org.nan.cloud.core.service.RoleAndPermissionService;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 import java.util.stream.Collectors;
 
 @Slf4j
@@ -41,8 +43,8 @@ public class RoleFacade {
         final Long currentUId = InvocationContextHolder.getCurrentUId();
         final Long oid = InvocationContextHolder.getOid();
         // 获取权限
-        final List<Permission> permissions = roleAndPermissionService.getPermissionsByIds(request.getPermissions());
-        ExceptionEnum.PARAM_PARAMETER_EXCEPTION.throwIf(permissions.size() != request.getPermissions().size());
+        final Set<Long> visibleOperationPermissionIds = roleAndPermissionService.getOperationPermissionIdByUid(currentUId);
+        ExceptionEnum.PARAM_PARAMETER_EXCEPTION.throwIf(visibleOperationPermissionIds.containsAll(request.getOperationPermissions()));
         // 创建角色
         final Role role = roleAndPermissionService.createRole(Role.builder()
                 .oid(oid)
@@ -53,7 +55,8 @@ public class RoleFacade {
                 .build());
         ExceptionEnum.CREATE_FAILED.throwIf(null == role.getRid());
         final Long rid = role.getRid();
-        roleAndPermissionService.createRolePermissionRel(rid, permissions.stream().map(Permission::getPermissionId).collect(Collectors.toSet()));
+        List<Permission> permissions = roleAndPermissionService.getPermissionsByOperationPermissionIds(request.getOperationPermissions());
+        roleAndPermissionService.createRoleOperationPermissionRel(rid, new HashSet<>(request.getOperationPermissions()));
         permissionEventPublisher.publishAddRoleAndPermissionRelEvent(rid, oid, permissions);
     }
 
@@ -88,10 +91,13 @@ public class RoleFacade {
             roleAndPermissionService.updateRole(dto);
         }
         // 覆盖角色权限
-        if (CollectionUtils.isNotEmpty(updateRolesRequest.getPermissionIds())) {
-            List<Long> permissionIds = updateRolesRequest.getPermissionIds();
-            List<Permission> permissions = roleAndPermissionService.getPermissionsByIds(permissionIds);
-            ExceptionEnum.PERMISSION_DENIED.throwIf(!permissionChecker.ifHasPermissionOnTargetPermissions(requestUser.getUid(), permissionIds));
+        if (CollectionUtils.isNotEmpty(updateRolesRequest.getOperationPermissionIds())) {
+            List<Long> operationPermissionIds = updateRolesRequest.getOperationPermissionIds();
+            // 获取权限
+            final Set<Long> visibleOperationPermissionIds = roleAndPermissionService.getOperationPermissionIdByUid(requestUser.getUid());
+            ExceptionEnum.PARAM_PARAMETER_EXCEPTION.throwIf(visibleOperationPermissionIds.containsAll(operationPermissionIds));
+            List<Permission> permissions = roleAndPermissionService.getPermissionsByOperationPermissionIds(operationPermissionIds);
+            roleAndPermissionService.updateRoleOperationPermissionRel(updateRolesRequest.getRid(), operationPermissionIds);
             permissionEventPublisher.publishChangeRoleAndPermissionRelEvent(updateRolesRequest.getRid(), requestUser.getOid(), permissions);
         }
     }

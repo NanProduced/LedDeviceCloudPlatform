@@ -1,8 +1,9 @@
 package org.nan.cloud.terminal.infrastructure.connection;
 
+import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.nan.cloud.terminal.api.connection.ConnectionManager;
-import org.nan.cloud.terminal.api.connection.TerminalConnection;
+import org.nan.cloud.terminal.cache.TerminalOnlineStatusManager;
+import org.nan.cloud.terminal.cache.WebsocketConnectionCacheHandler;
 import org.nan.cloud.terminal.websocket.session.TerminalWebSocketSession;
 import org.springframework.stereotype.Component;
 import io.netty.handler.codec.http.websocketx.TextWebSocketFrame;
@@ -79,7 +80,10 @@ public class ShardedConnectionManager implements ConnectionManager {
     private final AtomicLong totalResponseTime = new AtomicLong(0);
     private final AtomicLong responseTimeCount = new AtomicLong(0);
 
-    public ShardedConnectionManager() {
+    private final TerminalOnlineStatusManager terminalOnlineStatusManager;
+    private final WebsocketConnectionCacheHandler websocketConnectionCacheHandler;
+
+    public ShardedConnectionManager(TerminalOnlineStatusManager terminalOnlineStatusManager, WebsocketConnectionCacheHandler websocketConnectionCacheHandler) {
         // 初始化16个组织分片
         this.shards = new OrganizationShard[SHARD_COUNT];
         for (int i = 0; i < SHARD_COUNT; i++) {
@@ -88,6 +92,9 @@ public class ShardedConnectionManager implements ConnectionManager {
         
         log.info("基于组织ID的分片式连接管理器初始化完成: 分片数={}, 每分片最大连接数={}, 总最大连接数={}", 
             SHARD_COUNT, MAX_CONNECTIONS_PER_SHARD, MAX_TOTAL_CONNECTIONS);
+
+        this.terminalOnlineStatusManager = terminalOnlineStatusManager;
+        this.websocketConnectionCacheHandler = websocketConnectionCacheHandler;
     }
 
     /**
@@ -140,6 +147,11 @@ public class ShardedConnectionManager implements ConnectionManager {
             // 添加到对应分片
             boolean added = shard.addConnection(oid, tid, connection);
             if (added) {
+                // 缓存tid和oid的映射关系
+                websocketConnectionCacheHandler.setOidToTidMap(oid, tid);
+                // websocket连接成功标注终端活跃（上线）
+                terminalOnlineStatusManager.updateTerminalActivity(oid, tid);
+
                 totalConnections.incrementAndGet();
                 log.info("设备连接添加成功: tid={}, oid={}, shardIndex={}, 当前总连接数={}",
                         tid, oid, shardIndex, totalConnections.get());
@@ -162,18 +174,19 @@ public class ShardedConnectionManager implements ConnectionManager {
             return null;
         }
 
-        // 需要遍历所有分片查找tid（因为不知道oid）
-        for (int i = 0; i < SHARD_COUNT; i++) {
-            OrganizationShard shard = shards[i];
-            TerminalConnection connection = shard.removeConnectionByTid(tid);
-            if (connection != null) {
-                totalConnections.decrementAndGet();
-                log.info("设备连接移除成功: tid={}, shardIndex={}, 当前总连接数={}", 
-                    tid, i, totalConnections.get());
-                return connection.getSession();
-            }
+        Long oid = websocketConnectionCacheHandler.getOidByTid(tid);
+        int shardIndex = getShardIndex(oid);
+        OrganizationShard shard = shards[shardIndex];
+        TerminalConnection connection = shard.removeConnectionByTid(tid);
+        if (connection != null) {
+            // 标记终端离线
+            terminalOnlineStatusManager.markTerminalOffline(oid, tid);
+
+            totalConnections.decrementAndGet();
+            log.info("设备连接移除成功: tid={}, shardIndex={}, 当前总连接数={}",
+                    tid, shardIndex, totalConnections.get());
+            return connection.getSession();
         }
-        
         return null;
     }
 
@@ -183,19 +196,23 @@ public class ShardedConnectionManager implements ConnectionManager {
             return null;
         }
 
-        // 遍历所有分片查找tid
-        for (int i = 0; i < SHARD_COUNT; i++) {
-            OrganizationShard shard = shards[i];
-            TerminalConnection connection = shard.removeConnectionByTidAndSession(tid, sessionId);
-            if (connection != null) {
-                totalConnections.decrementAndGet();
-                log.info("设备连接移除成功: tid={}, sessionId={}, shardIndex={}, 当前总连接数={}", 
-                    tid, sessionId, i, totalConnections.get());
-                return connection.getSession();
-            }
+        Long oid = websocketConnectionCacheHandler.getOidByTid(tid);
+        int shardIndex = getShardIndex(oid);
+        OrganizationShard shard = shards[shardIndex];
+        TerminalConnection connection = shard.removeConnectionByTidAndSession(tid, sessionId);
+
+        if (connection != null) {
+            // 标记终端离线
+            terminalOnlineStatusManager.markTerminalOffline(oid, tid);
+
+            totalConnections.decrementAndGet();
+            log.info("设备连接移除成功: tid={}, sessionId={}, shardIndex={}, 当前总连接数={}",
+                    tid, sessionId, shardIndex, totalConnections.get());
+            return connection.getSession();
         }
-        
+
         return null;
+
     }
 
     @Override

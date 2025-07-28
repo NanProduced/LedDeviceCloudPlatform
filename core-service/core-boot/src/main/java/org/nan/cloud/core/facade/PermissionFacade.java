@@ -3,8 +3,8 @@ package org.nan.cloud.core.facade;
 import lombok.RequiredArgsConstructor;
 import org.nan.cloud.common.web.context.InvocationContextHolder;
 import org.nan.cloud.common.web.context.RequestUserInfo;
-import org.nan.cloud.core.api.DTO.res.PermissionResponse;
-import org.nan.cloud.core.domain.Permission;
+import org.nan.cloud.core.api.DTO.res.OperationPermissionResponse;
+import org.nan.cloud.core.domain.OperationPermission;
 import org.nan.cloud.core.enums.UserTypeEnum;
 import org.nan.cloud.core.service.RoleAndPermissionService;
 import org.springframework.stereotype.Component;
@@ -19,17 +19,17 @@ public class PermissionFacade {
 
     private final RoleAndPermissionService roleAndPermissionService;
 
-    public Map<String, List<PermissionResponse>> getCurrentUserPermissions() {
+    public Map<String, List<OperationPermissionResponse>> getCurrentUserOperations() {
         RequestUserInfo requestUser = InvocationContextHolder.getContext().getRequestUser();
-        List<Permission> permissions;
+        List<OperationPermission> operations;
         if (requestUser.getUserType().equals(UserTypeEnum.ORG_MANAGER_USER.getCode())) {
-            permissions = roleAndPermissionService.getAllPermissions();
+            operations = roleAndPermissionService.getAllOperations();
         }
         else {
-            permissions = roleAndPermissionService.getPermissionsByUid(requestUser.getOid(), requestUser.getUid());
+            operations = roleAndPermissionService.getOperationPermissionByUid(requestUser.getUid());
         }
-        return permissions.stream().map(p ->
-                new PermissionResponse(p.getPermissionId(), p.getName(), p.getDescription(), p.getPermissionGroup()))
-                .collect(Collectors.groupingBy(PermissionResponse::getPermissionType, Collectors.toList()));
+        return operations.stream().map(o ->
+                new OperationPermissionResponse(o.getOperationPermissionId(), o.getName(), o.getDescription(), o.getOperationType()))
+                .collect(Collectors.groupingBy(OperationPermissionResponse::getOperationType));
     }
 }

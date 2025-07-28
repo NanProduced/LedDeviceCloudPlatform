@@ -3,6 +3,8 @@ package org.nan.cloud.common.web;
 import lombok.extern.slf4j.Slf4j;
 import org.nan.cloud.common.basic.exception.BaseException;
 import org.nan.cloud.common.basic.exception.BusinessRefuseException;
+import org.nan.cloud.common.basic.exception.Terminal400Exception;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.ControllerAdvice;
 import org.springframework.web.bind.annotation.ExceptionHandler;
@@ -29,6 +31,11 @@ public class GlobalExceptionHandler {
     @ExceptionHandler(Exception.class)
     public ResponseEntity<DynamicResponse<?>> handleException(Exception e) {
         return handleBaseException(new BaseException(e, e.getMessage()));
+    }
+
+    @ExceptionHandler(Terminal400Exception.class)
+    public ResponseEntity<Void> handleTerminal400Exception(Terminal400Exception e) {
+        return new ResponseEntity<>(HttpStatus.BAD_REQUEST);
     }
 
 

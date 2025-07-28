@@ -40,6 +40,7 @@ public enum ExceptionEnum {
     HAS_USER_IN_TARGET_GROUP(5011, "There are users in target group"),
     TERMINAL_GROUP_PERMISSION_DENIED(5012, "terminal group permission denied"),
     CREATE_TERMINAL_ACCOUNT_FAILED(5012, "create terminal account failed"),
+    OPERATION_PERMISSION_DENIED(5013, "operation permission failed"),
 
     /* websocket\STOMP 异常 */
     STOMP_ACCESS_DENIED(6001, "stomp access denied");

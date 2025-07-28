@@ -9,6 +9,7 @@ import org.nan.cloud.core.infrastructure.repository.mysql.mapper.PermissionMappe
 import org.nan.cloud.core.repository.PermissionRepository;
 import org.springframework.stereotype.Repository;
 
+import java.util.Collection;
 import java.util.List;
 import java.util.Set;
 
@@ -31,36 +32,10 @@ public class PermissionRepositoryImpl implements PermissionRepository {
     }
 
     @Override
-    public List<Permission> getPermissionsByIds(List<Long> permissionIds) {
+    public List<Permission> getPermissionsByIds(Collection<Long> permissionIds) {
         final List<PermissionDO> permissionDOS = permissionMapper.selectList(new LambdaQueryWrapper<PermissionDO>()
                 .eq(PermissionDO::getPermissionType, 1)
                 .in(PermissionDO::getPermissionId, permissionIds));
         return commonConverter.permissionDO2Permission(permissionDOS);
-    }
-
-    @Override
-    public List<Permission> getPermissionsByRids(Long oid, List<Long> rids) {
-        Set<Long> permissionIds = permissionMapper.getPermissionIdsByRids(oid, rids);
-        return commonConverter.permissionDO2Permission(permissionMapper.selectByIds(permissionIds));
-    }
-
-    @Override
-    public List<Long> getPermissionIdsByRid(Long rid) {
-        return permissionMapper.getPermissionIdByRid(rid);
-    }
-
-    @Override
-    public void insertRolePermissionRel(Long rid, Set<Long> permissionIds) {
-        permissionMapper.insertRolePermissions(rid, permissionIds);
-    }
-
-    @Override
-    public Set<Long> getPermissionIdsByRids(Long oid, List<Long> rids) {
-        return permissionMapper.getPermissionIdsByRids(oid, rids);
-    }
-
-    @Override
-    public Set<Long> getPermissionIdsByUid(Long uid) {
-        return permissionMapper.getPermissionIdsByUid(uid);
     }
 }

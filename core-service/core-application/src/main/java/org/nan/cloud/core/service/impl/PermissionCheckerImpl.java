@@ -3,11 +3,13 @@ package org.nan.cloud.core.service.impl;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.nan.cloud.common.basic.exception.ExceptionEnum;
+import org.nan.cloud.core.domain.OperationPermission;
 import org.nan.cloud.core.manager.PermissionCheckSkipContext;
 import org.nan.cloud.core.repository.*;
 import org.nan.cloud.core.service.PermissionChecker;
 import org.springframework.stereotype.Service;
 
+import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 
@@ -21,6 +23,8 @@ public class PermissionCheckerImpl implements PermissionChecker {
     private final UserRepository userRepository;
 
     private final PermissionRepository permissionRepository;
+
+    private final OperationPermissionRepository operationPermissionRepository;
 
     private final RoleRepository roleRepository;
 
@@ -48,24 +52,19 @@ public class PermissionCheckerImpl implements PermissionChecker {
     @Override
     public boolean ifHasPermissionOnTargetRoles(Long oid, Long uid, List<Long> targetRoles) {
         if (PermissionCheckSkipContext.isSkip()) return true;
-        Set<Long> curPermissions = permissionRepository.getPermissionIdsByUid(uid);
-        Set<Long> targetPermissions = permissionRepository.getPermissionIdsByRids(oid, targetRoles);
+        List<Long> rids = roleRepository.getRidsByUid(uid);
+        Set<Long> curPermissions = new HashSet<>(operationPermissionRepository.getOperationPermissionIdByRids(rids));
+        List<Long> targetPermissions = operationPermissionRepository.getOperationPermissionIdByRids(targetRoles);
         return curPermissions.containsAll(targetPermissions);
     }
 
     @Override
     public boolean ifHasPermissionOnTargetRole(Long uid, Long targetRole) {
         if (PermissionCheckSkipContext.isSkip()) return true;
-        Set<Long> curPermissions = permissionRepository.getPermissionIdsByUid(uid);
-        List<Long> targetPermissions = permissionRepository.getPermissionIdsByRid(targetRole);
+        List<Long> rids = roleRepository.getRidsByUid(uid);
+        Set<Long> curPermissions = new HashSet<>(operationPermissionRepository.getOperationPermissionIdByRids(rids));
+        List<Long> targetPermissions = operationPermissionRepository.getOperationPermissionByRid(targetRole).stream().map(OperationPermission::getOperationPermissionId).toList();
         return curPermissions.containsAll(targetPermissions);
-    }
-
-    @Override
-    public boolean ifHasPermissionOnTargetPermissions(Long uid, List<Long> permissionIds) {
-        if (PermissionCheckSkipContext.isSkip()) return true;
-        Set<Long> curPermissions = permissionRepository.getPermissionIdsByUid(uid);
-        return curPermissions.containsAll(permissionIds);
     }
 
     @Override

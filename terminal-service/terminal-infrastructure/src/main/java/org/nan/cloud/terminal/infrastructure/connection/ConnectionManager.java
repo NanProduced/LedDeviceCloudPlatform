@@ -1,4 +1,4 @@
-package org.nan.cloud.terminal.api.connection;
+package org.nan.cloud.terminal.infrastructure.connection;
 
 import java.time.LocalDateTime;
 import java.util.Collection;

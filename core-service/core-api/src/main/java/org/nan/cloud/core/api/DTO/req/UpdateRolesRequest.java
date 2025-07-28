@@ -16,8 +16,8 @@ public class UpdateRolesRequest {
     @NotNull
     private Long rid;
 
-    @Schema(description = "更新权限Id(为覆盖操作，如果不更新权限只更新角色信息则传null)")
-    private List<Long> permissionIds;
+    @Schema(description = "更新操作权限Id(为覆盖操作，如果不更新权限只更新角色信息则传null)")
+    private List<Long> operationPermissionIds;
 
     @Schema(description = "更新角色名称")
     private String name;

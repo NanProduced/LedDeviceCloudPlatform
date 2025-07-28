@@ -48,4 +48,7 @@ public interface CommonConverter {
 
     List<UserGroupTerminalGroupBinding> toUserGroupTerminalGroupBinding(List<UserGroupTerminalGroupBindingDO> bindingDOs);
 
+    OperationPermission toOperationPermission(OperationPermissionDO operationPermissionDO);
+
+    List<OperationPermission> toOperationPermission(List<OperationPermissionDO> operationPermissionDOS);
 }

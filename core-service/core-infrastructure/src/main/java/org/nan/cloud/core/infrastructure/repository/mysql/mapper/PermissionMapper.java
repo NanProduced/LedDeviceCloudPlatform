@@ -26,49 +26,4 @@ public interface PermissionMapper extends BaseMapper<PermissionDO> {
             "   AND cr.v0    = #{uid}")
     Set<Long> getPermissionIdsByUid(@Param("uid") Long uid);
 
-    /**
-     * 根据角色 ID 列表和组织 ID（oid），查询去重后的 permission_id 列表
-     */
-    @Select({
-            "<script>",
-            "SELECT DISTINCT rp.permission_id",
-            "  FROM role r",
-            "  JOIN role_permission_rel rp ON r.rid = rp.rid",
-            " WHERE r.oid = #{oid}",
-            "   <if test='rids != null and !rids.isEmpty()'>",
-            "     AND r.rid IN",
-            "     <foreach collection='rids' item='rid' open='(' separator=',' close=')'>",
-            "       #{rid}",
-            "     </foreach>",
-            "   </if>",
-            "</script>"
-    })
-    Set<Long> getPermissionIdsByRids(@Param("oid") Long oid, @Param("rids") List<Long> rids);
-
-    @Select({
-            "SELECT permission_id",
-            " FROM role_permission_rel",
-            " WHERE rid = #{rid}"
-    })
-    List<Long> getPermissionIdByRid(@Param("rid") Long rid);
-
-    /**
-     * 给角色批量添加权限关系
-     * @param rid           角色 ID
-     * @param permissionIds 权限 ID 列表
-     * @return 插入的记录数
-     */
-    @Insert({
-            "<script>",
-            "INSERT INTO role_permission_rel (rid, permission_id) VALUES",
-            "<foreach collection='permissionIds' item='pid' index='idx' separator=','>",
-            "(#{rid}, #{pid})",
-            "</foreach>",
-            "</script>"
-    })
-    int insertRolePermissions(
-            @Param("rid") Long rid,
-            @Param("permissionIds") Set<Long> permissionIds
-    );
-
 }

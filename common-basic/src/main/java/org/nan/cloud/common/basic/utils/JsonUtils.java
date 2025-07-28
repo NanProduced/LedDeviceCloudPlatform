@@ -129,4 +129,19 @@ public class JsonUtils {
             throw ExceptionEnum.JSON_DESERIALIZATION_EXCEPTION.throwThis(e);
         }
     }
+
+    /**
+     * 将 JSON 片段合并（更新）到已有对象中。
+     * readerForUpdating 方法会把 json 中存在的字段更新到 target 对象，忽略 json 中没有的字段。
+     *
+     * @param json   部分或完整的 JSON 字符串
+     * @param target 需要更新的目标对象
+     * @param <T>    对象类型
+     * @return 被更新后的对象（同 target 引用）
+     * @throws IOException 解析或合并失败时抛出
+     */
+    public static <T> T mergeInto(String json, T target) throws IOException {
+        return OBJECT_MAPPER.readerForUpdating(target)
+                .readValue(json);
+    }
 }

@@ -6,7 +6,7 @@ import io.netty.handler.codec.http.websocketx.*;
 import io.netty.handler.codec.http.websocketx.WebSocketServerProtocolHandler;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.nan.cloud.terminal.api.connection.ConnectionManager;
+import org.nan.cloud.terminal.infrastructure.connection.ConnectionManager;
 import org.nan.cloud.terminal.config.security.auth.TerminalPrincipal;
 import org.nan.cloud.terminal.websocket.session.TerminalWebSocketSession;
 import org.springframework.data.redis.core.StringRedisTemplate;
