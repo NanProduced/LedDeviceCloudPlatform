@@ -2,10 +2,10 @@ package org.nan.cloud.core.repository;
 
 import org.nan.cloud.common.basic.model.PageVO;
 import org.nan.cloud.core.DTO.SearchTerminalGroupDTO;
-import org.nan.cloud.core.DTO.TerminalGroupListDTO;
 import org.nan.cloud.core.domain.TerminalGroup;
 
 import java.util.List;
+import java.util.Set;
 
 public interface TerminalGroupRepository {
 
@@ -45,4 +45,8 @@ public interface TerminalGroupRepository {
     PageVO<TerminalGroup> searchAccessibleTerminalGroups(Integer pageNum, Integer pageSize, SearchTerminalGroupDTO searchDTO, List<Long> accessibleTerminalGroupIds);
 
     List<TerminalGroup> getChildTerminalGroups(Long parentTgid);
+
+    String getPathByTgid(Long tgid);
+
+    Set<Long> getAllTgidsByParent(Long tgid);
 }

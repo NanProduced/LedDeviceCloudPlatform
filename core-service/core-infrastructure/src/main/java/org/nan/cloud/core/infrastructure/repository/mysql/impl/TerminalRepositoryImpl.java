@@ -17,6 +17,7 @@ import org.nan.cloud.core.repository.TerminalRepository;
 import org.springframework.stereotype.Repository;
 
 import java.time.LocalDateTime;
+import java.util.List;
 import java.util.Objects;
 import java.util.Set;
 
@@ -84,5 +85,13 @@ public class TerminalRepositoryImpl implements TerminalRepository {
                 .build();
         pageVO.calculate();
         return pageVO;
+    }
+
+    @Override
+    public List<Long> getTidsByTgids(List<Long> tgids) {
+        return terminalInfoMapper.selectList(new LambdaQueryWrapper<TerminalInfoDO>()
+                .select(TerminalInfoDO::getTid)
+                .in(TerminalInfoDO::getTgid, tgids))
+                .stream().map(TerminalInfoDO::getTid).toList();
     }
 }

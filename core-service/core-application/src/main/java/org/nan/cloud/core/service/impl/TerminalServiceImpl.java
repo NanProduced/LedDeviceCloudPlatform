@@ -15,9 +15,7 @@ import org.nan.cloud.core.repository.TerminalRepository;
 import org.nan.cloud.core.service.TerminalService;
 import org.springframework.stereotype.Service;
 
-import java.util.Collections;
-import java.util.HashMap;
-import java.util.Map;
+import java.util.*;
 import java.util.stream.Collectors;
 
 @Slf4j
@@ -53,15 +51,17 @@ public class TerminalServiceImpl implements TerminalService {
     @Override
     public PageVO<Terminal> pageTerminals(int pageNum, int pageSize, QueryTerminalListDTO dto) {
         Map<Long, String> groupMap = new HashMap<>();
+        Set<Long> filterTgids = null;
         if (dto.isIfIncludeSubGroups()) {
-            // TODO: 实现获取所有子组的逻辑，类似UserService的实现
-            // 目前先使用当前组
-            TerminalGroup currentGroup = terminalGroupRepository.getTerminalGroupById(dto.getTgid());
-//            groupMap = Collections.singletonMap(dto.getTgid(), currentGroup.getTgName());
+            filterTgids = terminalGroupRepository.getAllTgidsByParent(dto.getTgid());
         } else {
-            TerminalGroup currentGroup = terminalGroupRepository.getTerminalGroupById(dto.getTgid());
-//            groupMap = Collections.singletonMap(dto.getTgid(), currentGroup.getTgName());
+            filterTgids = Collections.singleton(dto.getTgid());
         }
+        List<Long> filterTids = null;
+        if (Objects.nonNull(dto.getOnlineStatus())) {
+
+        }
+
         
         PageVO<Terminal> terminalPageVO = terminalRepository.pageTerminals(
                 pageNum, pageSize, dto.getOid(), groupMap.keySet(), 

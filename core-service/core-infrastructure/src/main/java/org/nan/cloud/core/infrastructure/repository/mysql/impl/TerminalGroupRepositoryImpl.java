@@ -10,11 +10,14 @@ import org.nan.cloud.core.domain.TerminalGroup;
 import org.nan.cloud.core.infrastructure.repository.mysql.DO.TerminalGroupDO;
 import org.nan.cloud.core.infrastructure.repository.mysql.converter.CommonConverter;
 import org.nan.cloud.core.infrastructure.repository.mysql.mapper.TerminalGroupMapper;
+import org.nan.cloud.core.infrastructure.repository.mysql.mapper.UserGroupMapper;
 import org.nan.cloud.core.repository.TerminalGroupRepository;
 import org.springframework.stereotype.Repository;
 
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Set;
+import java.util.stream.Collectors;
 
 @Repository
 @RequiredArgsConstructor
@@ -23,6 +26,7 @@ public class TerminalGroupRepositoryImpl implements TerminalGroupRepository {
     private final TerminalGroupMapper terminalGroupMapper;
 
     private final CommonConverter commonConverter;
+    private final UserGroupMapper userGroupMapper;
 
     @Override
     public TerminalGroup createTerminalGroup(TerminalGroup terminalGroup) {
@@ -103,4 +107,19 @@ public class TerminalGroupRepositoryImpl implements TerminalGroupRepository {
         return commonConverter.terminalGroupDO2TerminalGroup(childGroupDOs);
     }
 
+    @Override
+    public String getPathByTgid(Long tgid) {
+        return terminalGroupMapper.selectOne(new LambdaQueryWrapper<TerminalGroupDO>()
+                .select(TerminalGroupDO::getPath)
+                .eq(TerminalGroupDO::getTgid, tgid)).getPath();
+    }
+
+    @Override
+    public Set<Long> getAllTgidsByParent(Long tgid) {
+        return terminalGroupMapper.selectList(new LambdaQueryWrapper<TerminalGroupDO>()
+                .select(TerminalGroupDO::getTgid)
+                .likeRight(TerminalGroupDO::getPath, getPathByTgid(tgid) + "|")
+                .or()
+                .eq(TerminalGroupDO::getTgid, tgid)).stream().map(TerminalGroupDO::getTgid).collect(Collectors.toSet());
+    }
 }

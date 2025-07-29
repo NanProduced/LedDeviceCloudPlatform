@@ -101,7 +101,9 @@ public class RedisConfig {
         /* 终端信息缓存 */
         // 终端状态信息上报(led_status)
         public static final String TERMINAL_STATUS_REPORT_PATTERN = "terminal:report:status:%d:%d";
+        // 在线终端列表
         public static final String TERMINAL_ONLINE_KEY_PATTERN = "terminal:online:org:%d";
+        // 组织在线终端数量
         public static final String TERMINAL_ONLINE_COUNT_PATTERN = "terminal:online:count:org:%d";
         
         private RedisKeys() {
