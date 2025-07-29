@@ -1,8 +1,14 @@
 server:
   port: 8085
+
+# 项目业务设置
 terminal:
   websocket:
     port: 8843
+  command:
+    queue-timeout: 168
+    status-timeout: 24
+
 spring:
   application:
     name: terminal-service
@@ -56,6 +62,7 @@ spring:
       password: Nan12091209
       authentication-database: admin
       auto-index-creation: true
+
 
 # 本地环境日志配置 - 更详细的日志便于调试
 logging:

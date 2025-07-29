@@ -7,7 +7,10 @@ import org.nan.cloud.common.basic.utils.StringUtils;
 import org.nan.cloud.common.web.IgnoreDynamicResponse;
 import org.nan.cloud.terminal.api.TerminalApi;
 import org.nan.cloud.terminal.api.common.model.TerminalCommand;
+import org.nan.cloud.terminal.api.common.model.TerminalCommandConfirm;
+import org.nan.cloud.terminal.cache.TerminalCommandManager;
 import org.nan.cloud.terminal.cache.TerminalOnlineStatusManager;
+import org.nan.cloud.terminal.cache.TerminalStatusCacheHandler;
 import org.nan.cloud.terminal.config.security.auth.TerminalPrincipal;
 import org.nan.cloud.terminal.facade.TerminalReportFacade;
 import org.springframework.security.core.context.SecurityContextHolder;
@@ -24,6 +27,8 @@ public class TerminalController implements TerminalApi {
 
     private final TerminalOnlineStatusManager terminalOnlineStatusManager;
 
+    private final TerminalCommandManager terminalCommandManager;
+
     @Override
     @IgnoreDynamicResponse
     public void reportTerminalStatus(String report) {
@@ -38,6 +43,17 @@ public class TerminalController implements TerminalApi {
     @Override
     @IgnoreDynamicResponse
     public List<TerminalCommand> getCommands(String clt_type, Integer device_num) {
-        return List.of();
+        TerminalPrincipal principal = (TerminalPrincipal) SecurityContextHolder.getContext().getAuthentication().getPrincipal();
+        terminalOnlineStatusManager.updateTerminalActivity(principal.getOid(), principal.getTid());
+        return terminalCommandManager.getPendingCommands(principal.getOid(), principal.getTid());
+    }
+
+    @Override
+    public void confirmCommand(Integer post, TerminalCommandConfirm commandConfirm) {
+        TerminalPrincipal principal = (TerminalPrincipal) SecurityContextHolder.getContext().getAuthentication().getPrincipal();
+        terminalOnlineStatusManager.updateTerminalActivity(principal.getOid(), principal.getTid());
+        if (!terminalCommandManager.confirmCommand(principal.getOid(), principal.getTid(), commandConfirm.getParent(), commandConfirm.getContent())) {
+            throw new Terminal400Exception();
+        }
     }
 }
