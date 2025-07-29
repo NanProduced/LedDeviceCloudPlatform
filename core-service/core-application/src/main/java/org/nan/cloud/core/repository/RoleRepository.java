@@ -12,6 +12,8 @@ public interface RoleRepository {
 
     Role getRoleByRid(Long rid);
 
+    Role getRoleDetailByRid(Long rid);
+
     List<Long> getRidsByUid(Long uid);
 
     List<Role> getRolesByUid(Long uid);
@@ -37,6 +39,8 @@ public interface RoleRepository {
     List<Role> getAllRolesByOid(Long oid);
 
     boolean ifTheSameOrg(Long oid, Long rid);
+
+    boolean ifTheSameOrg(Long oid, List<Long> rids);
 
     /**
      * 获取组织中只有指定角色的用户

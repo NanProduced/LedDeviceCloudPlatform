@@ -14,6 +14,13 @@ public interface OperationPermissionRepository {
 
     List<OperationPermission> getOperationPermissionByRid(Long rid);
 
+    /**
+     * 仅返回操作权限，不返回接口权限
+     * @param rid
+     * @return
+     */
+    List<OperationPermission> getOperationPermissionWithoutPermissionMapByRid(Long rid);
+
     List<OperationPermission> getOperationPermissionByRids(List<Long> rids);
 
     List<Long> getOperationPermissionIdByRids(List<Long> rids);

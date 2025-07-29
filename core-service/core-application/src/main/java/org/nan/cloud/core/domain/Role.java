@@ -27,9 +27,13 @@ public class Role {
 
     private Long creatorId;
 
+    private String creatorName;
+
     private LocalDateTime createTime;
 
     private Long updaterId;
+
+    private String updaterName;
 
     private LocalDateTime updateTime;
 }

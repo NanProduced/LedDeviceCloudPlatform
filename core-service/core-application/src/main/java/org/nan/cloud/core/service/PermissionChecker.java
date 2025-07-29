@@ -16,7 +16,7 @@ public interface PermissionChecker {
 
     boolean ifHasPermissionOnTargetRoles(Long oid, Long uid, List<Long> targetRoles);
 
-    boolean ifHasPermissionOnTargetRole(Long uid, Long targetRole);
+    boolean ifHasPermissionOnTargetRole(Long oid, Long uid, Long targetRole);
 
     boolean ifHasPermissionOnTargetTerminalGroup(Long ugid, Long targetTgid);
 

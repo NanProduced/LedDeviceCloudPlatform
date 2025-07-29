@@ -11,14 +11,18 @@ import org.nan.cloud.core.DTO.UpdateRoleDTO;
 import org.nan.cloud.core.api.DTO.common.RoleDTO;
 import org.nan.cloud.core.api.DTO.req.CreateRoleRequest;
 import org.nan.cloud.core.api.DTO.req.UpdateRolesRequest;
+import org.nan.cloud.core.api.DTO.res.RoleDetailResponse;
 import org.nan.cloud.core.api.DTO.res.VisibleRolesResponse;
 import org.nan.cloud.core.aspect.SkipOrgManagerPermissionCheck;
+import org.nan.cloud.core.converter.RoleAndPermissionConverter;
+import org.nan.cloud.core.domain.OperationPermission;
 import org.nan.cloud.core.domain.Permission;
 import org.nan.cloud.core.domain.Role;
 import org.nan.cloud.core.enums.RoleTypeEnum;
 import org.nan.cloud.core.service.PermissionChecker;
 import org.nan.cloud.core.service.PermissionEventPublisher;
 import org.nan.cloud.core.service.RoleAndPermissionService;
+import org.nan.cloud.core.service.UserService;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -37,6 +41,7 @@ public class RoleFacade {
     private final RoleAndPermissionService roleAndPermissionService;
 
     private final PermissionChecker permissionChecker;
+    private final RoleAndPermissionConverter roleAndPermissionConverter;
 
     @Transactional
     public void createRole(CreateRoleRequest request) {
@@ -60,6 +65,17 @@ public class RoleFacade {
         permissionEventPublisher.publishAddRoleAndPermissionRelEvent(rid, oid, permissions);
     }
 
+    @SkipOrgManagerPermissionCheck
+    public RoleDetailResponse getRoleDetail(Long rid) {
+        RequestUserInfo requestUser = InvocationContextHolder.getContext().getRequestUser();
+        ExceptionEnum.ROLE_PERMISSION_DENIED.throwIf(!permissionChecker.ifHasPermissionOnTargetRole(requestUser.getOid(), requestUser.getUid(), rid));
+        Role role = roleAndPermissionService.getRoleByRid(rid, true);
+        List<OperationPermission> operationPermission = roleAndPermissionService.getOperationPermissionByRid(rid);
+        RoleDetailResponse roleDetailResponse = roleAndPermissionConverter.toRoleDetailResponse(role);
+        roleDetailResponse.setOperationPermissions(roleAndPermissionConverter.toOperationPermissionResponse(operationPermission));
+        return roleDetailResponse;
+    }
+
     public VisibleRolesResponse getVisibleRoles() {
         RequestUserInfo requestUser = InvocationContextHolder.getContext().getRequestUser();
         List<Role> visibleRoles;
@@ -79,8 +95,7 @@ public class RoleFacade {
     @SkipOrgManagerPermissionCheck
     public void updateRole(UpdateRolesRequest updateRolesRequest) {
         RequestUserInfo requestUser = InvocationContextHolder.getContext().getRequestUser();
-        ExceptionEnum.ORG_PERMISSION_DENIED.throwIf(!permissionChecker.ifTargetRoleIsTheSameOrg(requestUser.getOid(), updateRolesRequest.getRid()));
-        ExceptionEnum.ROLE_PERMISSION_DENIED.throwIf(!permissionChecker.ifHasPermissionOnTargetRole(requestUser.getUid(), updateRolesRequest.getRid()));
+        ExceptionEnum.ROLE_PERMISSION_DENIED.throwIf(!permissionChecker.ifHasPermissionOnTargetRole(requestUser.getOid(), requestUser.getUid(), updateRolesRequest.getRid()));
         UpdateRoleDTO dto = UpdateRoleDTO.builder()
                 .rid(updateRolesRequest.getRid())
                 .roleName(updateRolesRequest.getName())
@@ -106,8 +121,7 @@ public class RoleFacade {
     @SkipOrgManagerPermissionCheck
     public void deleteRole(Long rid) {
         RequestUserInfo requestUser = InvocationContextHolder.getContext().getRequestUser();
-        ExceptionEnum.ORG_PERMISSION_DENIED.throwIf(!permissionChecker.ifTargetRoleIsTheSameOrg(requestUser.getOid(), rid));
-        ExceptionEnum.ROLE_PERMISSION_DENIED.throwIf(!permissionChecker.ifHasPermissionOnTargetRole(requestUser.getUid(), rid));
+        ExceptionEnum.ROLE_PERMISSION_DENIED.throwIf(!permissionChecker.ifHasPermissionOnTargetRole(requestUser.getOid(), requestUser.getUid(), rid));
         roleAndPermissionService.deleteRole(requestUser.getOid(), rid);
         permissionEventPublisher.publishRemoveRoleEvent(rid, requestUser.getOid());
     }

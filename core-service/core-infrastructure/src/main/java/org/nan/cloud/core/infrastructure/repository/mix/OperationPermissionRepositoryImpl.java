@@ -46,6 +46,14 @@ public class OperationPermissionRepositoryImpl implements OperationPermissionRep
         return operationPermissions;
     }
 
+    @Override
+    public List<OperationPermission> getOperationPermissionWithoutPermissionMapByRid(Long rid) {
+        List<Long> operationPermissionIds = operationPermissionMapper.getOperationPermissionIdByRid(rid);
+        if (CollectionUtils.isEmpty(operationPermissionIds)) return null;
+        List<OperationPermissionDO> operationPermissionDOS = operationPermissionMapper.selectByIds(operationPermissionIds);
+        return commonConverter.toOperationPermission(operationPermissionDOS);
+    }
+
     /**
      * 用于获取用户可见操作权限（不包含详细接口权限对应）
      * @param rids

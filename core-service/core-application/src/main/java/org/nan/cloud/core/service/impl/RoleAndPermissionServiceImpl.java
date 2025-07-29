@@ -39,8 +39,9 @@ public class RoleAndPermissionServiceImpl implements RoleAndPermissionService {
     }
 
     @Override
-    public Role getRoleByRid(Long rid) {
-        return roleRepository.getRoleByRid(rid);
+    public Role getRoleByRid(Long rid, boolean fillDomain) {
+        if (fillDomain) return roleRepository.getRoleDetailByRid(rid);
+        else return roleRepository.getRoleByRid(rid);
     }
 
     @Override
@@ -49,7 +50,7 @@ public class RoleAndPermissionServiceImpl implements RoleAndPermissionService {
     }
 
     public void updateRole(UpdateRoleDTO updateRoleDTO) {
-        Role role = getRoleByRid(updateRoleDTO.getRid());
+        Role role = getRoleByRid(updateRoleDTO.getRid(), false);
         role.setUpdaterId(updateRoleDTO.getUpdaterUid());
         if (StringUtils.isNotBlank(updateRoleDTO.getRoleName())) {
             role.setDisplayName(updateRoleDTO.getRoleName());
@@ -100,6 +101,11 @@ public class RoleAndPermissionServiceImpl implements RoleAndPermissionService {
     public List<OperationPermission> getOperationPermissionByUid(Long uid) {
         List<Long> rids = roleRepository.getRidsByUid(uid);
         return operationPermissionRepository.getOperationPermissionByRids(rids);
+    }
+
+    @Override
+    public List<OperationPermission> getOperationPermissionByRid(Long rid) {
+        return operationPermissionRepository.getOperationPermissionWithoutPermissionMapByRid(rid);
     }
 
     @Override

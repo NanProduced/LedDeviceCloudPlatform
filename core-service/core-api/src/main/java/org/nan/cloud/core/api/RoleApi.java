@@ -1,7 +1,9 @@
 package org.nan.cloud.core.api;
 
+import jakarta.validation.constraints.NotNull;
 import org.nan.cloud.core.api.DTO.req.CreateRoleRequest;
 import org.nan.cloud.core.api.DTO.req.UpdateRolesRequest;
+import org.nan.cloud.core.api.DTO.res.RoleDetailResponse;
 import org.nan.cloud.core.api.DTO.res.VisibleRolesResponse;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -17,6 +19,9 @@ public interface RoleApi {
 
     @PostMapping(prefix + "/create")
     void createRole(@Validated @RequestBody CreateRoleRequest request);
+
+    @GetMapping(prefix + "/detail")
+    RoleDetailResponse getRoleDetail(@RequestParam("rid") @NotNull Long rid);
 
     @GetMapping(prefix + "/get/visible")
     VisibleRolesResponse getVisibleRoles();

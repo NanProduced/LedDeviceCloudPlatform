@@ -5,16 +5,17 @@ import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
 import lombok.RequiredArgsConstructor;
 import org.nan.cloud.core.domain.Role;
 import org.nan.cloud.core.infrastructure.repository.mysql.DO.RoleDO;
+import org.nan.cloud.core.infrastructure.repository.mysql.DO.UserDO;
 import org.nan.cloud.core.infrastructure.repository.mysql.converter.CommonConverter;
 import org.nan.cloud.core.infrastructure.repository.mysql.mapper.RoleMapper;
+import org.nan.cloud.core.infrastructure.repository.mysql.mapper.UserMapper;
 import org.nan.cloud.core.repository.RoleRepository;
 import org.springframework.dao.DuplicateKeyException;
 import org.springframework.stereotype.Repository;
+import org.springframework.util.CollectionUtils;
 
 import java.time.LocalDateTime;
-import java.util.Collection;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 import java.util.stream.Collectors;
 
 @Repository
@@ -24,6 +25,8 @@ public class RoleRepositoryImpl implements RoleRepository {
     private final RoleMapper roleMapper;
 
     private final CommonConverter commonConverter;
+
+    private final UserMapper userMapper;
 
     @Override
     public Role createRole(Role role) {
@@ -36,6 +39,20 @@ public class RoleRepositoryImpl implements RoleRepository {
     @Override
     public Role getRoleByRid(Long rid) {
         return commonConverter.roleDO2Role(roleMapper.selectById(rid));
+    }
+
+    @Override
+    public Role getRoleDetailByRid(Long rid) {
+        Role role = commonConverter.roleDO2Role(roleMapper.selectById(rid));
+        Set<Long> uids = new HashSet<>();
+        uids.add(role.getCreatorId());
+        uids.add(role.getUpdaterId());
+        Map<Long, String> userName = userMapper.selectList(new LambdaQueryWrapper<UserDO>()
+                .select(UserDO::getUid, UserDO::getUsername)
+                .in(UserDO::getUid, uids)).stream().collect(Collectors.toMap(UserDO::getUid, UserDO::getUsername, (oldName, newName) -> newName));
+        role.setCreatorName(userName.get(role.getCreatorId()));
+        role.setUpdaterName(userName.get(role.getUpdaterId()));
+        return role;
     }
 
     @Override
@@ -102,6 +119,22 @@ public class RoleRepositoryImpl implements RoleRepository {
         return roleMapper.exists(new LambdaQueryWrapper<RoleDO>()
                 .eq(RoleDO::getOid, oid)
                 .eq(RoleDO::getRid, rid));
+    }
+
+    @Override
+    public boolean ifTheSameOrg(Long oid, List<Long> rids) {
+        if (CollectionUtils.isEmpty(rids)) {
+            return false;
+        }
+
+        // 查询在这个 org 下，rid 在给定列表中的总数
+        long count = roleMapper.selectCount(
+                new LambdaQueryWrapper<RoleDO>()
+                        .eq(RoleDO::getOid, oid)
+                        .in(RoleDO::getRid, rids)
+        );
+
+        return count == rids.size();
     }
 
     @Override

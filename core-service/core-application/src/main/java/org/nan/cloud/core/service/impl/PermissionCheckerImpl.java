@@ -51,7 +51,7 @@ public class PermissionCheckerImpl implements PermissionChecker {
 
     @Override
     public boolean ifHasPermissionOnTargetRoles(Long oid, Long uid, List<Long> targetRoles) {
-        if (PermissionCheckSkipContext.isSkip()) return true;
+        if (PermissionCheckSkipContext.isSkip()) return roleRepository.ifTheSameOrg(oid, targetRoles);
         List<Long> rids = roleRepository.getRidsByUid(uid);
         Set<Long> curPermissions = new HashSet<>(operationPermissionRepository.getOperationPermissionIdByRids(rids));
         List<Long> targetPermissions = operationPermissionRepository.getOperationPermissionIdByRids(targetRoles);
@@ -59,8 +59,8 @@ public class PermissionCheckerImpl implements PermissionChecker {
     }
 
     @Override
-    public boolean ifHasPermissionOnTargetRole(Long uid, Long targetRole) {
-        if (PermissionCheckSkipContext.isSkip()) return true;
+    public boolean ifHasPermissionOnTargetRole(Long oid, Long uid, Long targetRole) {
+        if (PermissionCheckSkipContext.isSkip()) return roleRepository.ifTheSameOrg(oid, targetRole);
         List<Long> rids = roleRepository.getRidsByUid(uid);
         Set<Long> curPermissions = new HashSet<>(operationPermissionRepository.getOperationPermissionIdByRids(rids));
         List<Long> targetPermissions = operationPermissionRepository.getOperationPermissionByRid(targetRole).stream().map(OperationPermission::getOperationPermissionId).toList();

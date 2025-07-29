@@ -4,6 +4,7 @@ import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;
 import org.nan.cloud.core.api.DTO.req.UpdateRolesRequest;
+import org.nan.cloud.core.api.DTO.res.RoleDetailResponse;
 import org.nan.cloud.core.api.DTO.res.VisibleRolesResponse;
 import org.nan.cloud.core.api.RoleApi;
 import org.nan.cloud.core.api.DTO.req.CreateRoleRequest;
@@ -27,6 +28,16 @@ public class RoleController implements RoleApi {
     @Override
     public void createRole(CreateRoleRequest request) {
         roleFacade.createRole(request);
+    }
+
+    @Operation(
+            summary = "获取角色详情",
+            description = "获取角色详情，包含角色的操作权限，用于回显角色",
+            tags = "角色管理"
+    )
+    @Override
+    public RoleDetailResponse getRoleDetail(Long rid) {
+        return roleFacade.getRoleDetail(rid);
     }
 
     @Operation(

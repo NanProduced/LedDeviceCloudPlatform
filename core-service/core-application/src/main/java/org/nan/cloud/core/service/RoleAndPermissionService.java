@@ -14,7 +14,7 @@ public interface RoleAndPermissionService {
 
     Role createRole(Role role);
 
-    Role getRoleByRid(Long rid);
+    Role getRoleByRid(Long rid, boolean fillDomain);
 
     List<Role> getRolesByUid(Long uid);
 
@@ -31,6 +31,8 @@ public interface RoleAndPermissionService {
     List<Permission> getPermissionsByOperationPermissionIds(List<Long> operationPermissionIds);
 
     List<OperationPermission> getOperationPermissionByUid(Long uid);
+
+    List<OperationPermission> getOperationPermissionByRid(Long rid);
 
     Set<Long> getOperationPermissionIdByUid(Long uid);
 
