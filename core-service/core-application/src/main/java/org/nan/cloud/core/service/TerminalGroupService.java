@@ -23,8 +23,10 @@ public interface TerminalGroupService {
 
     /**
      * 创建终端组
+     * @param createTerminalGroupDTO 创建参数
+     * @return 创建的终端组
      */
-    void createTerminalGroup(CreateTerminalGroupDTO createTerminalGroupDTO);
+    TerminalGroup createTerminalGroup(CreateTerminalGroupDTO createTerminalGroupDTO);
 
     /**
      * 删除终端组

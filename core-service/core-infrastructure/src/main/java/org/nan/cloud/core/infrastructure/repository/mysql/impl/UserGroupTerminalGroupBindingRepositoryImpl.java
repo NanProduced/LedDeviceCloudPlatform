@@ -112,4 +112,10 @@ public class UserGroupTerminalGroupBindingRepositoryImpl implements UserGroupTer
         List<UserGroupTerminalGroupBindingDO> bindingDOs = bindingMapper.selectUserGroupPermissionDetails(ugid);
         return commonConverter.toUserGroupTerminalGroupBinding(bindingDOs);
     }
+
+    @Override
+    public void createUserGroupBinding(UserGroupTerminalGroupBinding binding) {
+        UserGroupTerminalGroupBindingDO bindingDO = commonConverter.toUserGroupTerminalGroupBindingDO(binding);
+        bindingMapper.insert(bindingDO);
+    }
 }

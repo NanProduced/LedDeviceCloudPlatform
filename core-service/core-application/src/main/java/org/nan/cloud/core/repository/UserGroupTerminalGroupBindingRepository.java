@@ -58,4 +58,10 @@ public interface UserGroupTerminalGroupBindingRepository {
      */
     void replaceUserGroupPermissions(Long ugid, List<UserGroupTerminalGroupBinding> newBindings);
 
+    /**
+     * 创建单个用户组终端组绑定
+     * @param binding 绑定关系
+     */
+    void createUserGroupBinding(UserGroupTerminalGroupBinding binding);
+
 }

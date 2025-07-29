@@ -613,6 +613,51 @@ public class UserGroupTerminalGroupBindingServiceImpl implements UserGroupTermin
         }
     }
 
+    @Override
+    public void autoBindNewTerminalGroupPermission(Long ugid, Long newTgid, Long parentTgid, Long creatorId, Long oid) {
+        try {
+            // 1. 检查用户组是否对父终端组有权限
+            List<Long> accessibleTgids = getAccessibleTerminalGroupIds(ugid);
+            if (!accessibleTgids.contains(parentTgid)) {
+                log.warn("[自动权限绑定] 用户组无权限访问父终端组 - 用户组ID: {}, 父终端组ID: {}", ugid, parentTgid);
+                return;
+            }
+
+            // 2. 检查是否已经存在对新终端组的权限绑定
+            List<UserGroupTerminalGroupBinding> existingBindings = bindingRepository.getUserGroupBindings(ugid);
+            boolean hasExistingBinding = existingBindings.stream()
+                    .anyMatch(binding -> binding.getTgid().equals(newTgid));
+
+            if (hasExistingBinding) {
+                log.info("[自动权限绑定] 已存在权限绑定，跳过自动绑定 - 用户组ID: {}, 终端组ID: {}", ugid, newTgid);
+                return;
+            }
+
+            // 3. 创建新的权限绑定
+            UserGroupTerminalGroupBinding newBinding = UserGroupTerminalGroupBinding.builder()
+                    .ugid(ugid)
+                    .tgid(newTgid)
+                    .bindingType(BindingType.INCLUDE)
+                    .includeSub(false)  // 只绑定当前组，不包含子组
+                    .oid(oid)
+                    .creatorId(creatorId)
+                    .createTime(LocalDateTime.now())
+                    .updaterId(creatorId)
+                    .updateTime(LocalDateTime.now())
+                    .build();
+
+            // 4. 添加权限绑定到数据库
+            bindingRepository.createUserGroupBinding(newBinding);
+
+            log.info("[自动权限绑定] 成功为用户组自动添加终端组权限 - 用户组ID: {}, 终端组ID: {}, 创建者ID: {}", 
+                     ugid, newTgid, creatorId);
+
+        } catch (Exception e) {
+            log.error("[自动权限绑定] 自动添加权限绑定时发生异常 - 用户组ID: {}, 终端组ID: {}, 错误: {}", 
+                      ugid, newTgid, e.getMessage(), e);
+        }
+    }
+
     /**
      * 权限优化结果
      */

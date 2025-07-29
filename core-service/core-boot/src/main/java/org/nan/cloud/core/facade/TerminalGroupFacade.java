@@ -74,7 +74,20 @@ public class TerminalGroupFacade {
                 .creatorId(userInfo.getUid())
                 .build();
         
-        terminalGroupService.createTerminalGroup(createDTO);
+        // 1. 创建终端组
+        TerminalGroup newTerminalGroup = terminalGroupService.createTerminalGroup(createDTO);
+        
+        // 2. 自动为用户组添加对新创建终端组的权限绑定
+        bindingService.autoBindNewTerminalGroupPermission(
+                userInfo.getUgid(),           // 用户组ID
+                newTerminalGroup.getTgid(),   // 新创建的终端组ID
+                request.getParentTgid(),      // 父终端组ID
+                userInfo.getUid(),            // 创建者ID
+                userInfo.getOid()             // 组织ID
+        );
+        
+        log.info("[终端组创建] 已创建终端组并自动绑定权限 - 用户: {}, 用户组: {}, 终端组: {}, 父组: {}", 
+                 userInfo.getUid(), userInfo.getUgid(), newTerminalGroup.getTgid(), request.getParentTgid());
     }
 
     @Transactional

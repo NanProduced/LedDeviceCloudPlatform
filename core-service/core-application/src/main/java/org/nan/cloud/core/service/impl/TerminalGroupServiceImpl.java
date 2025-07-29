@@ -63,7 +63,7 @@ public class TerminalGroupServiceImpl implements TerminalGroupService {
 
     @Override
     @Transactional
-    public void createTerminalGroup(CreateTerminalGroupDTO createTerminalGroupDTO) {
+    public TerminalGroup createTerminalGroup(CreateTerminalGroupDTO createTerminalGroupDTO) {
         TerminalGroup parentGroup = terminalGroupRepository.getTerminalGroupById(createTerminalGroupDTO.getParentTgid());
         TerminalGroup terminalGroup = TerminalGroup.builder()
                 .name(createTerminalGroupDTO.getTerminalGroupName())
@@ -74,7 +74,7 @@ public class TerminalGroupServiceImpl implements TerminalGroupService {
                 .tgType(TerminalGroupTypeEnum.NORMAL_GROUP.getType())
                 .creatorId(createTerminalGroupDTO.getCreatorId())
                 .build();
-        terminalGroupRepository.createTerminalGroup(terminalGroup);
+        return terminalGroupRepository.createTerminalGroup(terminalGroup);
     }
 
     @Override
