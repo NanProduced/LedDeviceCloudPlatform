@@ -3,6 +3,7 @@ package org.nan.cloud.core.service;
 import java.time.Duration;
 import java.util.Collection;
 import java.util.Map;
+import java.util.Set;
 import java.util.concurrent.CompletableFuture;
 import java.util.function.Supplier;
 
@@ -108,4 +109,71 @@ public interface CacheService {
      * @return 缓存统计
      */
     CacheStatistics getStatistics();
+    
+    /**
+     * 获取有序集合指定范围的元素
+     * @param key 缓存键
+     * @param start 开始位置
+     * @param end 结束位置
+     * @return 有序集合元素列表
+     */
+    Set<String> zRange(String key, long start, long end);
+    
+    /**
+     * 获取有序集合指定分数范围的元素
+     * @param key 缓存键
+     * @param min 最小分数
+     * @param max 最大分数
+     * @return 有序集合元素列表
+     */
+    Set<String> zRangeByScore(String key, double min, double max);
+    
+    /**
+     * 获取有序集合指定范围的元素及其分数
+     * @param key 缓存键
+     * @param start 开始位置
+     * @param end 结束位置
+     * @return 有序集合元素及分数的映射
+     */
+    Set<String> zRangeWithScores(String key, long start, long end);
+    
+    /**
+     * 添加元素到有序集合
+     * @param key 缓存键
+     * @param value 元素值
+     * @param score 分数
+     * @return 是否成功添加
+     */
+    Boolean zAdd(String key, String value, double score);
+    
+    /**
+     * 批量添加元素到有序集合
+     * @param key 缓存键
+     * @param scoreMembers 分数和元素的映射
+     * @return 添加成功的元素数量
+     */
+    Long zAdd(String key, Map<String, Double> scoreMembers);
+    
+    /**
+     * 从有序集合中移除元素
+     * @param key 缓存键
+     * @param values 要移除的元素
+     * @return 移除的元素数量
+     */
+    Long zRemove(String key, Object... values);
+    
+    /**
+     * 获取有序集合的元素数量
+     * @param key 缓存键
+     * @return 元素数量
+     */
+    Long zCard(String key);
+    
+    /**
+     * 获取指定元素在有序集合中的分数
+     * @param key 缓存键
+     * @param value 元素值
+     * @return 分数
+     */
+    Double zScore(String key, String value);
 }

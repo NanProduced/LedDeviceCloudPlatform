@@ -18,6 +18,9 @@ import org.springframework.transaction.annotation.Transactional;
 import java.time.LocalDateTime;
 import java.util.Collections;
 import java.util.List;
+import java.util.Map;
+import java.util.Set;
+import java.util.stream.Collectors;
 
 @Slf4j
 @Service
@@ -30,6 +33,12 @@ public class TerminalGroupServiceImpl implements TerminalGroupService {
     @Override
     public TerminalGroup getTerminalGroupById(Long tgid) {
         return terminalGroupRepository.getTerminalGroupById(tgid);
+    }
+
+    @Override
+    public Map<Long, String> getTgidAndTgNameMap(Long oid, Set<Long> tgid) {
+        List<TerminalGroup> terminalGroupNames = terminalGroupRepository.getTerminalGroupNames(oid, tgid);
+        return terminalGroupNames.stream().collect(Collectors.toMap(TerminalGroup::getTgid, TerminalGroup::getName));
     }
 
     @Override

@@ -22,6 +22,7 @@ import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.Map;
+import java.util.Set;
 import java.util.stream.Collectors;
 
 @Component
@@ -51,6 +52,11 @@ public class TerminalFacade {
         terminalService.createTerminal(createTerminalDTO);
     }
 
+    /**
+     * 查询终端列表
+     * @param requestDTO
+     * @return
+     */
     public PageVO<TerminalListResponse> listTerminals(PageRequestDTO<QueryTerminalListRequest> requestDTO) {
         Long ugid = InvocationContextHolder.getUgid();
         Long oid = InvocationContextHolder.getOid();
@@ -76,27 +82,22 @@ public class TerminalFacade {
         }
         
         // 获取终端组信息，用于设置终端组名称
-        Map<Long, String> terminalGroupMap = terminalPageVO.getRecords().stream()
+        Set<Long> resultTgids = terminalPageVO.getRecords().stream()
                 .map(Terminal::getTgid)
-                .distinct()
-                .collect(Collectors.toMap(
-                        tgid -> tgid,
-                        tgid -> {
-                            TerminalGroup group = terminalGroupService.getTerminalGroupById(tgid);
-                            return group != null ? group.getName() : "未知分组";
-                        }
-                ));
-        
+                .collect(Collectors.toSet());
+        Map<Long, String> tgNameMap = terminalGroupService.getTgidAndTgNameMap(oid, resultTgids);
+
+
         return terminalPageVO.map(terminal -> TerminalListResponse.builder()
                 .tid(terminal.getTid())
                 .terminalName(terminal.getTerminalName())
                 .description(terminal.getDescription())
                 .terminalModel(terminal.getTerminalModel())
                 .tgid(terminal.getTgid())
-                .tgName(terminalGroupMap.get(terminal.getTgid()))
+                .tgName(tgNameMap.get(terminal.getTgid()))
                 .firmwareVersion(terminal.getFirmwareVersion())
                 .serialNumber(terminal.getSerialNumber())
-                .onlineStatus(null) // TODO: 实现终端在线状态查询
+                .onlineStatus(terminal.getOnlineStatus())
                 .createdAt(terminal.getCreatedAt())
                 .updatedAt(terminal.getUpdatedAt())
                 .createdBy(terminal.getCreatedBy())

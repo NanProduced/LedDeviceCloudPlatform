@@ -12,8 +12,10 @@ import org.nan.cloud.core.domain.TerminalAccount;
 import org.nan.cloud.core.domain.TerminalGroup;
 import org.nan.cloud.core.repository.TerminalGroupRepository;
 import org.nan.cloud.core.repository.TerminalRepository;
+import org.nan.cloud.core.service.TerminalCacheService;
 import org.nan.cloud.core.service.TerminalService;
 import org.springframework.stereotype.Service;
+import org.springframework.util.CollectionUtils;
 
 import java.util.*;
 import java.util.stream.Collectors;
@@ -25,6 +27,7 @@ public class TerminalServiceImpl implements TerminalService {
 
     private final TerminalRepository terminalRepository;
     private final TerminalGroupRepository terminalGroupRepository;
+    private final TerminalCacheService terminalCacheService;
 
     @Override
     public void createTerminal(CreateTerminalDTO createTerminalDTO) {
@@ -50,30 +53,26 @@ public class TerminalServiceImpl implements TerminalService {
 
     @Override
     public PageVO<Terminal> pageTerminals(int pageNum, int pageSize, QueryTerminalListDTO dto) {
-        Map<Long, String> groupMap = new HashMap<>();
-        Set<Long> filterTgids = null;
+        Set<Long> filterTgids;
         if (dto.isIfIncludeSubGroups()) {
             filterTgids = terminalGroupRepository.getAllTgidsByParent(dto.getTgid());
         } else {
             filterTgids = Collections.singleton(dto.getTgid());
         }
-        List<Long> filterTids = null;
+        Set<Long> filterTids = null;
+        Set<Long> onlineTids = terminalCacheService.getOnlineTidsByOid(dto.getOid());
         if (Objects.nonNull(dto.getOnlineStatus())) {
-
+            filterTids = onlineTids;
+            // 无在线终端直接返回
+            if (dto.getOnlineStatus().equals(1) && CollectionUtils.isEmpty(filterTids)) {
+                return PageVO.empty();
+            }
         }
-
-        
         PageVO<Terminal> terminalPageVO = terminalRepository.pageTerminals(
-                pageNum, pageSize, dto.getOid(), groupMap.keySet(), 
-                dto.getKeyword(), dto.getTerminalModel(), dto.getOnlineStatus());
-        
-        // 设置终端组名称
-        terminalPageVO.getRecords().forEach(terminal -> {
-            String tgName = groupMap.get(terminal.getTgid());
-            // 注意：Terminal domain对象没有tgName字段，这里只是示例
-            // 实际应该在响应层设置tgName
-        });
-        
+                pageNum, pageSize, dto.getOid(), filterTgids,
+                dto.getKeyword(), dto.getTerminalModel(), dto.getOnlineStatus(), filterTids);
+        // 终端在线状态设置
+        terminalPageVO.getRecords().forEach(e -> e.setOnlineStatus(onlineTids.contains(e.getTid()) ? 1 : 0));
         return terminalPageVO;
     }
 }

@@ -36,4 +36,6 @@ public class Terminal {
     private Long createdBy;
 
     private Long updatedBy;
+
+    private Integer onlineStatus;
 }

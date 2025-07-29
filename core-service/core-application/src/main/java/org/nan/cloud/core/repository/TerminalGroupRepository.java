@@ -19,6 +19,8 @@ public interface TerminalGroupRepository {
      */
     TerminalGroup getTerminalGroupById(Long tgid);
 
+    List<TerminalGroup> getTerminalGroupNames(Long oid, Set<Long> tgids);
+
     /**
      * 更新终端组
      */

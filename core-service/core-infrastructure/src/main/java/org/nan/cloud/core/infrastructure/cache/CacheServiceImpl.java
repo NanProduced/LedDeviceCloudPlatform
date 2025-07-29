@@ -9,6 +9,7 @@ import org.nan.cloud.core.service.CacheService;
 import org.nan.cloud.core.service.CacheStatistics;
 import org.springframework.data.redis.core.RedisCallback;
 import org.springframework.data.redis.core.RedisTemplate;
+import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.stereotype.Service;
 
 import java.time.Duration;
@@ -30,6 +31,7 @@ public class CacheServiceImpl implements CacheService {
 
     private final AsyncCache<String, Object> localCache;
     private final RedisTemplate<String, Object> redisTemplate;
+    private final StringRedisTemplate stringRedisTemplate;
     private final CacheProperties cacheProperties;
     private final ObjectMapper objectMapper;
 
@@ -372,6 +374,172 @@ public class CacheServiceImpl implements CacheService {
     @Override
     public CacheStatistics getStatistics() {
         return new CacheStatisticsImpl(localCache.synchronous().stats());
+    }
+
+    @Override
+    public Set<String> zRange(String key, long start, long end) {
+        try {
+            if (!cacheProperties.getRedis().isEnabled()) {
+                log.warn("Redis is disabled, cannot perform zRange operation");
+                return Collections.emptySet();
+            }
+            
+            Set<String> result = stringRedisTemplate.opsForZSet().range(key, start, end);
+            log.debug("ZSet range for key: {}, start: {}, end: {}, result size: {}", 
+                      key, start, end, result != null ? result.size() : 0);
+            return result != null ? result : Collections.emptySet();
+            
+        } catch (Exception e) {
+            log.error("Error getting zRange for key: {}", key, e);
+            return Collections.emptySet();
+        }
+    }
+
+    @Override
+    public Set<String> zRangeByScore(String key, double min, double max) {
+        try {
+            if (!cacheProperties.getRedis().isEnabled()) {
+                log.warn("Redis is disabled, cannot perform zRangeByScore operation");
+                return Collections.emptySet();
+            }
+            
+            Set<String> result = stringRedisTemplate.opsForZSet().rangeByScore(key, min, max);
+            log.debug("ZSet rangeByScore for key: {}, min: {}, max: {}, result size: {}", 
+                      key, min, max, result != null ? result.size() : 0);
+            return result != null ? result : Collections.emptySet();
+            
+        } catch (Exception e) {
+            log.error("Error getting zRangeByScore for key: {}", key, e);
+            return Collections.emptySet();
+        }
+    }
+
+    @Override
+    public Set<String> zRangeWithScores(String key, long start, long end) {
+        try {
+            if (!cacheProperties.getRedis().isEnabled()) {
+                log.warn("Redis is disabled, cannot perform zRangeWithScores operation");
+                return Collections.emptySet();
+            }
+            
+            // 获取带分数的结果，然后转换为字符串集合
+            Set<String> result = stringRedisTemplate.opsForZSet().range(key, start, end);
+            log.debug("ZSet rangeWithScores for key: {}, start: {}, end: {}, result size: {}", 
+                      key, start, end, result != null ? result.size() : 0);
+            return result != null ? result : Collections.emptySet();
+            
+        } catch (Exception e) {
+            log.error("Error getting zRangeWithScores for key: {}", key, e);
+            return Collections.emptySet();
+        }
+    }
+
+    @Override
+    public Boolean zAdd(String key, String value, double score) {
+        try {
+            if (!cacheProperties.getRedis().isEnabled()) {
+                log.warn("Redis is disabled, cannot perform zAdd operation");
+                return false;
+            }
+            
+            Boolean result = stringRedisTemplate.opsForZSet().add(key, value, score);
+            log.debug("ZSet add for key: {}, value: {}, score: {}, result: {}", 
+                      key, value, score, result);
+            return result != null ? result : false;
+            
+        } catch (Exception e) {
+            log.error("Error adding to zSet for key: {}", key, e);
+            return false;
+        }
+    }
+
+    @Override
+    public Long zAdd(String key, Map<String, Double> scoreMembers) {
+        try {
+            if (!cacheProperties.getRedis().isEnabled()) {
+                log.warn("Redis is disabled, cannot perform zAdd operation");
+                return 0L;
+            }
+            
+            if (scoreMembers == null || scoreMembers.isEmpty()) {
+                return 0L;
+            }
+            
+            // 转换为ZSetOperations.TypedTuple集合
+            Set<org.springframework.data.redis.core.ZSetOperations.TypedTuple<String>> tuples = 
+                scoreMembers.entrySet().stream()
+                    .map(entry -> org.springframework.data.redis.core.ZSetOperations.TypedTuple
+                        .of(entry.getKey(), entry.getValue()))
+                    .collect(Collectors.toSet());
+            
+            Long result = stringRedisTemplate.opsForZSet().add(key, tuples);
+            log.debug("ZSet batch add for key: {}, members count: {}, result: {}", 
+                      key, scoreMembers.size(), result);
+            return result != null ? result : 0L;
+            
+        } catch (Exception e) {
+            log.error("Error batch adding to zSet for key: {}", key, e);
+            return 0L;
+        }
+    }
+
+    @Override
+    public Long zRemove(String key, Object... values) {
+        try {
+            if (!cacheProperties.getRedis().isEnabled()) {
+                log.warn("Redis is disabled, cannot perform zRemove operation");
+                return 0L;
+            }
+            
+            if (values == null || values.length == 0) {
+                return 0L;
+            }
+            
+            Long result = stringRedisTemplate.opsForZSet().remove(key, values);
+            log.debug("ZSet remove for key: {}, values count: {}, result: {}", 
+                      key, values.length, result);
+            return result != null ? result : 0L;
+            
+        } catch (Exception e) {
+            log.error("Error removing from zSet for key: {}", key, e);
+            return 0L;
+        }
+    }
+
+    @Override
+    public Long zCard(String key) {
+        try {
+            if (!cacheProperties.getRedis().isEnabled()) {
+                log.warn("Redis is disabled, cannot perform zCard operation");
+                return 0L;
+            }
+            
+            Long result = stringRedisTemplate.opsForZSet().zCard(key);
+            log.debug("ZSet card for key: {}, result: {}", key, result);
+            return result != null ? result : 0L;
+            
+        } catch (Exception e) {
+            log.error("Error getting zCard for key: {}", key, e);
+            return 0L;
+        }
+    }
+
+    @Override
+    public Double zScore(String key, String value) {
+        try {
+            if (!cacheProperties.getRedis().isEnabled()) {
+                log.warn("Redis is disabled, cannot perform zScore operation");
+                return null;
+            }
+            
+            Double result = stringRedisTemplate.opsForZSet().score(key, value);
+            log.debug("ZSet score for key: {}, value: {}, result: {}", key, value, result);
+            return result;
+            
+        } catch (Exception e) {
+            log.error("Error getting zScore for key: {}", key, e);
+            return null;
+        }
     }
 
     /**

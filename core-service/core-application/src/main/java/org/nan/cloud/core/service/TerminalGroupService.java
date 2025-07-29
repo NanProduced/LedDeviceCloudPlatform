@@ -1,10 +1,11 @@
 package org.nan.cloud.core.service;
 
-import org.nan.cloud.common.basic.model.PageVO;
 import org.nan.cloud.core.DTO.*;
 import org.nan.cloud.core.domain.TerminalGroup;
 
 import java.util.List;
+import java.util.Map;
+import java.util.Set;
 
 public interface TerminalGroupService {
 
@@ -12,6 +13,8 @@ public interface TerminalGroupService {
      * 根据ID获取终端组
      */
     TerminalGroup getTerminalGroupById(Long tgid);
+
+    Map<Long, String> getTgidAndTgNameMap(Long oid, Set<Long> tgid);
     
     /**
      * 根据ID和组织ID获取终端组（带缓存）

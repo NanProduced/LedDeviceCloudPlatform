@@ -48,7 +48,7 @@ public class TerminalRepositoryImpl implements TerminalRepository {
     }
 
     @Override
-    public PageVO<Terminal> pageTerminals(int pageNum, int pageSize, Long oid, Set<Long> tgids, String keyword, String terminalModel, Integer onlineStatus) {
+    public PageVO<Terminal> pageTerminals(int pageNum, int pageSize, Long oid, Set<Long> tgids, String keyword, String terminalModel, Integer onlineStatus, Set<Long> filterTids) {
         Page<TerminalInfoDO> page = new Page<>(pageNum, pageSize);
         LambdaQueryWrapper<TerminalInfoDO> queryWrapper = new LambdaQueryWrapper<TerminalInfoDO>()
                 .eq(TerminalInfoDO::getOid, oid)
@@ -68,10 +68,15 @@ public class TerminalRepositoryImpl implements TerminalRepository {
             queryWrapper.eq(TerminalInfoDO::getTerminalModel, terminalModel);
         }
         
-        // TODO: 终端在线状态筛选 - 需要实现在线状态查询逻辑
-        // if (Objects.nonNull(onlineStatus)) {
-        //     // 在线状态不存在于MySQL中，需要从其他数据源查询
-        // }
+         // 终端在线状态筛选
+         if (Objects.nonNull(onlineStatus)) {
+             if (onlineStatus.equals(0)) {
+                 queryWrapper.notIn(TerminalInfoDO::getTid, filterTids);
+             }
+             else {
+                 queryWrapper.in(TerminalInfoDO::getTid, filterTids);
+             }
+         }
         
         queryWrapper.orderByDesc(TerminalInfoDO::getCreatedAt);
 

@@ -45,6 +45,15 @@ public class TerminalGroupRepositoryImpl implements TerminalGroupRepository {
     }
 
     @Override
+    public List<TerminalGroup> getTerminalGroupNames(Long oid, Set<Long> tgids) {
+        List<TerminalGroupDO> terminalGroupDOS = terminalGroupMapper.selectList(new LambdaQueryWrapper<TerminalGroupDO>()
+                .select(TerminalGroupDO::getTgid, TerminalGroupDO::getName)
+                .eq(TerminalGroupDO::getOid, oid)
+                .in(TerminalGroupDO::getTgid, tgids));
+        return commonConverter.terminalGroupDO2TerminalGroup(terminalGroupDOS);
+    }
+
+    @Override
     public void updateTerminalGroup(TerminalGroup terminalGroup) {
         terminalGroup.setUpdateTime(LocalDateTime.now());
         terminalGroupMapper.updateById(commonConverter.terminalGroup2TerminalGroupDO(terminalGroup));
