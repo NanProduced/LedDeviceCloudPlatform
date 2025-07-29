@@ -33,14 +33,4 @@ public interface UserGroupService {
      * 查询组下所有用户组（包含当前组）
      */
     List<UserGroupRelDTO> getAllUserGroupsByParent(Long ugid);
-    
-    /**
-     * 将新创建的用户组添加到缓存
-     */
-    UserGroup cacheNewUserGroup(Long oid, Long ugid, UserGroup userGroup);
-    
-    /**
-     * 清理指定用户组的缓存
-     */
-    void evictUserGroupCache(Long oid, Long ugid);
 }

@@ -15,8 +15,10 @@ public enum CacheType {
     
     // 权限相关缓存
     PERMISSION_EXPRESSION("permission:expression", Duration.ofMinutes(30), true, true),
+    USER_PERMISSIONS("user:permissions", Duration.ofMinutes(30), true, true),
     
     // 用户相关缓存
+    USER_INFO("user:info", Duration.ofMinutes(30), true, true),
     USER_GROUPS("user:groups", Duration.ofMinutes(30), true, true),
     
     // 终端组缓存

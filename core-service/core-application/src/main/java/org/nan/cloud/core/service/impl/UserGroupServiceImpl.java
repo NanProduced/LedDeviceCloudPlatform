@@ -9,14 +9,13 @@ import org.nan.cloud.core.DTO.CreateUserGroupDTO;
 import org.nan.cloud.core.DTO.UserGroupRelDTO;
 import org.nan.cloud.core.domain.User;
 import org.nan.cloud.core.domain.UserGroup;
+import org.nan.cloud.core.enums.CacheType;
 import org.nan.cloud.core.enums.UserGroupTypeEnum;
 import org.nan.cloud.core.repository.UserGroupRepository;
 import org.nan.cloud.core.repository.UserRepository;
 import org.nan.cloud.core.service.BusinessCacheService;
+import org.nan.cloud.core.service.CacheService;
 import org.nan.cloud.core.service.UserGroupService;
-import org.springframework.cache.annotation.Cacheable;
-import org.springframework.cache.annotation.CacheEvict;
-import org.springframework.cache.annotation.CachePut;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.CollectionUtils;
@@ -32,6 +31,7 @@ public class UserGroupServiceImpl implements UserGroupService {
 
     private final UserGroupRepository userGroupRepository;
     private final UserRepository userRepository;
+    private final CacheService cacheService;
 
     @Override
     public UserGroup getUserGroupById(Long ugid) {
@@ -42,10 +42,10 @@ public class UserGroupServiceImpl implements UserGroupService {
      * 带缓存的用户组查询（需要组织ID进行缓存隔离）
      */
     @Override
-    @Cacheable(value = "usergroups", key = "'org:' + #oid + ':user-group:' + #ugid", unless = "#result == null")
     public UserGroup getUserGroupById(Long oid, Long ugid) {
-        // 直接从数据库查询，缓存由Spring自动管理
-        return userGroupRepository.getUserGroupById(ugid);
+        String cacheKey = CacheType.USER_GROUPS.buildOrgKey(oid, ugid.toString());
+        
+        return cacheService.get(cacheKey, () -> userGroupRepository.getUserGroupById(ugid), UserGroup.class);
     }
 
     @Override
@@ -64,18 +64,12 @@ public class UserGroupServiceImpl implements UserGroupService {
                 .build());
         
         // 2. 将新创建的用户组添加到缓存
-        this.cacheNewUserGroup(orgId, newUserGroup.getUgid(), newUserGroup);
+        String cacheKey = CacheType.USER_GROUPS.buildOrgKey(orgId, newUserGroup.getUgid().toString());
+        cacheService.put(cacheKey, newUserGroup, CacheType.USER_GROUPS.getDefaultTtl());
         
         log.info("用户组创建: orgId={}, name={}, creatorId={}, ugid={}", orgId, dto.getUgName(), dto.getCreatorUid(), newUserGroup.getUgid());
     }
     
-    /**
-     * 将新创建的用户组添加到缓存
-     */
-    @CachePut(value = "usergroups", key = "'org:' + #oid + ':user-group:' + #ugid")
-    public UserGroup cacheNewUserGroup(Long oid, Long ugid, UserGroup userGroup) {
-        return userGroup;
-    }
 
     @Override
     @Transactional
@@ -91,7 +85,8 @@ public class UserGroupServiceImpl implements UserGroupService {
         
         // 2. 删除用户组前先清理缓存
         for (Long deletedUgid : allUserGroups) {
-            this.evictUserGroupCache(orgId, deletedUgid);
+            String cacheKey = CacheType.USER_GROUPS.buildOrgKey(orgId, deletedUgid.toString());
+            cacheService.evict(cacheKey);
         }
         
         // 3. 删除用户组
@@ -100,13 +95,6 @@ public class UserGroupServiceImpl implements UserGroupService {
         log.info("用户组删除: orgId={}, ugid={}, deletedCount={}", orgId, ugid, allUserGroups.size());
     }
     
-    /**
-     * 清理指定用户组的缓存
-     */
-    @CacheEvict(value = "usergroups", key = "'org:' + #oid + ':user-group:' + #ugid")
-    public void evictUserGroupCache(Long oid, Long ugid) {
-        // 缓存清理由注解自动处理
-    }
 
     @Override
     public List<UserGroupRelDTO> getAllUserGroupsByParent(Long ugid) {
