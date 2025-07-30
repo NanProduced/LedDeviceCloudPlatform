@@ -271,6 +271,86 @@ public final class StompTopic {
     }
     
     /**
+     * 构建用户任务进度主题路径
+     * 
+     * @param userId 用户ID
+     * @return 用户任务进度主题路径
+     */
+    public static String buildUserTaskProgressTopic(String userId) {
+        return USER_TASK_PROGRESS_TOPIC_TEMPLATE.replace("{userId}", userId);
+    }
+    
+    /**
+     * 构建用户指令反馈主题路径
+     * 
+     * @param userId 用户ID
+     * @return 用户指令反馈主题路径
+     */
+    public static String buildUserCommandFeedbackTopic(String userId) {
+        return USER_COMMAND_FEEDBACK_TOPIC_TEMPLATE.replace("{userId}", userId);
+    }
+    
+    /**
+     * 构建组织终端状态主题路径
+     * 
+     * @param orgId 组织ID
+     * @return 组织终端状态主题路径
+     */
+    public static String buildOrgTerminalStatusTopic(String orgId) {
+        return ORG_TERMINAL_STATUS_TOPIC_TEMPLATE.replace("{orgId}", orgId);
+    }
+    
+    /**
+     * 构建组织监控主题路径
+     * 
+     * @param orgId 组织ID
+     * @return 组织监控主题路径
+     */
+    public static String buildOrgMonitoringTopic(String orgId) {
+        return ORG_MONITORING_TOPIC_TEMPLATE.replace("{orgId}", orgId);
+    }
+    
+    /**
+     * 构建终端指令主题路径
+     * 
+     * @param terminalId 终端ID
+     * @return 终端指令主题路径
+     */
+    public static String buildTerminalCommandTopic(String terminalId) {
+        return TERMINAL_COMMAND_TOPIC_TEMPLATE.replace("{terminalId}", terminalId);
+    }
+    
+    /**
+     * 构建终端数据流主题路径
+     * 
+     * @param terminalId 终端ID
+     * @return 终端数据流主题路径
+     */
+    public static String buildTerminalDataTopic(String terminalId) {
+        return TERMINAL_DATA_TOPIC_TEMPLATE.replace("{terminalId}", terminalId);
+    }
+    
+    /**
+     * 构建批量指令详细进度主题路径
+     * 
+     * @param taskId 任务ID
+     * @return 批量指令详细进度主题路径
+     */
+    public static String buildBatchCommandDetailedTopic(String taskId) {
+        return BATCH_COMMAND_DETAILED_TOPIC_TEMPLATE.replace("{taskId}", taskId);
+    }
+    
+    /**
+     * 构建批量指令结果主题路径
+     * 
+     * @param taskId 任务ID
+     * @return 批量指令结果主题路径
+     */
+    public static String buildBatchCommandResultTopic(String taskId) {
+        return BATCH_COMMAND_RESULT_TOPIC_TEMPLATE.replace("{taskId}", taskId);
+    }
+    
+    /**
      * 构建终端指令应用端点路径
      * 
      * @param terminalId 终端ID
@@ -278,5 +358,15 @@ public final class StompTopic {
      */
     public static String buildAppTerminalCommand(String terminalId) {
         return APP_TERMINAL_COMMAND_TEMPLATE.replace("{terminalId}", terminalId);
+    }
+    
+    /**
+     * 构建终端订阅应用端点路径
+     * 
+     * @param terminalId 终端ID
+     * @return 终端订阅应用端点路径
+     */
+    public static String buildAppTerminalSubscribe(String terminalId) {
+        return APP_TERMINAL_SUBSCRIBE_TEMPLATE.replace("{terminalId}", terminalId);
     }
 }

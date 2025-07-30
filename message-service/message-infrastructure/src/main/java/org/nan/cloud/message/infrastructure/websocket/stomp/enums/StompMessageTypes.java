@@ -18,6 +18,11 @@ public enum StompMessageTypes {
     TASK_PROGRESS,
 
     /* 通知 */
+    /**
+     * 一般是前端弹窗显示由系统给的业务相关的通知消息
+     * subType_1 : user\org\...
+     * subType_2 : ...
+     */
     NOTIFICATION,
 
     /* 告警信息 */

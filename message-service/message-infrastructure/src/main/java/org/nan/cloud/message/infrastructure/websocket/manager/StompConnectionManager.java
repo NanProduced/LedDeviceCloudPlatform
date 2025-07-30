@@ -511,4 +511,36 @@ public class StompConnectionManager {
         long totalCount = totalConnectionCount.get();
         return totalCount > 0 ? totalConnectedTime.get() / totalCount : 0;
     }
+    
+    /**
+     * 获取所有在线用户ID列表
+     * 
+     * @return 在线用户ID列表
+     */
+    public List<String> getAllOnlineUserIds() {
+        return new ArrayList<>(userConnections.keySet());
+    }
+    
+    /**
+     * 向指定用户发送STOMP消息（CommonStompMessage格式）
+     * 如果用户有多个连接（多设备登录），会向所有连接发送消息
+     * 
+     * @param userId 目标用户ID
+     * @param message 要发送的CommonStompMessage消息
+     * @return 是否发送成功
+     */
+    public boolean sendToUser(String userId, CommonStompMessage message) {
+        return sendToUser(userId, USER_NOTIFICATION_DESTINATION, message);
+    }
+    
+    /**
+     * 向组织内所有在线用户广播消息（CommonStompMessage格式）
+     * 
+     * @param organizationId 组织ID
+     * @param message CommonStompMessage消息内容
+     * @return 成功发送的用户数量
+     */
+    public int broadcastToOrganization(Long organizationId, CommonStompMessage message) {
+        return broadcastToOrganization(organizationId, USER_NOTIFICATION_DESTINATION, message);
+    }
 }

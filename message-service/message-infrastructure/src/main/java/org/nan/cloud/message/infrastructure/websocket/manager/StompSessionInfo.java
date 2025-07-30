@@ -184,15 +184,6 @@ public class StompSessionInfo {
     }
     
     /**
-     * 检查是否为管理员用户
-     * 
-     * @return true表示是管理员
-     */
-    public boolean isManager() {
-        return userType != null && (userType == 0 || userType == 1);
-    }
-    
-    /**
      * 检查是否为系统管理员
      * 
      * @return true表示是系统管理员
@@ -265,7 +256,7 @@ public class StompSessionInfo {
     @SuppressWarnings("unchecked")
     public <T> T getAttribute(String key, Class<T> type) {
         Object value = getAttribute(key);
-        if (value != null && type.isInstance(value)) {
+        if (type.isInstance(value)) {
             return (T) value;
         }
         return null;
