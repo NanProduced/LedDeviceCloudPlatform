@@ -4,6 +4,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
 import org.springframework.cloud.client.discovery.EnableDiscoveryClient;
+import org.springframework.cloud.openfeign.EnableFeignClients;
 
 /**
  * 消息服务启动类
@@ -22,12 +23,11 @@ import org.springframework.cloud.client.discovery.EnableDiscoveryClient;
  * @since 2025-01-20
  */
 @Slf4j
-@SpringBootApplication(exclude = {
-    org.springframework.boot.autoconfigure.jdbc.DataSourceAutoConfiguration.class,
-    org.springframework.boot.autoconfigure.data.mongo.MongoDataAutoConfiguration.class,
-    org.springframework.boot.autoconfigure.amqp.RabbitAutoConfiguration.class
-})
+@SpringBootApplication
 @EnableDiscoveryClient
+@EnableFeignClients(basePackages = {
+        "org.nan.cloud.core.api.feign"
+})
 public class MessageApplication {
 
     public static void main(String[] args) {

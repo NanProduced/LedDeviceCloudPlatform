@@ -1,18 +1,21 @@
 package org.nan.cloud.message.infrastructure.websocket.manager;
 
-import lombok.RequiredArgsConstructor;
+import lombok.*;
 import lombok.extern.slf4j.Slf4j;
 import org.nan.cloud.message.api.enums.Priority;
+import org.nan.cloud.message.infrastructure.websocket.interceptor.StompChannelInterceptor;
 import org.nan.cloud.message.infrastructure.websocket.interceptor.StompPrincipal;
 import org.nan.cloud.message.infrastructure.websocket.security.GatewayUserInfo;
 import org.nan.cloud.message.infrastructure.websocket.stomp.enums.StompMessageTypes;
 import org.nan.cloud.message.infrastructure.websocket.stomp.model.CommonStompMessage;
+import org.nan.cloud.message.infrastructure.websocket.subscription.AutoSubscriptionResult;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.messaging.simp.SimpMessagingTemplate;
 import org.springframework.stereotype.Component;
 
 import java.security.Principal;
 import java.time.LocalDateTime;
+import java.time.ZoneOffset;
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.CopyOnWriteArraySet;
@@ -192,7 +195,7 @@ public class StompConnectionManager {
             totalConnectionCount.decrementAndGet();
             LocalDateTime connectTime = sessionInfo.getConnectTime();
             if (connectTime != null) {
-                long connectionDuration = LocalDateTime.now().toEpochSecond(null) - connectTime.toEpochSecond(null);
+                long connectionDuration = LocalDateTime.now().toEpochSecond(ZoneOffset.ofHours(8)) - connectTime.toEpochSecond(ZoneOffset.ofHours(8));
                 totalConnectedTime.addAndGet(connectionDuration);
             }
             
@@ -542,5 +545,56 @@ public class StompConnectionManager {
      */
     public int broadcastToOrganization(Long organizationId, CommonStompMessage message) {
         return broadcastToOrganization(organizationId, USER_NOTIFICATION_DESTINATION, message);
+    }
+
+    /**
+     * 发送欢迎消息
+     *
+     * 向用户发送连接成功和自动订阅状态的欢迎消息
+     */
+    public void sendWelcomeMessage(String sessionId, AutoSubscriptionResult result) {
+        try {
+            // 构建欢迎消息内容
+            String welcomeContent = String.format(
+                    "🎉 欢迎连接到LED设备云平台消息中心！\\n" +
+                            "✅ STOMP连接已建立\\n" +
+                            "📡 自动订阅完成：成功 %d 个主题\\n" +
+                            "💡 您现在可以接收实时消息推送了",
+                    result.getSuccessfulSubscriptions() != null ? result.getSuccessfulSubscriptions().size() : 0
+            );
+
+            WelcomeMessage welcomeMessage = WelcomeMessage.builder()
+                    .title("连接成功")
+                    .content(welcomeContent)
+                    .subscriptionSummary(result.getSummary())
+                    .timestamp(System.currentTimeMillis())
+                    .build();
+
+            // 发送欢迎消息到用户的欢迎队列
+            messagingTemplate.convertAndSendToUser(
+                    sessionId,
+                    "/queue/welcome",
+                    welcomeMessage
+            );
+
+            log.debug("✅ 欢迎消息已发送 - 会话: {}", sessionId);
+
+        } catch (Exception e) {
+            log.warn("发送欢迎消息失败 - 会话: {}, 错误: {}", sessionId, e.getMessage());
+        }
+    }
+
+    /**
+     * 欢迎消息
+     */
+    @Data
+    @Builder
+    @AllArgsConstructor
+    @NoArgsConstructor
+    public static class WelcomeMessage {
+        private String title;
+        private String content;
+        private String subscriptionSummary;
+        private long timestamp;
     }
 }

@@ -55,8 +55,9 @@ public class WebSocketStompConfig implements WebSocketMessageBrokerConfigurer {
         
         // 启用内存消息代理
         // 生产环境可以考虑使用 RabbitMQ: config.enableStompBrokerRelay("/topic", "/queue")
-        config.enableSimpleBroker("/topic", "/queue")
-              .setHeartbeatValue(new long[]{webSocketProperties.getHeartbeatInterval(), webSocketProperties.getHeartbeatInterval()});
+        config.enableSimpleBroker("/topic", "/queue");
+        // todo: 缺少TaskScheduler,暂时不启用心跳
+        //      .setHeartbeatValue(new long[]{webSocketProperties.getHeartbeatInterval(), webSocketProperties.getHeartbeatInterval()});
         
         // 客户端发送消息的目的地前缀
         config.setApplicationDestinationPrefixes("/app");

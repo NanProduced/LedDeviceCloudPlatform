@@ -2,8 +2,6 @@ package org.nan.cloud.message.config;
 
 import lombok.Data;
 import org.springframework.boot.context.properties.ConfigurationProperties;
-import org.springframework.cloud.context.config.annotation.RefreshScope;
-import org.springframework.stereotype.Component;
 
 import java.util.List;
 
@@ -20,11 +18,10 @@ import java.util.List;
  *     - "*"
  *   heartbeat-interval: 30000
  * 
- * @author LedDeviceCloudPlatform Team
+ * @author Nan
  * @since 1.0.0
  */
 @Data
-@RefreshScope
 @ConfigurationProperties(prefix = "websocket")
 public class WebSocketProperties {
     

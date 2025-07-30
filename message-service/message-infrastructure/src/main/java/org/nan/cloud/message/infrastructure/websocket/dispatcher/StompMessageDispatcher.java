@@ -8,7 +8,6 @@ import org.nan.cloud.message.infrastructure.websocket.routing.TopicRoutingManage
 import org.nan.cloud.message.infrastructure.websocket.stomp.enums.StompMessageTypes;
 import org.nan.cloud.message.infrastructure.websocket.stomp.enums.StompTopic;
 import org.nan.cloud.message.infrastructure.websocket.stomp.model.CommonStompMessage;
-import org.springframework.messaging.simp.SimpMessagingTemplate;
 import org.springframework.stereotype.Component;
 
 import java.time.LocalDateTime;
@@ -40,8 +39,7 @@ import java.util.UUID;
 @Component
 @RequiredArgsConstructor
 public class StompMessageDispatcher {
-    
-    private final SimpMessagingTemplate messagingTemplate;
+
     private final StompConnectionManager stompConnectionManager;
     private final TopicRoutingManager topicRoutingManager;
     
@@ -436,7 +434,7 @@ public class StompMessageDispatcher {
             enrichMessage(message);
             
             // 使用SimpMessagingTemplate发送到主题
-            messagingTemplate.convertAndSend(topicPath, message);
+            stompConnectionManager.sendToTopic(topicPath, message);
             
             log.debug("✅ 主题消息发布完成 - 主题: {}, 消息ID: {}", topicPath, message.getMessageId());
             

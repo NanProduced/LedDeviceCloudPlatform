@@ -1,6 +1,5 @@
 package org.nan.cloud.message.infrastructure.websocket.interceptor;
 
-import lombok.Getter;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.nan.cloud.common.basic.exception.BaseException;
@@ -10,9 +9,9 @@ import org.nan.cloud.message.infrastructure.websocket.security.GatewayUserInfo;
 import org.nan.cloud.message.infrastructure.websocket.subscription.AutoSubscriptionResult;
 import org.nan.cloud.message.infrastructure.websocket.subscription.SubscriptionManager;
 import org.nan.cloud.message.infrastructure.websocket.subscription.SubscriptionResult;
+import org.springframework.context.annotation.Lazy;
 import org.springframework.messaging.Message;
 import org.springframework.messaging.MessageChannel;
-import org.springframework.messaging.simp.SimpMessagingTemplate;
 import org.springframework.messaging.simp.stomp.StompCommand;
 import org.springframework.messaging.simp.stomp.StompHeaderAccessor;
 import org.springframework.messaging.support.ChannelInterceptor;
@@ -42,12 +41,18 @@ import java.util.Map;
  */
 @Slf4j
 @Component
-@RequiredArgsConstructor
 public class StompChannelInterceptor implements ChannelInterceptor {
-    
-    private final SimpMessagingTemplate messagingTemplate;
+
     private final StompConnectionManager stompConnectionManager;
     private final SubscriptionManager subscriptionManager;
+
+    public StompChannelInterceptor(
+            @Lazy StompConnectionManager stompConnectionManager,  // 暂时解决循环依赖问题
+            SubscriptionManager subscriptionManager
+    ) {
+        this.stompConnectionManager = stompConnectionManager;
+        this.subscriptionManager = subscriptionManager;
+    }
     
     /**
      * 消息发送前拦截处理
@@ -134,14 +139,14 @@ public class StompChannelInterceptor implements ChannelInterceptor {
             String userId = userInfo.getUid().toString();
             String organizationId = userInfo.getOid().toString();
             
-            log.info("处理STOMP连接 - 会话ID: {}, 用户ID: {}, 组织ID: {}", 
+            log.debug("处理STOMP连接 - 会话ID: {}, 用户ID: {}, 组织ID: {}",
                     sessionId, userId, organizationId);
-            log.info("✅ StompPrincipal已设置到STOMP会话中");
+            log.debug("✅ StompPrincipal已设置到STOMP会话中");
             
             // 通知StompConnectionManager注册连接
             String clientInfo = getClientInfo(accessor);
             stompConnectionManager.registerConnection(sessionId, stompPrincipal, clientInfo);
-            log.info("✅ 连接已注册到StompConnectionManager");
+            log.debug("✅ 连接已注册到StompConnectionManager");
             
             // 执行自动订阅（基于明确的业务规则）
             performAutoSubscription(userInfo, sessionId);
@@ -173,7 +178,7 @@ public class StompChannelInterceptor implements ChannelInterceptor {
                 throw new BaseException(ExceptionEnum.STOMP_ACCESS_DENIED, result.getMessage());
             }
             
-            log.info("✅ 订阅处理成功 - 用户: {}, 主题: {}, 层次: {}", 
+            log.debug("✅ 订阅处理成功 - 用户: {}, 主题: {}, 层次: {}",
                     userInfo.getUid(), destination, result.getSubscriptionLevel());
             
         } catch (Exception e) {
@@ -387,19 +392,19 @@ public class StompChannelInterceptor implements ChannelInterceptor {
      */
     private void performAutoSubscription(GatewayUserInfo userInfo, String sessionId) {
         try {
-            log.info("开始执行自动订阅 - 用户: {}, 会话: {}", userInfo.getUid(), sessionId);
+            log.debug("开始执行自动订阅 - 用户: {}, 会话: {}", userInfo.getUid(), sessionId);
             
             // 使用SubscriptionManager执行自动订阅
             AutoSubscriptionResult result = subscriptionManager.performAutoSubscription(userInfo, sessionId);
             
             if (result.isSuccess()) {
-                log.info("✅ 自动订阅成功 - 用户: {}, 成功: {}, 失败: {}", 
+                log.debug("✅ 自动订阅成功 - 用户: {}, 成功: {}, 失败: {}",
                         userInfo.getUid(), 
                         result.getSuccessfulSubscriptions().size(),
                         result.getFailedSubscriptions() != null ? result.getFailedSubscriptions().size() : 0);
                 
                 // 发送欢迎消息，通知用户连接成功和订阅状态
-                sendWelcomeMessage(sessionId, result);
+                stompConnectionManager.sendWelcomeMessage(sessionId, result);
                 
             } else {
                 log.warn("⚠️ 自动订阅部分失败 - 用户: {}, 错误: {}", 
@@ -411,56 +416,6 @@ public class StompChannelInterceptor implements ChannelInterceptor {
                     userInfo.getUid(), sessionId, e.getMessage(), e);
         }
     }
-    
-    /**
-     * 发送欢迎消息
-     * 
-     * 向用户发送连接成功和自动订阅状态的欢迎消息
-     */
-    private void sendWelcomeMessage(String sessionId, AutoSubscriptionResult result) {
-        try {
-            // 构建欢迎消息内容
-            String welcomeContent = String.format(
-                "🎉 欢迎连接到LED设备云平台消息中心！\\n" +
-                "✅ STOMP连接已建立\\n" +
-                "📡 自动订阅完成：成功 %d 个主题\\n" +
-                "💡 您现在可以接收实时消息推送了",
-                result.getSuccessfulSubscriptions() != null ? result.getSuccessfulSubscriptions().size() : 0
-            );
-            
-            WelcomeMessage welcomeMessage = WelcomeMessage.builder()
-                    .title("连接成功")
-                    .content(welcomeContent)
-                    .subscriptionSummary(result.getSummary())
-                    .timestamp(System.currentTimeMillis())
-                    .build();
-            
-            // 发送欢迎消息到用户的欢迎队列
-            messagingTemplate.convertAndSendToUser(
-                sessionId,
-                "/queue/welcome",
-                welcomeMessage
-            );
-            
-            log.debug("✅ 欢迎消息已发送 - 会话: {}", sessionId);
-            
-        } catch (Exception e) {
-            log.warn("发送欢迎消息失败 - 会话: {}, 错误: {}", sessionId, e.getMessage());
-        }
-    }
-    
-    /**
-     * 欢迎消息
-     */
-    @lombok.Data
-    @lombok.Builder
-    @lombok.AllArgsConstructor
-    @lombok.NoArgsConstructor
-    public static class WelcomeMessage {
-        private String title;
-        private String content;
-        private String subscriptionSummary;
-        private long timestamp;
-    }
+
 }
 

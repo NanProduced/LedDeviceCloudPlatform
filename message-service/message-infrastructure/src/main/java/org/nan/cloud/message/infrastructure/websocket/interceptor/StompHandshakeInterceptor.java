@@ -132,8 +132,6 @@ public class StompHandshakeInterceptor implements HandshakeInterceptor {
                              WebSocketHandler wsHandler, Exception exception) {
         if (exception != null) {
             log.error("STOMP握手完成，但发生异常: {}", exception.getMessage());
-        } else {
-            log.info("🎉 STOMP握手成功完成 - URI: {}", request.getURI());
         }
     }
 }

@@ -14,12 +14,10 @@
     <description>消息服务应用层 - 业务逻辑、领域模型、服务实现</description>
     
     <dependencies>
-        <!-- API 模块依赖 -->
         <dependency>
             <groupId>org.nan</groupId>
             <artifactId>message-api</artifactId>
         </dependency>
-        
         <!-- Spring Boot Starter -->
         <dependency>
             <groupId>org.springframework.boot</groupId>

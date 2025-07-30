@@ -3,6 +3,7 @@ package org.nan.cloud.message.infrastructure.mq.listener;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.nan.cloud.message.infrastructure.mq.config.MessageServiceRabbitConfig;
 import org.nan.cloud.message.infrastructure.mq.converter.MqToStompMessageConverter;
 import org.nan.cloud.message.infrastructure.websocket.dispatcher.StompMessageDispatcher;
 import org.nan.cloud.message.infrastructure.websocket.stomp.model.CommonStompMessage;
@@ -39,10 +40,10 @@ public class MqStompBridgeListener {
     
     /**
      * 监听设备状态变更消息
-     * 队列：device.status.queue
-     * 路由键：device.status.{orgId}.{deviceId}
+     * 队列：stomp.device.status.queue
+     * 路由键：stomp.device.status.{orgId}.{deviceId}
      */
-    @RabbitListener(queues = "device.status.queue")
+    @RabbitListener(queues = MessageServiceRabbitConfig.DEVICE_STATUS_QUEUE)
     public void handleDeviceStatusMessage(@Payload String messagePayload, 
                                         @Header Map<String, Object> headers,
                                         @Header("routingKey") String routingKey) {
@@ -78,10 +79,10 @@ public class MqStompBridgeListener {
     
     /**
      * 监听指令执行结果消息
-     * 队列：command.result.queue
-     * 路由键：command.result.{orgId}.{deviceId}
+     * 队列：stomp.command.result.queue
+     * 路由键：stomp.command.result.{orgId}.{userId}
      */
-    @RabbitListener(queues = "command.result.queue")
+    @RabbitListener(queues = MessageServiceRabbitConfig.COMMAND_RESULT_QUEUE)
     public void handleCommandResultMessage(@Payload String messagePayload,
                                          @Header Map<String, Object> headers,
                                          @Header("routingKey") String routingKey) {
@@ -122,7 +123,7 @@ public class MqStompBridgeListener {
      * 队列：system.notification.queue
      * 路由键：notification.{type}.{orgId}
      */
-    @RabbitListener(queues = "system.notification.queue")
+    @RabbitListener(queues = MessageServiceRabbitConfig.SYSTEM_NOTIFICATION_QUEUE)
     public void handleSystemNotificationMessage(@Payload String messagePayload,
                                               @Header Map<String, Object> headers,
                                               @Header("routingKey") String routingKey) {
@@ -173,7 +174,7 @@ public class MqStompBridgeListener {
      * 队列：batch.command.progress.queue
      * 路由键：batch.progress.{orgId}.{batchId}
      */
-    @RabbitListener(queues = "batch.command.progress.queue")
+    @RabbitListener(queues = MessageServiceRabbitConfig.BATCH_PROGRESS_QUEUE)
     public void handleBatchCommandProgressMessage(@Payload String messagePayload,
                                                 @Header Map<String, Object> headers,
                                                 @Header("routingKey") String routingKey) {
@@ -208,52 +209,12 @@ public class MqStompBridgeListener {
         }
     }
     
-    /**
-     * 通用消息桥接监听器
-     * 队列：stomp.bridge.queue
-     * 用于处理其他类型的消息桥接需求
-     */
-    @RabbitListener(queues = "stomp.bridge.queue")
-    public void handleGenericBridgeMessage(@Payload String messagePayload,
-                                         @Header Map<String, Object> headers,
-                                         @Header("routingKey") String routingKey,
-                                         @Header(value = "messageType", required = false) String messageType) {
-        try {
-            log.debug("收到通用桥接消息 - 路由键: {}, 消息类型: {}", routingKey, messageType);
-            
-            if (messageType == null) {
-                log.warn("通用桥接消息缺少messageType头部信息 - 路由键: {}", routingKey);
-                return;
-            }
-            
-            // 解析消息内容
-            Map<String, Object> messageData = objectMapper.readValue(messagePayload, Map.class);
-            
-            // 使用通用转换器转换消息
-            CommonStompMessage stompMessage = messageConverter.convertGenericMqMessage(
-                    messageType, messageData, routingKey);
-            
-            if (stompMessage != null) {
-                // 分发STOMP消息
-                var dispatchResult = stompDispatcher.smartDispatch(stompMessage);
-                
-                log.info("✅ 通用消息桥接完成 - 类型: {}, 路由键: {}, 分发结果: {}", 
-                        messageType, routingKey, dispatchResult.isSuccess());
-            } else {
-                log.warn("❌ 通用消息转换失败 - 类型: {}, 路由键: {}", messageType, routingKey);
-            }
-            
-        } catch (Exception e) {
-            log.error("通用消息桥接异常 - 路由键: {}, 消息类型: {}, 错误: {}", 
-                    routingKey, messageType, e.getMessage(), e);
-        }
-    }
     
     /**
      * 处理消息桥接失败的情况
-     * 队列：stomp.bridge.dlq (死信队列)
+     * 队列：stomp.bridge.dlq (统一死信队列)
      */
-    @RabbitListener(queues = "stomp.bridge.dlq")
+    @RabbitListener(queues = MessageServiceRabbitConfig.BRIDGE_DLQ)
     public void handleBridgeFailureMessage(@Payload String messagePayload,
                                          @Header Map<String, Object> headers,
                                          @Header("routingKey") String routingKey) {

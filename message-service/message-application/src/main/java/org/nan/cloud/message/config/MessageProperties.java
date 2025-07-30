@@ -2,8 +2,6 @@ package org.nan.cloud.message.config;
 
 import lombok.Data;
 import org.springframework.boot.context.properties.ConfigurationProperties;
-import org.springframework.cloud.context.config.annotation.RefreshScope;
-import org.springframework.stereotype.Component;
 
 /**
  * 消息配置属性类
@@ -18,11 +16,10 @@ import org.springframework.stereotype.Component;
  *   max-retry-count: 1
  *   template-cache-ttl: 600
  * 
- * @author LedDeviceCloudPlatform Team
+ * @author Nan
  * @since 1.0.0
  */
 @Data
-@RefreshScope
 @ConfigurationProperties(prefix = "message")
 public class MessageProperties {
     

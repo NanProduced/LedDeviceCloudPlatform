@@ -2,8 +2,6 @@ package org.nan.cloud.message.infrastructure.websocket.subscription;
 
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.nan.cloud.common.basic.exception.BaseException;
-import org.nan.cloud.common.basic.exception.ExceptionEnum;
 import org.nan.cloud.core.api.feign.StompPermissionClient;
 import org.nan.cloud.core.api.DTO.req.TopicPermissionRequest;
 import org.nan.cloud.core.api.DTO.res.TopicPermissionResponse;
@@ -11,6 +9,7 @@ import org.nan.cloud.message.infrastructure.websocket.routing.SubscriptionLevel;
 import org.nan.cloud.message.infrastructure.websocket.routing.TopicRoutingManager;
 import org.nan.cloud.message.infrastructure.websocket.security.GatewayUserInfo;
 import org.nan.cloud.message.infrastructure.websocket.stomp.enums.StompTopic;
+import org.springframework.context.annotation.Lazy;
 import org.springframework.stereotype.Component;
 
 import java.util.ArrayList;
@@ -37,12 +36,18 @@ import java.util.Set;
  */
 @Slf4j
 @Component
-@RequiredArgsConstructor
 public class SubscriptionManager {
     
     private final TopicRoutingManager topicRoutingManager;
     private final StompPermissionClient stompPermissionClient;
-    
+
+    public SubscriptionManager(TopicRoutingManager topicRoutingManager,
+                               @Lazy StompPermissionClient stompPermissionClient // 临时解决循环依赖
+    ) {
+        this.topicRoutingManager = topicRoutingManager;
+        this.stompPermissionClient = stompPermissionClient;
+    }
+
     // ==================== 订阅权限验证 ====================
     
     /**
