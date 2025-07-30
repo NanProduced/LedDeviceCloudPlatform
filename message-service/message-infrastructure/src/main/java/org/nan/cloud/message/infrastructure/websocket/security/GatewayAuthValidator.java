@@ -41,47 +41,6 @@ public class GatewayAuthValidator {
     private static final String CLOUD_AUTH_HEADER = "CLOUD-AUTH";
     
     /**
-     * 从WebSocket会话中验证Gateway用户身份
-     * 
-     * @param session WebSocket会话
-     * @return Gateway用户信息，验证失败时返回null
-     */
-    public GatewayUserInfo validateUser(WebSocketSession session) {
-        try {
-            log.debug("开始从WebSocket握手头中验证Gateway用户身份");
-            
-            // 从握手头中获取CLOUD-AUTH头
-            List<String> authHeaders = session.getHandshakeHeaders().get(CLOUD_AUTH_HEADER);
-            if (authHeaders == null || authHeaders.isEmpty()) {
-                log.warn("WebSocket握手请求缺少CLOUD-AUTH头，可能未通过Gateway代理");
-                return null;
-            }
-            
-            String authHeader = authHeaders.get(0);
-            if (authHeader == null || authHeader.trim().isEmpty()) {
-                log.warn("CLOUD-AUTH头为空");
-                return null;
-            }
-            
-            // 解析CLOUD-AUTH头中的用户信息
-            GatewayUserInfo userInfo = parseCloudAuthHeader(authHeader);
-            if (userInfo == null) {
-                log.warn("无法解析CLOUD-AUTH头中的用户信息");
-                return null;
-            }
-            
-            log.info("Gateway用户验证成功 - 用户ID: {}, 组织ID: {}, 用户类型: {}", 
-                    userInfo.getUid(), userInfo.getOid(), userInfo.getUserType());
-            
-            return userInfo;
-            
-        } catch (Exception e) {
-            log.error("Gateway用户验证异常: {}", e.getMessage(), e);
-            return null;
-        }
-    }
-    
-    /**
      * 解析CLOUD-AUTH头中的用户信息
      * 
      * @param authHeader Base64编码的JSON字符串
@@ -114,7 +73,7 @@ public class GatewayAuthValidator {
                     .uid(uid)
                     .oid(oid)
                     .ugid(ugid)
-                    .userType(userType != null ? userType : 0) // 默认为普通用户
+                    .userType(userType)
                     .build();
                     
         } catch (IllegalArgumentException e) {
@@ -200,15 +159,8 @@ public class GatewayAuthValidator {
             return false;
         }
         
-        // 根据用户类型判断权限
-        Integer userType = userInfo.getUserType();
-        if (userType == null) {
-            log.debug("用户类型为空，默认允许WebSocket连接 - 用户ID: {}", userInfo.getUid());
-            return true;
-        }
-        
         // 所有类型的用户都允许WebSocket连接（因为这是用于浏览器交互）
-        log.debug("WebSocket权限检查通过 - 用户ID: {}, 用户类型: {}", userInfo.getUid(), userType);
+        log.debug("WebSocket权限检查通过 - 用户ID: {}", userInfo.getUid());
         return true;
     }
     

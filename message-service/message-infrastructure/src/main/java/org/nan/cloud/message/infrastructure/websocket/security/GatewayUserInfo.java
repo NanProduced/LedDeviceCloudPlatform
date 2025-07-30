@@ -33,7 +33,7 @@ public class GatewayUserInfo {
     
     /**
      * 用户类型
-     * 0: 普通用户, 1: 管理员, 2: 超级管理员
+     * 0: 系统管理员, 1: 组织管理员, 2: 普通用户
      */
     private Integer userType;
     
@@ -42,17 +42,8 @@ public class GatewayUserInfo {
      * 
      * @return true表示是管理员，false表示普通用户
      */
-    public boolean isAdmin() {
-        return userType != null && userType >= 1;
-    }
-    
-    /**
-     * 检查是否为超级管理员
-     * 
-     * @return true表示是超级管理员，false表示非超级管理员
-     */
-    public boolean isSuperAdmin() {
-        return userType != null && userType >= 2;
+    public boolean isOrgManager() {
+        return userType != null && userType == 1;
     }
     
     /**
