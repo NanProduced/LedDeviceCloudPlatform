@@ -5,6 +5,7 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.nan.cloud.common.basic.exception.BaseException;
 import org.nan.cloud.common.basic.exception.ExceptionEnum;
+import org.nan.cloud.message.infrastructure.websocket.manager.StompConnectionManager;
 import org.nan.cloud.message.infrastructure.websocket.security.GatewayUserInfo;
 import org.springframework.messaging.Message;
 import org.springframework.messaging.MessageChannel;
@@ -16,6 +17,7 @@ import org.springframework.messaging.support.MessageHeaderAccessor;
 import org.springframework.stereotype.Component;
 
 import java.security.Principal;
+import java.util.Map;
 
 /**
  * STOMP通道拦截器
@@ -32,7 +34,7 @@ import java.security.Principal;
  * - SEND: 验证消息发送权限
  * - DISCONNECT: 清理连接资源
  * 
- * @author LedDeviceCloudPlatform Team
+ * @author Nan
  * @since 1.0.0
  */
 @Slf4j
@@ -41,6 +43,7 @@ import java.security.Principal;
 public class StompChannelInterceptor implements ChannelInterceptor {
     
     private final SimpMessagingTemplate messagingTemplate;
+    private final StompConnectionManager stompConnectionManager;
     
     /**
      * 消息发送前拦截处理
@@ -105,18 +108,23 @@ public class StompChannelInterceptor implements ChannelInterceptor {
     /**
      * 处理CONNECT命令
      * 
-     * 当客户端连接成功后，自动为其订阅默认主题：
-     * 1. 用户个人通知主题
-     * 2. 所属组织公告主题
+     * 当客户端连接成功后：
+     * 1. 设置StompPrincipal到STOMP会话中
+     * 2. 通知StompConnectionManager注册连接
+     * 3. 自动为其订阅默认主题
      */
     private void handleConnect(StompHeaderAccessor accessor) {
         try {
             // 从会话属性中获取用户信息
-            GatewayUserInfo userInfo = getUserInfo(accessor);
+            GatewayUserInfo userInfo = getUserInfoFromSession(accessor);
             if (userInfo == null) {
                 log.error("连接处理失败：无法获取用户信息");
                 return;
             }
+            
+            // 创建StompPrincipal并设置到STOMP会话中
+            StompPrincipal stompPrincipal = new StompPrincipal(userInfo);
+            accessor.setUser(stompPrincipal);
             
             String sessionId = accessor.getSessionId();
             String userId = userInfo.getUid().toString();
@@ -124,6 +132,12 @@ public class StompChannelInterceptor implements ChannelInterceptor {
             
             log.info("处理STOMP连接 - 会话ID: {}, 用户ID: {}, 组织ID: {}", 
                     sessionId, userId, organizationId);
+            log.info("✅ StompPrincipal已设置到STOMP会话中");
+            
+            // 通知StompConnectionManager注册连接
+            String clientInfo = getClientInfo(accessor);
+            stompConnectionManager.registerConnection(sessionId, stompPrincipal, clientInfo);
+            log.info("✅ 连接已注册到StompConnectionManager");
             
             // 延迟执行自动订阅，确保连接完全建立
             scheduleAutoSubscription(sessionId, userId, organizationId);
@@ -192,13 +206,17 @@ public class StompChannelInterceptor implements ChannelInterceptor {
      */
     private void handleDisconnect(StompHeaderAccessor accessor) {
         try {
+            String sessionId = accessor.getSessionId();
             GatewayUserInfo userInfo = getUserInfo(accessor);
+            
             if (userInfo != null) {
                 log.info("用户断开STOMP连接 - 用户ID: {}, 会话ID: {}", 
-                        userInfo.getUid(), accessor.getSessionId());
+                        userInfo.getUid(), sessionId);
             }
             
-            // 这里可以添加清理逻辑，如更新在线状态等
+            // 🔗 通知StompConnectionManager移除连接
+            stompConnectionManager.removeConnection(sessionId);
+            log.info("✅ 连接已从StompConnectionManager中移除 - sessionId: {}", sessionId);
             
         } catch (Exception e) {
             log.error("处理STOMP断开连接失败: {}", e.getMessage(), e);
@@ -207,21 +225,63 @@ public class StompChannelInterceptor implements ChannelInterceptor {
     
     /**
      * 从STOMP访问器中获取用户信息
+     * 
+     * 优先从Principal中获取，如果没有则从会话属性中获取
      */
     private GatewayUserInfo getUserInfo(StompHeaderAccessor accessor) {
-        // 首先尝试从Principal中获取
+        // 首先尝试从Principal中获取（CONNECT之后应该有）
         Principal user = accessor.getUser();
         if (user instanceof StompPrincipal) {
             return ((StompPrincipal) user).getUserInfo();
         }
         
-        // 如果Principal中没有，尝试从会话属性中获取
+        // 如果Principal中没有，尝试从会话属性中获取（CONNECT时使用）
+        return getUserInfoFromSession(accessor);
+    }
+    
+    /**
+     * 从会话属性中获取用户信息
+     * 
+     * 主要在CONNECT阶段使用，此时Principal还未设置
+     */
+    private GatewayUserInfo getUserInfoFromSession(StompHeaderAccessor accessor) {
         Object userInfo = accessor.getSessionAttributes().get(StompHandshakeInterceptor.USER_INFO_ATTRIBUTE);
         if (userInfo instanceof GatewayUserInfo) {
             return (GatewayUserInfo) userInfo;
         }
         
         return null;
+    }
+    
+    /**
+     * 获取客户端信息
+     * 
+     * @param accessor STOMP头访问器
+     * @return 客户端信息字符串
+     */
+    private String getClientInfo(StompHeaderAccessor accessor) {
+        try {
+            // 尝试从会话属性或头信息中获取客户端信息
+            Map<String, Object> sessionAttributes = accessor.getSessionAttributes();
+            if (sessionAttributes != null) {
+                // 可以从握手时存储的信息中获取
+                Object userAgent = sessionAttributes.get("user-agent");
+                Object remoteAddress = sessionAttributes.get("remote-address");
+                
+                if (userAgent != null || remoteAddress != null) {
+                    return String.format("UserAgent: %s, RemoteAddress: %s", 
+                            userAgent != null ? userAgent.toString() : "unknown",
+                            remoteAddress != null ? remoteAddress.toString() : "unknown");
+                }
+            }
+            
+            // 如果没有详细信息，返回会话ID作为标识
+            return "SessionId: " + accessor.getSessionId();
+            
+        } catch (Exception e) {
+            log.warn("获取客户端信息失败: {}", e.getMessage());
+            return "unknown";
+        }
     }
     
     /**

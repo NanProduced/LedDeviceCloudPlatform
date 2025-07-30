@@ -94,6 +94,14 @@ public class StompHandshakeInterceptor implements HandshakeInterceptor {
             attributes.put(USER_ID_ATTRIBUTE, userInfo.getUid().toString());
             attributes.put(ORGANIZATION_ID_ATTRIBUTE, userInfo.getOid().toString());
             
+            // 存储客户端信息用于后续的连接管理
+            String userAgent = request.getHeaders().getFirst("User-Agent");
+            String remoteAddress = request.getRemoteAddress() != null ? 
+                    request.getRemoteAddress().getAddress().getHostAddress() : "unknown";
+            
+            attributes.put("user-agent", userAgent != null ? userAgent : "unknown");
+            attributes.put("remote-address", remoteAddress);
+            
             log.info("✅ STOMP握手认证成功");
             log.info("用户ID: {}, 组织ID: {}, 用户类型: {}", 
                     userInfo.getUid(), userInfo.getOid(), userInfo.getUserType());

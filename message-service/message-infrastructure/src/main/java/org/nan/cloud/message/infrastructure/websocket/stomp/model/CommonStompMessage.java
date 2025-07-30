@@ -1,6 +1,9 @@
 package org.nan.cloud.message.infrastructure.websocket.stomp.model;
 
+import lombok.AllArgsConstructor;
+import lombok.Builder;
 import lombok.Data;
+import lombok.NoArgsConstructor;
 import org.nan.cloud.message.api.enums.Priority;
 import org.nan.cloud.message.infrastructure.websocket.stomp.enums.StompMessageTypes;
 
@@ -11,6 +14,9 @@ import java.util.List;
  * STOMP协议统一消息结构
  */
 @Data
+@Builder
+@AllArgsConstructor
+@NoArgsConstructor
 public class CommonStompMessage {
 
     /**
@@ -67,6 +73,9 @@ public class CommonStompMessage {
      * 消息来源服务
      */
     @Data
+    @Builder
+    @AllArgsConstructor
+    @NoArgsConstructor
     public static class Source {
 
         private String serviceId;
@@ -86,6 +95,9 @@ public class CommonStompMessage {
      * 消息目标
      */
     @Data
+    @Builder
+    @AllArgsConstructor
+    @NoArgsConstructor
     public static class Target {
 
         private String targetType;
@@ -101,6 +113,9 @@ public class CommonStompMessage {
      * 消息元数据
      */
     @Data
+    @Builder
+    @AllArgsConstructor
+    @NoArgsConstructor
     public static class Metadata {
 
         private Priority priority;

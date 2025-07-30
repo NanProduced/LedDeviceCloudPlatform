@@ -11,7 +11,8 @@ import java.security.Principal;
  * 封装用户认证信息，实现Principal接口
  */
 @Getter
-class StompPrincipal implements Principal {
+public class StompPrincipal implements Principal {
+
     private final GatewayUserInfo userInfo;
 
     public StompPrincipal(GatewayUserInfo userInfo) {
