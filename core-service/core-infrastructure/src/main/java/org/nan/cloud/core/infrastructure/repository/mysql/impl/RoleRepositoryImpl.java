@@ -31,7 +31,9 @@ public class RoleRepositoryImpl implements RoleRepository {
     @Override
     public Role createRole(Role role) {
         RoleDO roleDO = commonConverter.role2RoleDO(role);
+        roleDO.setUpdaterId(role.getCreatorId());
         roleDO.setCreateTime(LocalDateTime.now());
+        roleDO.setUpdateTime(LocalDateTime.now());
         roleMapper.insert(roleDO);
         return commonConverter.roleDO2Role(roleDO);
     }

@@ -158,6 +158,36 @@ public final class StompTopic {
      */
     public static final String GLOBAL_EMERGENCY_TOPIC = "/topic/global/emergency/alerts";
     
+    /**
+     * 系统管理员主题
+     */
+    public static final String SYSTEM_ADMIN_TOPIC = "/topic/admin/system/status";
+    
+    /**
+     * 系统监控主题
+     */
+    public static final String SYSTEM_MONITOR_TOPIC = "/topic/system/monitoring/status";
+    
+    // ==================== 扩展状态主题 ====================
+    
+    /**
+     * 组织设备状态主题模板
+     * 实际使用: /topic/org/{orgId}/devices/status
+     */
+    public static final String ORG_DEVICE_STATUS_TOPIC_TEMPLATE = "/topic/org/{orgId}/devices/status";
+    
+    /**
+     * 组织用户状态主题模板
+     * 实际使用: /topic/org/{orgId}/users/status
+     */
+    public static final String ORG_USER_STATUS_TOPIC_TEMPLATE = "/topic/org/{orgId}/users/status";
+    
+    /**
+     * 组织告警主题模板
+     * 实际使用: /topic/org/{orgId}/alerts
+     */
+    public static final String ORG_ALERT_TOPIC_TEMPLATE = "/topic/org/{orgId}/alerts";
+    
     // ==================== 用户队列 Destination ====================
     
     /**
@@ -369,5 +399,35 @@ public final class StompTopic {
      */
     public static String buildAppTerminalSubscribe(String terminalId) {
         return APP_TERMINAL_SUBSCRIBE_TEMPLATE.replace("{terminalId}", terminalId);
+    }
+    
+    /**
+     * 构建组织设备状态主题路径
+     * 
+     * @param orgId 组织ID
+     * @return 组织设备状态主题路径
+     */
+    public static String buildOrgDeviceStatusTopic(String orgId) {
+        return ORG_DEVICE_STATUS_TOPIC_TEMPLATE.replace("{orgId}", orgId);
+    }
+    
+    /**
+     * 构建组织用户状态主题路径
+     * 
+     * @param orgId 组织ID
+     * @return 组织用户状态主题路径
+     */
+    public static String buildOrgUserStatusTopic(String orgId) {
+        return ORG_USER_STATUS_TOPIC_TEMPLATE.replace("{orgId}", orgId);
+    }
+    
+    /**
+     * 构建组织告警主题路径
+     * 
+     * @param orgId 组织ID
+     * @return 组织告警主题路径
+     */
+    public static String buildOrgAlertTopic(String orgId) {
+        return ORG_ALERT_TOPIC_TEMPLATE.replace("{orgId}", orgId);
     }
 }

@@ -6,6 +6,8 @@ import lombok.extern.slf4j.Slf4j;
 import org.nan.cloud.message.infrastructure.mq.config.MessageServiceRabbitConfig;
 import org.nan.cloud.message.infrastructure.mq.converter.MqToStompMessageConverter;
 import org.nan.cloud.message.infrastructure.websocket.dispatcher.StompMessageDispatcher;
+import org.nan.cloud.message.infrastructure.websocket.processor.BusinessMessageProcessor;
+import org.nan.cloud.message.infrastructure.websocket.processor.BusinessMessageProcessorManager;
 import org.nan.cloud.message.infrastructure.websocket.stomp.model.CommonStompMessage;
 import org.springframework.amqp.rabbit.annotation.RabbitListener;
 import org.springframework.messaging.handler.annotation.Header;
@@ -23,8 +25,14 @@ import java.util.Map;
  * 消息流程：
  * 1. 监听RabbitMQ队列消息
  * 2. 解析消息类型和内容
- * 3. 调用转换器转换为STOMP消息
- * 4. 通过STOMP分发器推送给前端
+ * 3. 使用业务消息处理器管理器选择合适的处理器
+ * 4. 处理器负责转换为STOMP消息并进行分发
+ * 5. 保留原有转换器作为降级备选方案
+ * 
+ * 架构升级：
+ * - 引入业务消息处理器架构，支持策略模式
+ * - 保持向后兼容性，原有逻辑作为降级方案
+ * - 提供更灵活的消息处理和分发机制
  * 
  * @author Nan
  * @since 1.0.0
@@ -34,6 +42,7 @@ import java.util.Map;
 @RequiredArgsConstructor
 public class MqStompBridgeListener {
     
+    private final BusinessMessageProcessorManager processorManager;
     private final MqToStompMessageConverter messageConverter;
     private final StompMessageDispatcher stompDispatcher;
     private final ObjectMapper objectMapper;
@@ -50,6 +59,42 @@ public class MqStompBridgeListener {
         try {
             log.debug("收到设备状态消息 - 路由键: {}", routingKey);
             
+            // 优先使用业务消息处理器管理器
+            BusinessMessageProcessor.BusinessMessageProcessResult processResult = 
+                    processorManager.processMessage("DEVICE_STATUS", messagePayload, routingKey, headers);
+            
+            if (processResult.isSuccess()) {
+                log.info("✅ 设备状态消息处理完成 - 路由键: {}, 消息ID: {}, 分发结果: {}", 
+                        routingKey, processResult.getMessageId(), 
+                        processResult.getDispatchResult() != null ? processResult.getDispatchResult().isSuccess() : "N/A");
+                return;
+            }
+            
+            // 降级到原有处理逻辑
+            log.info("⬇️ 设备状态消息处理器失败，降级到原有逻辑 - 路由键: {}, 错误: {}", 
+                    routingKey, processResult.getErrorMessage());
+            
+            handleDeviceStatusMessageLegacy(messagePayload, headers, routingKey);
+            
+        } catch (Exception e) {
+            log.error("设备状态消息桥接异常 - 路由键: {}, 错误: {}", routingKey, e.getMessage(), e);
+            
+            // 异常情况下也尝试降级处理
+            try {
+                handleDeviceStatusMessageLegacy(messagePayload, headers, routingKey);
+            } catch (Exception fallbackException) {
+                log.error("设备状态消息降级处理也失败 - 路由键: {}, 错误: {}", routingKey, fallbackException.getMessage(), fallbackException);
+            }
+        }
+    }
+    
+    /**
+     * 设备状态消息降级处理方法（原有逻辑）
+     */
+    private void handleDeviceStatusMessageLegacy(@Payload String messagePayload, 
+                                               @Header Map<String, Object> headers,
+                                               @Header("routingKey") String routingKey) {
+        try {
             // 解析消息内容
             Map<String, Object> messageData = objectMapper.readValue(messagePayload, Map.class);
             
@@ -66,14 +111,14 @@ public class MqStompBridgeListener {
                 // 分发STOMP消息
                 var dispatchResult = stompDispatcher.smartDispatch(stompMessage);
                 
-                log.info("✅ 设备状态消息桥接完成 - 设备: {}, 状态: {}, 分发结果: {}", 
+                log.info("✅ 设备状态消息降级处理完成 - 设备: {}, 状态: {}, 分发结果: {}", 
                         deviceId, status, dispatchResult.isSuccess());
             } else {
                 log.warn("❌ 设备状态消息转换失败 - 设备: {}", deviceId);
             }
             
         } catch (Exception e) {
-            log.error("设备状态消息桥接异常 - 路由键: {}, 错误: {}", routingKey, e.getMessage(), e);
+            log.error("设备状态消息降级处理异常 - 路由键: {}, 错误: {}", routingKey, e.getMessage(), e);
         }
     }
     
@@ -89,6 +134,42 @@ public class MqStompBridgeListener {
         try {
             log.debug("收到指令执行结果消息 - 路由键: {}", routingKey);
             
+            // 优先使用业务消息处理器管理器
+            BusinessMessageProcessor.BusinessMessageProcessResult processResult = 
+                    processorManager.processMessage("COMMAND_RESULT", messagePayload, routingKey, headers);
+            
+            if (processResult.isSuccess()) {
+                log.info("✅ 指令结果消息处理完成 - 路由键: {}, 消息ID: {}, 分发结果: {}", 
+                        routingKey, processResult.getMessageId(), 
+                        processResult.getDispatchResult() != null ? processResult.getDispatchResult().isSuccess() : "N/A");
+                return;
+            }
+            
+            // 降级到原有处理逻辑
+            log.info("⬇️ 指令结果消息处理器失败，降级到原有逻辑 - 路由键: {}, 错误: {}", 
+                    routingKey, processResult.getErrorMessage());
+            
+            handleCommandResultMessageLegacy(messagePayload, headers, routingKey);
+            
+        } catch (Exception e) {
+            log.error("指令结果消息桥接异常 - 路由键: {}, 错误: {}", routingKey, e.getMessage(), e);
+            
+            // 异常情况下也尝试降级处理
+            try {
+                handleCommandResultMessageLegacy(messagePayload, headers, routingKey);
+            } catch (Exception fallbackException) {
+                log.error("指令结果消息降级处理也失败 - 路由键: {}, 错误: {}", routingKey, fallbackException.getMessage(), fallbackException);
+            }
+        }
+    }
+    
+    /**
+     * 指令结果消息降级处理方法（原有逻辑）
+     */
+    private void handleCommandResultMessageLegacy(@Payload String messagePayload,
+                                                @Header Map<String, Object> headers,
+                                                @Header("routingKey") String routingKey) {
+        try {
             // 解析消息内容
             Map<String, Object> messageData = objectMapper.readValue(messagePayload, Map.class);
             
@@ -107,14 +188,14 @@ public class MqStompBridgeListener {
                 // 分发STOMP消息
                 var dispatchResult = stompDispatcher.smartDispatch(stompMessage);
                 
-                log.info("✅ 指令结果消息桥接完成 - 指令: {}, 设备: {}, 用户: {}, 分发结果: {}", 
+                log.info("✅ 指令结果消息降级处理完成 - 指令: {}, 设备: {}, 用户: {}, 分发结果: {}", 
                         commandId, deviceId, userId, dispatchResult.isSuccess());
             } else {
                 log.warn("❌ 指令结果消息转换失败 - 指令: {}", commandId);
             }
             
         } catch (Exception e) {
-            log.error("指令结果消息桥接异常 - 路由键: {}, 错误: {}", routingKey, e.getMessage(), e);
+            log.error("指令结果消息降级处理异常 - 路由键: {}, 错误: {}", routingKey, e.getMessage(), e);
         }
     }
     
@@ -130,6 +211,42 @@ public class MqStompBridgeListener {
         try {
             log.debug("收到系统通知消息 - 路由键: {}", routingKey);
             
+            // 优先使用业务消息处理器管理器
+            BusinessMessageProcessor.BusinessMessageProcessResult processResult = 
+                    processorManager.processMessage("SYSTEM_NOTIFICATION", messagePayload, routingKey, headers);
+            
+            if (processResult.isSuccess()) {
+                log.info("✅ 系统通知消息处理完成 - 路由键: {}, 消息ID: {}, 分发结果: {}", 
+                        routingKey, processResult.getMessageId(), 
+                        processResult.getDispatchResult() != null ? processResult.getDispatchResult().isSuccess() : "N/A");
+                return;
+            }
+            
+            // 降级到原有处理逻辑
+            log.info("⬇️ 系统通知消息处理器失败，降级到原有逻辑 - 路由键: {}, 错误: {}", 
+                    routingKey, processResult.getErrorMessage());
+            
+            handleSystemNotificationMessageLegacy(messagePayload, headers, routingKey);
+            
+        } catch (Exception e) {
+            log.error("系统通知消息桥接异常 - 路由键: {}, 错误: {}", routingKey, e.getMessage(), e);
+            
+            // 异常情况下也尝试降级处理
+            try {
+                handleSystemNotificationMessageLegacy(messagePayload, headers, routingKey);
+            } catch (Exception fallbackException) {
+                log.error("系统通知消息降级处理也失败 - 路由键: {}, 错误: {}", routingKey, fallbackException.getMessage(), fallbackException);
+            }
+        }
+    }
+    
+    /**
+     * 系统通知消息降级处理方法（原有逻辑）
+     */
+    private void handleSystemNotificationMessageLegacy(@Payload String messagePayload,
+                                                     @Header Map<String, Object> headers,
+                                                     @Header("routingKey") String routingKey) {
+        try {
             // 解析消息内容
             Map<String, Object> messageData = objectMapper.readValue(messagePayload, Map.class);
             
@@ -156,7 +273,7 @@ public class MqStompBridgeListener {
                 // 分发STOMP消息
                 var dispatchResult = stompDispatcher.smartDispatch(stompMessage);
                 
-                log.info("✅ 系统通知消息桥接完成 - 类型: {}, 组织: {}, 目标用户数: {}, 分发结果: {}", 
+                log.info("✅ 系统通知消息降级处理完成 - 类型: {}, 组织: {}, 目标用户数: {}, 分发结果: {}", 
                         notificationType, orgId, 
                         targetUserIds != null ? targetUserIds.size() : 0, 
                         dispatchResult.isSuccess());
@@ -165,7 +282,7 @@ public class MqStompBridgeListener {
             }
             
         } catch (Exception e) {
-            log.error("系统通知消息桥接异常 - 路由键: {}, 错误: {}", routingKey, e.getMessage(), e);
+            log.error("系统通知消息降级处理异常 - 路由键: {}, 错误: {}", routingKey, e.getMessage(), e);
         }
     }
     
@@ -181,6 +298,42 @@ public class MqStompBridgeListener {
         try {
             log.debug("收到批量指令进度消息 - 路由键: {}", routingKey);
             
+            // 优先使用业务消息处理器管理器
+            BusinessMessageProcessor.BusinessMessageProcessResult processResult = 
+                    processorManager.processMessage("BATCH_COMMAND_PROGRESS", messagePayload, routingKey, headers);
+            
+            if (processResult.isSuccess()) {
+                log.info("✅ 批量指令进度消息处理完成 - 路由键: {}, 消息ID: {}, 分发结果: {}", 
+                        routingKey, processResult.getMessageId(), 
+                        processResult.getDispatchResult() != null ? processResult.getDispatchResult().isSuccess() : "N/A");
+                return;
+            }
+            
+            // 降级到原有处理逻辑
+            log.info("⬇️ 批量指令进度消息处理器失败，降级到原有逻辑 - 路由键: {}, 错误: {}", 
+                    routingKey, processResult.getErrorMessage());
+            
+            handleBatchCommandProgressMessageLegacy(messagePayload, headers, routingKey);
+            
+        } catch (Exception e) {
+            log.error("批量指令进度消息桥接异常 - 路由键: {}, 错误: {}", routingKey, e.getMessage(), e);
+            
+            // 异常情况下也尝试降级处理
+            try {
+                handleBatchCommandProgressMessageLegacy(messagePayload, headers, routingKey);
+            } catch (Exception fallbackException) {
+                log.error("批量指令进度消息降级处理也失败 - 路由键: {}, 错误: {}", routingKey, fallbackException.getMessage(), fallbackException);
+            }
+        }
+    }
+    
+    /**
+     * 批量指令进度消息降级处理方法（原有逻辑）
+     */
+    private void handleBatchCommandProgressMessageLegacy(@Payload String messagePayload,
+                                                       @Header Map<String, Object> headers,
+                                                       @Header("routingKey") String routingKey) {
+        try {
             // 解析消息内容
             Map<String, Object> messageData = objectMapper.readValue(messagePayload, Map.class);
             
@@ -198,14 +351,14 @@ public class MqStompBridgeListener {
                 // 分发STOMP消息
                 var dispatchResult = stompDispatcher.smartDispatch(stompMessage);
                 
-                log.info("✅ 批量指令进度消息桥接完成 - 批量任务: {}, 用户: {}, 进度: {}, 分发结果: {}", 
+                log.info("✅ 批量指令进度消息降级处理完成 - 批量任务: {}, 用户: {}, 进度: {}, 分发结果: {}", 
                         batchId, userId, progress, dispatchResult.isSuccess());
             } else {
                 log.warn("❌ 批量指令进度消息转换失败 - 批量任务: {}", batchId);
             }
             
         } catch (Exception e) {
-            log.error("批量指令进度消息桥接异常 - 路由键: {}, 错误: {}", routingKey, e.getMessage(), e);
+            log.error("批量指令进度消息降级处理异常 - 路由键: {}, 错误: {}", routingKey, e.getMessage(), e);
         }
     }
     
