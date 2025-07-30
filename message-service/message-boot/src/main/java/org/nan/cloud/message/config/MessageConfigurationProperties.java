@@ -1,5 +1,7 @@
 package org.nan.cloud.message.config;
 
+import org.nan.cloud.message.config.MessageProperties;
+import org.nan.cloud.message.config.WebSocketProperties;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
 import org.springframework.cloud.context.config.annotation.RefreshScope;
 import org.springframework.context.annotation.Configuration;
@@ -17,10 +19,9 @@ import org.springframework.context.annotation.Configuration;
  * @since 1.0.0
  */
 @Configuration
-@RefreshScope
 @EnableConfigurationProperties({
-    org.nan.cloud.message.config.WebSocketProperties.class,
-    org.nan.cloud.message.config.MessageProperties.class
+    WebSocketProperties.class,
+    MessageProperties.class
 })
 public class MessageConfigurationProperties {
     

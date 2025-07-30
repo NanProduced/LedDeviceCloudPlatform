@@ -16,7 +16,7 @@ import org.springframework.web.bind.annotation.RequestBody;
  * @since 1.0.0
  */
 @FeignClient(
-    name = "core-service",
+    value = "core-service",
     path = "/rpc/permissions/stomp"
 )
 public interface StompPermissionClient {

@@ -24,6 +24,7 @@
         <dependency>
             <groupId>org.nan</groupId>
             <artifactId>core-api</artifactId>
+            <version>1.0-SNAPSHOT</version>
         </dependency>
         
         <!-- MongoDB -->

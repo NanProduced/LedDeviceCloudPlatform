@@ -261,7 +261,7 @@ public class RabbitMQConfig {
     /**
      * 系统监控队列 - 处理系统性能、健康检查等事件
      */
-    @Bean
+//    @Bean
     public Queue systemNotificationQueue() {
         return QueueBuilder
                 .durable(SYSTEM_NOTIFICATION_QUEUE)
@@ -400,7 +400,7 @@ public class RabbitMQConfig {
     /**
      * 系统监控队列绑定
      */
-    @Bean
+//    @Bean
     public Binding systemNotificationBinding() {
         return BindingBuilder
                 .bind(systemNotificationQueue())

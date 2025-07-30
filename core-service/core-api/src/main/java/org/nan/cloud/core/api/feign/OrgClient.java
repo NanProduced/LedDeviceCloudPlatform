@@ -1,4 +1,4 @@
-package org.nan.cloud.core.api.client;
+package org.nan.cloud.core.api.feign;
 
 import org.nan.cloud.core.api.OrgApi;
 import org.springframework.cloud.openfeign.FeignClient;

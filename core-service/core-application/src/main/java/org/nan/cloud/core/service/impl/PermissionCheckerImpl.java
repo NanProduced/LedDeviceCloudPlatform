@@ -22,8 +22,6 @@ public class PermissionCheckerImpl implements PermissionChecker {
 
     private final UserRepository userRepository;
 
-    private final PermissionRepository permissionRepository;
-
     private final OperationPermissionRepository operationPermissionRepository;
 
     private final RoleRepository roleRepository;
