@@ -3,6 +3,8 @@ package org.nan.cloud.message.infrastructure.websocket.dispatcher;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.nan.cloud.message.infrastructure.websocket.manager.StompConnectionManager;
+import org.nan.cloud.message.infrastructure.websocket.routing.TopicRoutingDecision;
+import org.nan.cloud.message.infrastructure.websocket.routing.TopicRoutingManager;
 import org.nan.cloud.message.infrastructure.websocket.stomp.enums.StompMessageTypes;
 import org.nan.cloud.message.infrastructure.websocket.stomp.enums.StompTopic;
 import org.nan.cloud.message.infrastructure.websocket.stomp.model.CommonStompMessage;
@@ -41,6 +43,54 @@ public class StompMessageDispatcher {
     
     private final SimpMessagingTemplate messagingTemplate;
     private final StompConnectionManager stompConnectionManager;
+    private final TopicRoutingManager topicRoutingManager;
+    
+    // ==================== 智能路由分发 ====================
+    
+    /**
+     * 智能分发消息
+     * 使用TopicRoutingManager进行智能路由决策，然后执行分发
+     * 
+     * @param message STOMP消息
+     * @return 分发结果统计
+     */
+    public DispatchResult smartDispatch(CommonStompMessage message) {
+        try {
+            log.debug("开始智能分发消息 - 消息类型: {}, 消息ID: {}", message.getMessageType(), message.getMessageId());
+            
+            // 设置消息基础信息
+            enrichMessage(message);
+            
+            // 使用路由管理器进行路由决策
+            TopicRoutingDecision routingDecision = topicRoutingManager.decideRouting(message);
+            
+            DispatchResult result = new DispatchResult(message.getMessageId());
+            
+            // 根据路由决策执行分发
+            for (String topicPath : routingDecision.getTargetTopics()) {
+                try {
+                    sendToTopic(topicPath, message);
+                    result.incrementSuccessCount();
+                    result.addSuccessfulTopic(topicPath);
+                } catch (Exception e) {
+                    log.error("向主题分发消息失败 - 主题: {}, 消息ID: {}, 错误: {}", 
+                            topicPath, message.getMessageId(), e.getMessage(), e);
+                    result.incrementFailureCount();
+                    result.addFailedTopic(topicPath, e.getMessage());
+                }
+            }
+            
+            log.info("✅ 智能分发完成 - 消息ID: {}, 路由策略: {}, 成功: {}, 失败: {}", 
+                    message.getMessageId(), routingDecision.getRoutingStrategy(), 
+                    result.getSuccessCount(), result.getFailureCount());
+                    
+            return result;
+            
+        } catch (Exception e) {
+            log.error("智能分发消息失败 - 消息ID: {}, 错误: {}", message.getMessageId(), e.getMessage(), e);
+            return DispatchResult.failure(message.getMessageId(), e.getMessage());
+        }
+    }
     
     // ==================== 用户级别消息分发 ====================
     

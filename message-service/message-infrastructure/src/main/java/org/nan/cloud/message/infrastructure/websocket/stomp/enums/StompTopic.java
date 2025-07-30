@@ -63,10 +63,11 @@ public final class StompTopic {
     // ==================== 终端级别 Topic ====================
     
     /**
-     * 终端在线状态主题模板
-     * 实际使用: /topic/terminal/{terminalId}/status/online
+     * 终端状态主题模板
+     * 不仅仅是在线、离线状态的变更。还包括终端上报数据中的其他状态变更
+     * 实际使用: /topic/terminal/{terminalId}/status
      */
-    public static final String TERMINAL_STATUS_TOPIC_TEMPLATE = "/topic/terminal/{terminalId}/status/online";
+    public static final String TERMINAL_STATUS_TOPIC_TEMPLATE = "/topic/terminal/{terminalId}/status";
     
     /**
      * 终端指令执行状态主题模板
