@@ -5,6 +5,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.nan.cloud.message.infrastructure.websocket.manager.StompConnectionManager;
 import org.nan.cloud.message.infrastructure.websocket.routing.TopicRoutingDecision;
 import org.nan.cloud.message.infrastructure.websocket.routing.TopicRoutingManager;
+import org.nan.cloud.message.infrastructure.websocket.sender.StompMessageSender;
 import org.nan.cloud.message.infrastructure.websocket.stomp.enums.StompMessageTypes;
 import org.nan.cloud.message.infrastructure.websocket.stomp.enums.StompTopic;
 import org.nan.cloud.message.infrastructure.websocket.stomp.model.CommonStompMessage;
@@ -42,6 +43,7 @@ public class StompMessageDispatcher {
 
     private final StompConnectionManager stompConnectionManager;
     private final TopicRoutingManager topicRoutingManager;
+    private final StompMessageSender messageSender;
     
     // ==================== 智能路由分发 ====================
     
@@ -433,8 +435,8 @@ public class StompMessageDispatcher {
             // 设置消息基础信息
             enrichMessage(message);
             
-            // 使用SimpMessagingTemplate发送到主题
-            stompConnectionManager.sendToTopic(topicPath, message);
+            // 使用StompMessageSender发送到主题
+            messageSender.sendToTopic(topicPath, message);
             
             log.debug("✅ 主题消息发布完成 - 主题: {}, 消息ID: {}", topicPath, message.getMessageId());
             

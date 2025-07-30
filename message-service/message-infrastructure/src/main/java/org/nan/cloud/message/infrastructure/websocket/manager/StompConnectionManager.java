@@ -6,11 +6,11 @@ import org.nan.cloud.message.api.enums.Priority;
 import org.nan.cloud.message.infrastructure.websocket.interceptor.StompChannelInterceptor;
 import org.nan.cloud.message.infrastructure.websocket.interceptor.StompPrincipal;
 import org.nan.cloud.message.infrastructure.websocket.security.GatewayUserInfo;
+import org.nan.cloud.message.infrastructure.websocket.sender.StompMessageSender;
 import org.nan.cloud.message.infrastructure.websocket.stomp.enums.StompMessageTypes;
 import org.nan.cloud.message.infrastructure.websocket.stomp.model.CommonStompMessage;
 import org.nan.cloud.message.infrastructure.websocket.subscription.AutoSubscriptionResult;
 import org.springframework.context.ApplicationEventPublisher;
-import org.springframework.messaging.simp.SimpMessagingTemplate;
 import org.springframework.stereotype.Component;
 
 import java.security.Principal;
@@ -48,7 +48,7 @@ import static org.nan.cloud.message.infrastructure.websocket.stomp.enums.StompTo
 @RequiredArgsConstructor
 public class StompConnectionManager {
     
-    private final SimpMessagingTemplate messagingTemplate;
+    private final StompMessageSender messageSender;
     private final ApplicationEventPublisher eventPublisher;
     
     /**
@@ -300,8 +300,12 @@ public class StompConnectionManager {
                 return false;
             }
             
-            // 使用SimpMessagingTemplate发送给用户
-            messagingTemplate.convertAndSendToUser(userId, destination, message);
+            // 使用StompMessageSender发送给用户
+            if (message instanceof CommonStompMessage stompMessage) {
+                messageSender.sendToUser(userId, destination, stompMessage);
+            } else {
+                messageSender.sendToSession(userId, destination, message);
+            }
             
             log.debug("向用户 {} 发送STOMP消息成功 - destination: {}", userId, destination);
             return true;
@@ -322,10 +326,13 @@ public class StompConnectionManager {
      */
     public boolean sendToTopic(String destination, Object message) {
         try {
-            messagingTemplate.convertAndSend(destination, message);
-            
-            log.debug("向Topic发送STOMP消息成功 - destination: {}", destination);
-            return true;
+            if (message instanceof CommonStompMessage stompMessage) {
+                return messageSender.sendToTopic(destination, stompMessage);
+            } else {
+                // 对于非CommonStompMessage对象，我们需要先转换
+                log.warn("发送到Topic的消息不是CommonStompMessage类型: {}", message.getClass().getSimpleName());
+                return false;
+            }
             
         } catch (Exception e) {
             log.error("向Topic发送STOMP消息失败 - destination: {}, 错误: {}", 
@@ -571,7 +578,7 @@ public class StompConnectionManager {
                     .build();
 
             // 发送欢迎消息到用户的欢迎队列
-            messagingTemplate.convertAndSendToUser(
+            messageSender.sendToSession(
                     sessionId,
                     "/queue/welcome",
                     welcomeMessage
