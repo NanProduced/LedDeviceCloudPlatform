@@ -9,9 +9,14 @@ import java.util.List;
 import java.util.Map;
 
 /**
- * 消息分发结果
+ * 消息分发结果 (Phase 2.4增强版)
  * 
- * 记录消息分发的执行结果和统计信息。
+ * 记录消息分发的执行结果和统计信息，支持聚合和动态路由统计。
+ * 
+ * Phase 2.4增强功能：
+ * - 消息聚合统计
+ * - 动态路由策略记录
+ * - 分发类型标识
  * 
  * @author Nan
  * @since 1.0.0
@@ -63,6 +68,28 @@ public class DispatchResult {
      * 错误消息
      */
     private String errorMessage;
+    
+    // ==================== Phase 2.4 增强字段 ====================
+    
+    /**
+     * 聚合消息数量（当消息被聚合时）
+     */
+    private int aggregatedMessageCount = 0;
+    
+    /**
+     * 分发类型
+     */
+    private DispatchType dispatchType = DispatchType.NORMAL;
+    
+    /**
+     * 使用的路由策略
+     */
+    private String routingStrategy;
+    
+    /**
+     * 是否使用了回退路由
+     */
+    private boolean usedFallbackRouting = false;
     
     public DispatchResult(String messageId) {
         this.messageId = messageId;
@@ -127,6 +154,69 @@ public class DispatchResult {
         return total > 0 ? (double) successCount / total : 0.0;
     }
     
+    // ==================== Phase 2.4 增强方法 ====================
+    
+    /**
+     * 设置聚合消息数量
+     */
+    public void setAggregatedMessageCount(int count) {
+        this.aggregatedMessageCount = count;
+        if (count > 1) {
+            this.dispatchType = DispatchType.AGGREGATED;
+        }
+    }
+    
+    /**
+     * 设置分发类型
+     */
+    public void setDispatchType(DispatchType dispatchType) {
+        this.dispatchType = dispatchType;
+    }
+    
+    /**
+     * 设置路由策略
+     */
+    public void setRoutingStrategy(String routingStrategy) {
+        this.routingStrategy = routingStrategy;
+    }
+    
+    /**
+     * 标记使用了回退路由
+     */
+    public void markUsedFallbackRouting() {
+        this.usedFallbackRouting = true;
+    }
+    
+    /**
+     * 获取聚合消息数量
+     */
+    public int getAggregatedMessageCount() {
+        return aggregatedMessageCount;
+    }
+    
+    /**
+     * 获取分发类型
+     */
+    public DispatchType getDispatchType() {
+        return dispatchType;
+    }
+    
+    /**
+     * 获取路由策略
+     */
+    public String getRoutingStrategy() {
+        return routingStrategy;
+    }
+    
+    /**
+     * 是否使用了回退路由
+     */
+    public boolean isUsedFallbackRouting() {
+        return usedFallbackRouting;
+    }
+    
+    // ==================== 静态工厂方法 ====================
+    
     /**
      * 创建失败结果
      */
@@ -134,6 +224,7 @@ public class DispatchResult {
         DispatchResult result = new DispatchResult(messageId);
         result.success = false;
         result.errorMessage = errorMessage;
+        result.dispatchType = DispatchType.FAILED;
         result.markCompleted();
         return result;
     }
@@ -147,5 +238,32 @@ public class DispatchResult {
         result.successCount = successfulTopics.size();
         result.markCompleted();
         return result;
+    }
+    
+    /**
+     * 创建排队结果（Phase 2.4 - 消息聚合）
+     */
+    public static DispatchResult queued(String messageId) {
+        DispatchResult result = new DispatchResult(messageId);
+        result.dispatchType = DispatchType.QUEUED;
+        result.success = true; // 排队也算成功
+        result.markCompleted();
+        return result;
+    }
+    
+    /**
+     * 分发类型枚举
+     */
+    public enum DispatchType {
+        NORMAL,      // 普通分发
+        AGGREGATED,  // 聚合分发
+        QUEUED,      // 已排队等待聚合
+        FAILED       // 分发失败
+    }
+    
+    @Override
+    public String toString() {
+        return String.format("DispatchResult{messageId='%s', dispatchType=%s, success=%s, successCount=%d, failureCount=%d, aggregatedMessageCount=%d, routingStrategy='%s', usedFallbackRouting=%s, duration=%dms}", 
+                messageId, dispatchType, success, successCount, failureCount, aggregatedMessageCount, routingStrategy, usedFallbackRouting, getDurationMillis());
     }
 }

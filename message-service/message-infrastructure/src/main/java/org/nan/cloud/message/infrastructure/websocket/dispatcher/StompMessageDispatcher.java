@@ -2,6 +2,9 @@ package org.nan.cloud.message.infrastructure.websocket.dispatcher;
 
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.nan.cloud.message.infrastructure.routing.enhanced.DynamicRoutingEngine;
+import org.nan.cloud.message.infrastructure.routing.enhanced.MessageAggregator;
+import org.nan.cloud.message.infrastructure.routing.enhanced.RoutingStrategyManager;
 import org.nan.cloud.message.infrastructure.websocket.manager.StompConnectionManager;
 import org.nan.cloud.message.infrastructure.websocket.routing.TopicRoutingDecision;
 import org.nan.cloud.message.infrastructure.websocket.routing.TopicRoutingManager;
@@ -12,6 +15,7 @@ import org.nan.cloud.message.infrastructure.websocket.stomp.model.CommonStompMes
 import org.springframework.stereotype.Component;
 
 import java.time.LocalDateTime;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
@@ -25,6 +29,12 @@ import java.util.UUID;
  * 3. 根据目标类型和路由规则进行消息分发
  * 4. 与StompConnectionManager协作完成实际推送
  * 5. 支持单用户、多用户、组织、终端等多种分发模式
+ * 
+ * Phase 2.4 增强功能：
+ * - 集成消息聚合器：智能聚合相似消息
+ * - 集成动态路由引擎：基于业务规则的智能路由
+ * - 集成路由策略管理器：支持多种路由策略和故障转移
+ * - 增强版Topic模式：支持通配符、动态创建、层次化管理
  * 
  * 分发策略：
  * - 用户级别：直接推送到用户的个人队列和订阅主题
@@ -45,49 +55,87 @@ public class StompMessageDispatcher {
     private final TopicRoutingManager topicRoutingManager;
     private final StompMessageSender messageSender;
     
+    // Phase 2.4: 增强版Topic模式组件
+    private final MessageAggregator messageAggregator;
+    private final DynamicRoutingEngine dynamicRoutingEngine;
+    private final RoutingStrategyManager routingStrategyManager;
+    
     // ==================== 智能路由分发 ====================
     
     /**
-     * 智能分发消息
-     * 使用TopicRoutingManager进行智能路由决策，然后执行分发
+     * 智能分发消息 (Phase 2.4增强版)
+     * 集成消息聚合、动态路由引擎和增强Topic管理
      * 
      * @param message STOMP消息
      * @return 分发结果统计
      */
     public DispatchResult smartDispatch(CommonStompMessage message) {
         try {
-            log.debug("开始智能分发消息 - 消息类型: {}, 消息ID: {}", message.getMessageType(), message.getMessageId());
+            log.debug("开始智能分发消息 (Phase 2.4) - 消息类型: {}, 消息ID: {}", message.getMessageType(), message.getMessageId());
             
             // 设置消息基础信息
             enrichMessage(message);
             
-            // 使用路由管理器进行路由决策
-            TopicRoutingDecision routingDecision = topicRoutingManager.decideRouting(message);
+            // Phase 2.4: Step 1 - 消息聚合处理
+            MessageAggregator.AggregationResult aggregationResult = messageAggregator.aggregateMessage(message);
             
-            DispatchResult result = new DispatchResult(message.getMessageId());
+            // 如果消息被加入聚合队列，则等待聚合触发
+            if (aggregationResult.getType() == MessageAggregator.AggregationResultType.QUEUED) {
+                log.debug("消息已加入聚合队列 - 消息ID: {}", message.getMessageId());
+                return DispatchResult.queued(message.getMessageId());
+            }
             
-            // 根据路由决策执行分发
-            for (String topicPath : routingDecision.getTargetTopics()) {
+            // 获取要分发的消息（可能是聚合后的消息）
+            CommonStompMessage messageToDispatch = aggregationResult.hasMessage() ? 
+                    aggregationResult.getAggregatedMessage() : message;
+            
+            // Phase 2.4: Step 2 - 选择路由策略
+            RoutingStrategyManager.RoutingStrategy strategy = routingStrategyManager.selectStrategy(messageToDispatch);
+            
+            // Phase 2.4: Step 3 - 动态路由决策
+            DynamicRoutingEngine.RoutingDecision routingDecision = dynamicRoutingEngine.makeRoutingDecision(messageToDispatch);
+            
+            DispatchResult result = new DispatchResult(messageToDispatch.getMessageId());
+            
+            // 如果动态路由决策失败，回退到传统路由
+            if (!routingDecision.isSuccess()) {
+                log.warn("动态路由决策失败，回退到传统路由 - 消息ID: {}, 原因: {}", 
+                        messageToDispatch.getMessageId(), routingDecision.getFailureReason());
+                
+                TopicRoutingDecision fallbackDecision = topicRoutingManager.decideRouting(messageToDispatch);
+                return executeFallbackRouting(messageToDispatch, fallbackDecision, result);
+            }
+            
+            // Phase 2.4: Step 4 - 执行增强路由分发
+            for (String topicPath : routingDecision.getTargets()) {
                 try {
-                    sendToTopic(topicPath, message);
+                    sendToTopic(topicPath, messageToDispatch);
                     result.incrementSuccessCount();
                     result.addSuccessfulTopic(topicPath);
                 } catch (Exception e) {
                     log.error("向主题分发消息失败 - 主题: {}, 消息ID: {}, 错误: {}", 
-                            topicPath, message.getMessageId(), e.getMessage(), e);
+                            topicPath, messageToDispatch.getMessageId(), e.getMessage(), e);
                     result.incrementFailureCount();
                     result.addFailedTopic(topicPath, e.getMessage());
                 }
             }
             
-            log.info("✅ 智能分发完成 - 消息ID: {}, 路由策略: {}, 成功: {}, 失败: {}", 
-                    message.getMessageId(), routingDecision.getRoutingStrategy(), 
-                    result.getSuccessCount(), result.getFailureCount());
+            // 记录聚合信息
+            if (aggregationResult.getType() == MessageAggregator.AggregationResultType.AGGREGATED) {
+                result.setAggregatedMessageCount(aggregationResult.getOriginalMessages().size());
+                log.info("✅ 增强智能分发完成 (含聚合) - 消息ID: {}, 路由策略: {}, 聚合消息数: {}, 成功: {}, 失败: {}", 
+                        messageToDispatch.getMessageId(), routingDecision.getStrategy(), 
+                        aggregationResult.getOriginalMessages().size(), result.getSuccessCount(), result.getFailureCount());
+            } else {
+                log.info("✅ 增强智能分发完成 - 消息ID: {}, 路由策略: {}, 成功: {}, 失败: {}", 
+                        messageToDispatch.getMessageId(), routingDecision.getStrategy(), 
+                        result.getSuccessCount(), result.getFailureCount());
+            }
                     
             return result;
             
         } catch (Exception e) {
-            log.error("智能分发消息失败 - 消息ID: {}, 错误: {}", message.getMessageId(), e.getMessage(), e);
+            log.error("增强智能分发消息失败 - 消息ID: {}, 错误: {}", message.getMessageId(), e.getMessage(), e);
             return DispatchResult.failure(message.getMessageId(), e.getMessage());
         }
     }
@@ -470,6 +518,71 @@ public class StompMessageDispatcher {
         } catch (Exception e) {
             log.error("全局系统广播失败 - 消息ID: {}, 错误: {}", message.getMessageId(), e.getMessage(), e);
         }
+    }
+    
+    /**
+     * 执行回退路由（当动态路由失败时）
+     */
+    private DispatchResult executeFallbackRouting(CommonStompMessage message, TopicRoutingDecision routingDecision, DispatchResult result) {
+        for (String topicPath : routingDecision.getTargetTopics()) {
+            try {
+                sendToTopic(topicPath, message);
+                result.incrementSuccessCount();
+                result.addSuccessfulTopic(topicPath);
+            } catch (Exception e) {
+                log.error("回退路由分发失败 - 主题: {}, 消息ID: {}, 错误: {}", 
+                        topicPath, message.getMessageId(), e.getMessage(), e);
+                result.incrementFailureCount();
+                result.addFailedTopic(topicPath, e.getMessage());
+            }
+        }
+        
+        log.info("✅ 回退路由分发完成 - 消息ID: {}, 路由策略: {}, 成功: {}, 失败: {}", 
+                message.getMessageId(), routingDecision.getRoutingStrategy(), 
+                result.getSuccessCount(), result.getFailureCount());
+        
+        return result;
+    }
+    
+    /**
+     * 获取增强Topic统计信息
+     * 
+     * @return Phase 2.4增强Topic统计
+     */
+    public Map<String, Object> getEnhancedTopicStats() {
+        Map<String, Object> stats = new HashMap<>();
+        
+        // 消息聚合统计
+        MessageAggregator.AggregationStats aggregationStats = messageAggregator.getAggregationStats();
+        stats.put("aggregation", Map.of(
+                "totalAggregatedMessages", aggregationStats.getTotalAggregatedMessages(),
+                "totalAggregationEvents", aggregationStats.getTotalAggregationEvents(),
+                "pendingMessageCount", aggregationStats.getPendingMessageCount(),
+                "activeAggregationKeys", aggregationStats.getActiveAggregationKeys()
+        ));
+        
+        // 动态路由统计
+        DynamicRoutingEngine.RoutingStats routingStats = dynamicRoutingEngine.getRoutingStats();
+        stats.put("routing", Map.of(
+                "totalRoutingDecisions", routingStats.getTotalRoutingDecisions(),
+                "successfulRoutings", routingStats.getSuccessfulRoutings(),
+                "failedRoutings", routingStats.getFailedRoutings(),
+                "successRate", routingStats.getSuccessRate(),
+                "activeRoutingRules", routingStats.getActiveRoutingRules()
+        ));
+        
+        // 路由策略统计
+        RoutingStrategyManager.StrategyStats strategyStats = routingStrategyManager.getStrategyStats();
+        stats.put("strategy", Map.of(
+                "totalStrategyExecutions", strategyStats.getTotalStrategyExecutions(),
+                "successfulExecutions", strategyStats.getSuccessfulExecutions(),
+                "failedExecutions", strategyStats.getFailedExecutions(),
+                "successRate", strategyStats.getSuccessRate(),
+                "totalStrategies", strategyStats.getTotalStrategies(),
+                "activeStrategies", strategyStats.getActiveStrategies()
+        ));
+        
+        return stats;
     }
     
     // ==================== 工具方法 ====================

@@ -3,6 +3,8 @@ package org.nan.cloud.message.infrastructure.mq.listener;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.nan.cloud.message.infrastructure.aggregation.BatchCommandAggregator;
+import org.nan.cloud.message.infrastructure.aggregation.BatchProgressTracker;
 import org.nan.cloud.message.infrastructure.mq.config.MessageServiceRabbitConfig;
 import org.nan.cloud.message.infrastructure.mq.converter.MqToStompMessageConverter;
 import org.nan.cloud.message.infrastructure.websocket.dispatcher.StompMessageDispatcher;
@@ -46,6 +48,10 @@ public class MqStompBridgeListener {
     private final MqToStompMessageConverter messageConverter;
     private final StompMessageDispatcher stompDispatcher;
     private final ObjectMapper objectMapper;
+    
+    // Phase 2.3: 批量指令聚合引擎组件
+    private final BatchCommandAggregator batchCommandAggregator;
+    private final BatchProgressTracker batchProgressTracker;
     
     /**
      * 监听设备状态变更消息
@@ -290,6 +296,11 @@ public class MqStompBridgeListener {
      * 监听批量指令进度消息
      * 队列：batch.command.progress.queue
      * 路由键：batch.progress.{orgId}.{batchId}
+     * 
+     * Phase 2.3 增强功能：
+     * - 集成批量指令聚合引擎
+     * - 智能聚合和分层推送
+     * - 进度跟踪和超时检测
      */
     @RabbitListener(queues = MessageServiceRabbitConfig.BATCH_PROGRESS_QUEUE)
     public void handleBatchCommandProgressMessage(@Payload String messagePayload,
@@ -297,6 +308,24 @@ public class MqStompBridgeListener {
                                                 @Header("routingKey") String routingKey) {
         try {
             log.debug("收到批量指令进度消息 - 路由键: {}", routingKey);
+            
+            // Phase 2.3: 解析消息并交给聚合引擎处理
+            Map<String, Object> messageData = objectMapper.readValue(messagePayload, Map.class);
+            String batchId = (String) messageData.get("batchId");
+            String messageType = (String) messageData.get("messageType");
+            
+            // 检查是否是批量任务启动消息
+            if ("BATCH_STARTED".equalsIgnoreCase(messageType)) {
+                handleBatchStarted(batchId, messageData);
+            }
+            // 检查是否是设备执行结果消息
+            else if ("DEVICE_RESULT".equalsIgnoreCase(messageType) || messageData.containsKey("deviceId")) {
+                handleDeviceExecutionResult(batchId, messageData);
+            }
+            // 检查是否是批量状态变更消息
+            else if ("STATUS_CHANGE".equalsIgnoreCase(messageType)) {
+                handleBatchStatusChange(batchId, messageData);
+            }
             
             // 优先使用业务消息处理器管理器
             BusinessMessageProcessor.BusinessMessageProcessResult processResult = 
@@ -359,6 +388,100 @@ public class MqStompBridgeListener {
             
         } catch (Exception e) {
             log.error("批量指令进度消息降级处理异常 - 路由键: {}, 错误: {}", routingKey, e.getMessage(), e);
+        }
+    }
+    
+    // ==================== Phase 2.3: 批量指令聚合引擎集成方法 ====================
+    
+    /**
+     * 处理批量任务启动消息
+     */
+    private void handleBatchStarted(String batchId, Map<String, Object> messageData) {
+        try {
+            log.info("🚀 处理批量任务启动 - 批量ID: {}", batchId);
+            
+            // 启动聚合引擎跟踪
+            batchCommandAggregator.startBatchAggregation(batchId, messageData);
+            
+            // 启动进度跟踪器
+            Long timeoutMs = getLongValue(messageData, "timeoutMs");
+            batchProgressTracker.startTracking(batchId, timeoutMs);
+            
+            log.info("✅ 批量任务启动处理完成 - 批量ID: {}", batchId);
+            
+        } catch (Exception e) {
+            log.error("处理批量任务启动失败 - 批量ID: {}, 错误: {}", batchId, e.getMessage(), e);
+        }
+    }
+    
+    /**
+     * 处理设备执行结果消息
+     */
+    private void handleDeviceExecutionResult(String batchId, Map<String, Object> messageData) {
+        try {
+            String deviceId = (String) messageData.get("deviceId");
+            log.debug("📱 处理设备执行结果 - 批量ID: {}, 设备ID: {}", batchId, deviceId);
+            
+            // 聚合设备执行结果
+            batchCommandAggregator.aggregateDeviceResult(batchId, messageData);
+            
+            // 更新进度跟踪
+            batchProgressTracker.updateProgress(batchId);
+            
+            log.debug("✅ 设备执行结果处理完成 - 批量ID: {}, 设备ID: {}", batchId, deviceId);
+            
+        } catch (Exception e) {
+            log.error("处理设备执行结果失败 - 批量ID: {}, 错误: {}", batchId, e.getMessage(), e);
+        }
+    }
+    
+    /**
+     * 处理批量状态变更消息
+     */
+    private void handleBatchStatusChange(String batchId, Map<String, Object> messageData) {
+        try {
+            String newStatusStr = (String) messageData.get("status");
+            log.info("📊 处理批量状态变更 - 批量ID: {}, 新状态: {}", batchId, newStatusStr);
+            
+            // 解析状态
+            org.nan.cloud.message.infrastructure.aggregation.BatchCommandAggregationData.BatchStatus newStatus;
+            try {
+                newStatus = org.nan.cloud.message.infrastructure.aggregation.BatchCommandAggregationData.BatchStatus.valueOf(newStatusStr);
+            } catch (IllegalArgumentException e) {
+                log.warn("未识别的批量状态: {}, 使用RUNNING作为默认值", newStatusStr);
+                newStatus = org.nan.cloud.message.infrastructure.aggregation.BatchCommandAggregationData.BatchStatus.RUNNING;
+            }
+            
+            // 聚合状态变更
+            batchCommandAggregator.aggregateStatusChange(batchId, newStatus, messageData);
+            
+            // 如果任务完成，停止跟踪
+            if (newStatus == org.nan.cloud.message.infrastructure.aggregation.BatchCommandAggregationData.BatchStatus.COMPLETED ||
+                newStatus == org.nan.cloud.message.infrastructure.aggregation.BatchCommandAggregationData.BatchStatus.FAILED ||
+                newStatus == org.nan.cloud.message.infrastructure.aggregation.BatchCommandAggregationData.BatchStatus.CANCELLED) {
+                
+                boolean isSuccessful = newStatus == org.nan.cloud.message.infrastructure.aggregation.BatchCommandAggregationData.BatchStatus.COMPLETED;
+                batchProgressTracker.stopTracking(batchId, isSuccessful);
+            }
+            
+            log.info("✅ 批量状态变更处理完成 - 批量ID: {}, 新状态: {}", batchId, newStatus);
+            
+        } catch (Exception e) {
+            log.error("处理批量状态变更失败 - 批量ID: {}, 错误: {}", batchId, e.getMessage(), e);
+        }
+    }
+    
+    /**
+     * 安全获取Long值
+     */
+    private Long getLongValue(Map<String, Object> data, String key) {
+        Object value = data.get(key);
+        if (value == null) return null;
+        if (value instanceof Number) return ((Number) value).longValue();
+        try {
+            return Long.valueOf(value.toString());
+        } catch (NumberFormatException e) {
+            return null;
         }
     }
     
