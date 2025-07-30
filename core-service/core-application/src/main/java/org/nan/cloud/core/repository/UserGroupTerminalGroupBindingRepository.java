@@ -63,5 +63,15 @@ public interface UserGroupTerminalGroupBindingRepository {
      * @param binding 绑定关系
      */
     void createUserGroupBinding(UserGroupTerminalGroupBinding binding);
+    
+    /**
+     * 检查用户组是否有特定终端的权限
+     * 用于STOMP权限验证，通过终端ID查找对应的终端组权限
+     * 
+     * @param ugid 用户组ID
+     * @param terminalId 终端ID
+     * @return true表示有权限，false表示无权限
+     */
+    boolean hasPermissionForTerminal(Long ugid, Long tid);
 
 }

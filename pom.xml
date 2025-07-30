@@ -131,6 +131,11 @@
             </dependency>
             <dependency>
                 <groupId>org.nan</groupId>
+                <artifactId>core-api</artifactId>
+                <version>${project.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>org.nan</groupId>
                 <artifactId>message-api</artifactId>
                 <version>${project.version}</version>
             </dependency>

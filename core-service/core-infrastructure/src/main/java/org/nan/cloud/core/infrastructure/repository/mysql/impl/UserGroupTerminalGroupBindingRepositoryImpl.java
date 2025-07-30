@@ -8,8 +8,10 @@ import org.nan.cloud.common.basic.model.BindingType;
 import org.nan.cloud.common.basic.model.PageVO;
 import org.nan.cloud.core.domain.User;
 import org.nan.cloud.core.domain.UserGroupTerminalGroupBinding;
+import org.nan.cloud.core.infrastructure.repository.mysql.DO.TerminalInfoDO;
 import org.nan.cloud.core.infrastructure.repository.mysql.DO.UserGroupTerminalGroupBindingDO;
 import org.nan.cloud.core.infrastructure.repository.mysql.converter.CommonConverter;
+import org.nan.cloud.core.infrastructure.repository.mysql.mapper.TerminalInfoMapper;
 import org.nan.cloud.core.infrastructure.repository.mysql.mapper.UserGroupTerminalGroupBindingMapper;
 import org.nan.cloud.core.repository.UserGroupTerminalGroupBindingRepository;
 import org.springframework.stereotype.Repository;
@@ -25,6 +27,7 @@ public class UserGroupTerminalGroupBindingRepositoryImpl implements UserGroupTer
 
     private final UserGroupTerminalGroupBindingMapper bindingMapper;
     private final CommonConverter commonConverter;
+    private final TerminalInfoMapper terminalInfoMapper;
 
 
     @Override
@@ -117,5 +120,13 @@ public class UserGroupTerminalGroupBindingRepositoryImpl implements UserGroupTer
     public void createUserGroupBinding(UserGroupTerminalGroupBinding binding) {
         UserGroupTerminalGroupBindingDO bindingDO = commonConverter.toUserGroupTerminalGroupBindingDO(binding);
         bindingMapper.insert(bindingDO);
+    }
+
+    @Override
+    public boolean hasPermissionForTerminal(Long ugid, Long tid) {
+        Long tgid = terminalInfoMapper.selectOne(new LambdaQueryWrapper<TerminalInfoDO>()
+                .select(TerminalInfoDO::getTgid)
+                .eq(TerminalInfoDO::getTid, tid)).getTgid();
+        return hasTerminalGroupPermission(ugid, tid);
     }
 }

@@ -74,5 +74,11 @@
             <groupId>org.nan</groupId>
             <artifactId>common-web</artifactId>
         </dependency>
+        
+        <!-- Core Service API - 用于权限验证 -->
+        <dependency>
+            <groupId>org.nan</groupId>
+            <artifactId>core-api</artifactId>
+        </dependency>
     </dependencies>
 </project>

@@ -8,8 +8,10 @@ import org.nan.cloud.common.basic.model.PageVO;
 import org.nan.cloud.core.DTO.SearchTerminalGroupDTO;
 import org.nan.cloud.core.domain.TerminalGroup;
 import org.nan.cloud.core.infrastructure.repository.mysql.DO.TerminalGroupDO;
+import org.nan.cloud.core.infrastructure.repository.mysql.DO.TerminalInfoDO;
 import org.nan.cloud.core.infrastructure.repository.mysql.converter.CommonConverter;
 import org.nan.cloud.core.infrastructure.repository.mysql.mapper.TerminalGroupMapper;
+import org.nan.cloud.core.infrastructure.repository.mysql.mapper.TerminalInfoMapper;
 import org.nan.cloud.core.infrastructure.repository.mysql.mapper.UserGroupMapper;
 import org.nan.cloud.core.repository.TerminalGroupRepository;
 import org.springframework.stereotype.Repository;
@@ -27,6 +29,7 @@ public class TerminalGroupRepositoryImpl implements TerminalGroupRepository {
 
     private final CommonConverter commonConverter;
     private final UserGroupMapper userGroupMapper;
+    private final TerminalInfoMapper terminalInfoMapper;
 
     @Override
     public TerminalGroup createTerminalGroup(TerminalGroup terminalGroup) {
@@ -130,5 +133,12 @@ public class TerminalGroupRepositoryImpl implements TerminalGroupRepository {
                 .likeRight(TerminalGroupDO::getPath, getPathByTgid(tgid) + "|")
                 .or()
                 .eq(TerminalGroupDO::getTgid, tgid)).stream().map(TerminalGroupDO::getTgid).collect(Collectors.toSet());
+    }
+
+    @Override
+    public boolean hasTerminalInOrg(Long oid, Long tid) {
+        return terminalInfoMapper.exists(new LambdaQueryWrapper<TerminalInfoDO>()
+                .eq(TerminalInfoDO::getTid, tid)
+                .eq(TerminalInfoDO::getOid, oid));
     }
 }

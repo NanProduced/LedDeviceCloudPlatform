@@ -51,4 +51,14 @@ public interface TerminalGroupRepository {
     String getPathByTgid(Long tgid);
 
     Set<Long> getAllTgidsByParent(Long tgid);
+    
+    /**
+     * 检查指定终端是否属于指定组织
+     * 用于STOMP权限验证
+     * 
+     * @param oid 组织ID
+     * @param tid 终端ID
+     * @return true表示终端属于该组织，false表示不属于
+     */
+    boolean hasTerminalInOrg(Long oid, Long tid);
 }

@@ -7,6 +7,9 @@ import org.nan.cloud.common.basic.exception.BaseException;
 import org.nan.cloud.common.basic.exception.ExceptionEnum;
 import org.nan.cloud.message.infrastructure.websocket.manager.StompConnectionManager;
 import org.nan.cloud.message.infrastructure.websocket.security.GatewayUserInfo;
+import org.nan.cloud.message.infrastructure.websocket.subscription.AutoSubscriptionResult;
+import org.nan.cloud.message.infrastructure.websocket.subscription.SubscriptionManager;
+import org.nan.cloud.message.infrastructure.websocket.subscription.SubscriptionResult;
 import org.springframework.messaging.Message;
 import org.springframework.messaging.MessageChannel;
 import org.springframework.messaging.simp.SimpMessagingTemplate;
@@ -44,6 +47,7 @@ public class StompChannelInterceptor implements ChannelInterceptor {
     
     private final SimpMessagingTemplate messagingTemplate;
     private final StompConnectionManager stompConnectionManager;
+    private final SubscriptionManager subscriptionManager;
     
     /**
      * 消息发送前拦截处理
@@ -139,8 +143,8 @@ public class StompChannelInterceptor implements ChannelInterceptor {
             stompConnectionManager.registerConnection(sessionId, stompPrincipal, clientInfo);
             log.info("✅ 连接已注册到StompConnectionManager");
             
-            // 延迟执行自动订阅，确保连接完全建立
-            scheduleAutoSubscription(sessionId, userId, organizationId);
+            // 执行自动订阅（基于明确的业务规则）
+            performAutoSubscription(userInfo, sessionId);
             
         } catch (Exception e) {
             log.error("处理STOMP连接失败: {}", e.getMessage(), e);
@@ -150,25 +154,30 @@ public class StompChannelInterceptor implements ChannelInterceptor {
     /**
      * 处理SUBSCRIBE命令
      * 
-     * 验证用户是否有权限订阅指定的主题
+     * 使用SubscriptionManager进行权限验证和订阅管理
      */
     private void handleSubscribe(StompHeaderAccessor accessor) {
         try {
             String destination = accessor.getDestination();
+            String sessionId = accessor.getSessionId();
             GatewayUserInfo userInfo = getUserInfo(accessor);
             
             if (userInfo == null) {
                 throw new BaseException(ExceptionEnum.STOMP_ACCESS_DENIED, "未找到用户认证信息");
             }
             
-            if (!hasSubscriptionPermission(userInfo, destination)) {
-                throw new BaseException(ExceptionEnum.STOMP_ACCESS_DENIED, "无权限订阅主题: " + destination);
+            // 使用SubscriptionManager处理订阅
+            SubscriptionResult result = subscriptionManager.handleSubscription(userInfo, destination, sessionId);
+            
+            if (!result.isSuccess()) {
+                throw new BaseException(ExceptionEnum.STOMP_ACCESS_DENIED, result.getMessage());
             }
             
-            log.info("订阅权限验证通过 - 用户: {}, 主题: {}", userInfo.getUid(), destination);
+            log.info("✅ 订阅处理成功 - 用户: {}, 主题: {}, 层次: {}", 
+                    userInfo.getUid(), destination, result.getSubscriptionLevel());
             
         } catch (Exception e) {
-            log.error("订阅权限验证失败: {}", e.getMessage());
+            log.error("订阅处理失败: {}", e.getMessage());
             throw e;
         }
     }
@@ -211,6 +220,11 @@ public class StompChannelInterceptor implements ChannelInterceptor {
             
             if (userInfo != null) {
                 log.info("用户断开STOMP连接 - 用户ID: {}, 会话ID: {}", 
+                        userInfo.getUid(), sessionId);
+                
+                // 清理用户会话订阅
+                subscriptionManager.cleanupUserSessionSubscriptions(userInfo, sessionId);
+                log.info("✅ 用户会话订阅已清理 - 用户ID: {}, 会话ID: {}", 
                         userInfo.getUid(), sessionId);
             }
             
@@ -365,93 +379,88 @@ public class StompChannelInterceptor implements ChannelInterceptor {
         return null;
     }
     
-    /**
-     * 调度自动订阅
-     * 
-     * 延迟执行自动订阅，确保连接完全建立
-     */
-    private void scheduleAutoSubscription(String sessionId, String userId, String organizationId) {
-        // 使用异步方式延迟执行，避免阻塞连接建立
-        new Thread(() -> {
-            try {
-                Thread.sleep(1000); // 延迟1秒确保连接稳定
-                performAutoSubscription(sessionId, userId, organizationId);
-            } catch (InterruptedException e) {
-                Thread.currentThread().interrupt();
-                log.warn("自动订阅线程被中断");
-            } catch (Exception e) {
-                log.error("自动订阅执行失败: {}", e.getMessage(), e);
-            }
-        }, "auto-subscription-" + sessionId).start();
-    }
     
     /**
      * 执行自动订阅
      * 
-     * 为新连接的用户自动订阅默认主题
+     * 使用SubscriptionManager为新连接的用户执行自动订阅
      */
-    private void performAutoSubscription(String sessionId, String userId, String organizationId) {
+    private void performAutoSubscription(GatewayUserInfo userInfo, String sessionId) {
         try {
-            log.info("开始执行自动订阅 - 会话: {}, 用户: {}, 组织: {}", sessionId, userId, organizationId);
+            log.info("开始执行自动订阅 - 用户: {}, 会话: {}", userInfo.getUid(), sessionId);
             
-            // 构建默认订阅的主题列表
-            String[] defaultTopics = {
-                "/topic/user/" + userId + "/notifications",           // 用户个人通知
-                "/topic/organization/" + organizationId + "/announcements" // 组织公告
-            };
+            // 使用SubscriptionManager执行自动订阅
+            AutoSubscriptionResult result = subscriptionManager.performAutoSubscription(userInfo, sessionId);
             
-            // 发送自动订阅指令给客户端
-            for (String topic : defaultTopics) {
-                // 向特定会话发送订阅建议消息
-                messagingTemplate.convertAndSendToUser(
-                    sessionId, 
-                    "/queue/auto-subscribe", 
-                    new AutoSubscribeMessage(topic, "系统推荐订阅")
-                );
+            if (result.isSuccess()) {
+                log.info("✅ 自动订阅成功 - 用户: {}, 成功: {}, 失败: {}", 
+                        userInfo.getUid(), 
+                        result.getSuccessfulSubscriptions().size(),
+                        result.getFailedSubscriptions() != null ? result.getFailedSubscriptions().size() : 0);
                 
-                log.info("发送自动订阅建议 - 会话: {}, 主题: {}", sessionId, topic);
+                // 发送欢迎消息，通知用户连接成功和订阅状态
+                sendWelcomeMessage(sessionId, result);
+                
+            } else {
+                log.warn("⚠️ 自动订阅部分失败 - 用户: {}, 错误: {}", 
+                        userInfo.getUid(), result.getErrorMessage());
             }
             
-            // 发送欢迎消息
-            messagingTemplate.convertAndSendToUser(
-                sessionId,
-                "/queue/welcome",
-                new WelcomeMessage("欢迎连接到消息中心", "您已成功建立STOMP连接，可以开始接收实时消息了")
-            );
-            
-            log.info("自动订阅执行完成 - 会话: {}", sessionId);
-            
         } catch (Exception e) {
-            log.error("执行自动订阅失败 - 会话: {}, 错误: {}", sessionId, e.getMessage(), e);
+            log.error("执行自动订阅异常 - 用户: {}, 会话: {}, 错误: {}", 
+                    userInfo.getUid(), sessionId, e.getMessage(), e);
         }
     }
     
     /**
-     * 自动订阅消息
+     * 发送欢迎消息
+     * 
+     * 向用户发送连接成功和自动订阅状态的欢迎消息
      */
-    public static class AutoSubscribeMessage {
-        public final String topic;
-        public final String description;
-        
-        public AutoSubscribeMessage(String topic, String description) {
-            this.topic = topic;
-            this.description = description;
+    private void sendWelcomeMessage(String sessionId, AutoSubscriptionResult result) {
+        try {
+            // 构建欢迎消息内容
+            String welcomeContent = String.format(
+                "🎉 欢迎连接到LED设备云平台消息中心！\\n" +
+                "✅ STOMP连接已建立\\n" +
+                "📡 自动订阅完成：成功 %d 个主题\\n" +
+                "💡 您现在可以接收实时消息推送了",
+                result.getSuccessfulSubscriptions() != null ? result.getSuccessfulSubscriptions().size() : 0
+            );
+            
+            WelcomeMessage welcomeMessage = WelcomeMessage.builder()
+                    .title("连接成功")
+                    .content(welcomeContent)
+                    .subscriptionSummary(result.getSummary())
+                    .timestamp(System.currentTimeMillis())
+                    .build();
+            
+            // 发送欢迎消息到用户的欢迎队列
+            messagingTemplate.convertAndSendToUser(
+                sessionId,
+                "/queue/welcome",
+                welcomeMessage
+            );
+            
+            log.debug("✅ 欢迎消息已发送 - 会话: {}", sessionId);
+            
+        } catch (Exception e) {
+            log.warn("发送欢迎消息失败 - 会话: {}, 错误: {}", sessionId, e.getMessage());
         }
     }
     
     /**
      * 欢迎消息
      */
+    @lombok.Data
+    @lombok.Builder
+    @lombok.AllArgsConstructor
+    @lombok.NoArgsConstructor
     public static class WelcomeMessage {
-        public final String title;
-        public final String content;
-        public final long timestamp;
-        
-        public WelcomeMessage(String title, String content) {
-            this.title = title;
-            this.content = content;
-            this.timestamp = System.currentTimeMillis();
-        }
+        private String title;
+        private String content;
+        private String subscriptionSummary;
+        private long timestamp;
     }
 }
 
