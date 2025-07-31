@@ -25,7 +25,7 @@ import org.springframework.web.socket.config.annotation.WebSocketMessageBrokerCo
  * - 使用内存消息代理（适合单节点部署）
  * - 支持SockJS降级方案
  * - Gateway CLOUD-AUTH头认证
- * - 自动订阅用户和组织主题
+ * - 发送连接成功消息，指导客户端订阅主题
  * 
  * @author LedDeviceCloudPlatform Team
  * @since 1.0.0
@@ -180,7 +180,7 @@ public class WebSocketStompConfig implements WebSocketMessageBrokerConfigurer {
  *     brokerURL: 'ws://localhost:8082/message-service/ws'
  * });
  * 
- * // 连接成功后会自动订阅用户和组织主题
+ * // 连接成功后需要手动订阅相关主题
  * stompClient.onConnect = (frame) => {
  *     // 手动订阅特定终端
  *     stompClient.subscribe('/topic/terminal/123/status', (message) => {

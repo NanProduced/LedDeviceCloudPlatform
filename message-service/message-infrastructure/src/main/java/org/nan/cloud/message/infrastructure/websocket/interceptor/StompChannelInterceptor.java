@@ -1,12 +1,10 @@
 package org.nan.cloud.message.infrastructure.websocket.interceptor;
 
-import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.nan.cloud.common.basic.exception.BaseException;
 import org.nan.cloud.common.basic.exception.ExceptionEnum;
 import org.nan.cloud.message.infrastructure.websocket.manager.StompConnectionManager;
 import org.nan.cloud.message.infrastructure.websocket.security.GatewayUserInfo;
-import org.nan.cloud.message.infrastructure.websocket.subscription.AutoSubscriptionResult;
 import org.nan.cloud.message.infrastructure.websocket.subscription.SubscriptionManager;
 import org.nan.cloud.message.infrastructure.websocket.subscription.SubscriptionResult;
 import org.springframework.context.annotation.Lazy;
@@ -25,13 +23,13 @@ import java.util.Map;
  * STOMP通道拦截器
  * 
  * 处理STOMP协议层面的消息拦截和权限控制：
- * 1. 连接建立时自动订阅用户和组织主题
+ * 1. 连接建立时发送连接成功消息
  * 2. 订阅请求的权限验证
  * 3. 消息发送的权限检查
  * 4. 连接断开时的清理工作
  * 
  * 主要功能：
- * - CONNECT: 建立连接并自动订阅默认主题
+ * - CONNECT: 建立连接并发送连接成功消息
  * - SUBSCRIBE: 验证订阅权限
  * - SEND: 验证消息发送权限
  * - DISCONNECT: 清理连接资源
@@ -58,7 +56,7 @@ public class StompChannelInterceptor implements ChannelInterceptor {
      * 消息发送前拦截处理
      * 
      * 在消息通过通道发送前进行拦截，根据STOMP命令类型执行不同的处理：
-     * - CONNECT: 连接建立，执行自动订阅
+     * - CONNECT: 连接建立，发送连接成功消息
      * - SUBSCRIBE: 订阅权限验证
      * - SEND: 消息发送权限检查
      * - DISCONNECT: 连接断开清理
@@ -84,6 +82,9 @@ public class StompChannelInterceptor implements ChannelInterceptor {
                         break;
                     case SEND:
                         handleSend(accessor);
+                        break;
+                    case UNSUBSCRIBE:
+                        handleUnsubscribe(accessor);
                         break;
                     case DISCONNECT:
                         handleDisconnect(accessor);
@@ -148,8 +149,8 @@ public class StompChannelInterceptor implements ChannelInterceptor {
             stompConnectionManager.registerConnection(sessionId, stompPrincipal, clientInfo);
             log.debug("✅ 连接已注册到StompConnectionManager");
             
-            // 执行自动订阅（基于明确的业务规则）
-            performAutoSubscription(userInfo, sessionId);
+            // 发送连接成功消息（客户端需要主动订阅才能收到消息）
+            stompConnectionManager.sendConnectSuccessMessage(userInfo.getUid().toString(), sessionId);
             
         } catch (Exception e) {
             log.error("处理STOMP连接失败: {}", e.getMessage(), e);
@@ -183,7 +184,30 @@ public class StompChannelInterceptor implements ChannelInterceptor {
             
         } catch (Exception e) {
             log.error("订阅处理失败: {}", e.getMessage());
-            throw e;
+        }
+    }
+
+    /**
+     * 处理取消订阅UNSUBSCRIBE命令
+     * @param accessor
+     */
+    private void handleUnsubscribe(StompHeaderAccessor accessor) {
+        try {
+            String destination = accessor.getDestination();
+            String sessionId = accessor.getSessionId();
+            GatewayUserInfo userInfo = getUserInfo(accessor);
+
+            SubscriptionResult subscriptionResult = subscriptionManager.handleUnsubscription(userInfo, destination, sessionId);
+
+            if (!subscriptionResult.isSuccess()) {
+                throw new BaseException(ExceptionEnum.STOMP_ACCESS_DENIED, subscriptionResult.getMessage());
+            }
+
+            log.debug("✅ 取消订阅处理成功 - 用户: {}, 主题: {}, 层次: {}",
+                    userInfo.getUid(), destination, subscriptionResult.getSubscriptionLevel());
+
+        } catch (Exception e) {
+            log.error("取消订阅失败: {}", e.getMessage());
         }
     }
     
@@ -304,44 +328,6 @@ public class StompChannelInterceptor implements ChannelInterceptor {
     }
     
     /**
-     * 验证订阅权限
-     * 
-     * 检查用户是否可以订阅指定的主题
-     */
-    private boolean hasSubscriptionPermission(GatewayUserInfo userInfo, String destination) {
-        if (destination == null) {
-            return false;
-        }
-        
-        String userId = userInfo.getUid().toString();
-        String organizationId = userInfo.getOid().toString();
-        
-        // 用户可以订阅自己的主题
-        if (destination.startsWith("/topic/user/" + userId + "/")) {
-            return true;
-        }
-        
-        // 用户可以订阅所属组织的主题
-        if (destination.startsWith("/topic/organization/" + organizationId + "/")) {
-            return true;
-        }
-        
-        // 用户可以订阅有权限访问的终端主题
-        if (destination.startsWith("/topic/terminal/")) {
-            String terminalId = extractTerminalId(destination);
-            return userCanAccessTerminal(userInfo, terminalId);
-        }
-        
-        // 系统主题需要特殊权限
-        if (destination.startsWith("/topic/system/")) {
-            return userInfo.getUserType() != null && userInfo.getUserType() == 1; // 管理员
-        }
-        
-        log.warn("未知主题订阅请求 - 用户: {}, 主题: {}", userId, destination);
-        return false;
-    }
-    
-    /**
      * 验证发送权限
      * 
      * 检查用户是否可以发送消息到指定目的地
@@ -360,17 +346,7 @@ public class StompChannelInterceptor implements ChannelInterceptor {
         log.warn("不允许的发送目的地 - 用户: {}, 目的地: {}", userInfo.getUid(), destination);
         return false;
     }
-    
-    /**
-     * 检查用户是否可以访问指定终端
-     * 
-     * TODO: 这里需要集成实际的权限检查逻辑
-     */
-    private boolean userCanAccessTerminal(GatewayUserInfo userInfo, String terminalId) {
-        // 暂时返回true，实际应该检查用户对终端的访问权限
-        // 可以通过调用Core-Service的权限API来验证
-        return true;
-    }
+
     
     /**
      * 从终端主题中提取终端ID
@@ -385,37 +361,6 @@ public class StompChannelInterceptor implements ChannelInterceptor {
     }
     
     
-    /**
-     * 执行自动订阅
-     * 
-     * 使用SubscriptionManager为新连接的用户执行自动订阅
-     */
-    private void performAutoSubscription(GatewayUserInfo userInfo, String sessionId) {
-        try {
-            log.debug("开始执行自动订阅 - 用户: {}, 会话: {}", userInfo.getUid(), sessionId);
-            
-            // 使用SubscriptionManager执行自动订阅
-            AutoSubscriptionResult result = subscriptionManager.performAutoSubscription(userInfo, sessionId);
-            
-            if (result.isSuccess()) {
-                log.debug("✅ 自动订阅成功 - 用户: {}, 成功: {}, 失败: {}",
-                        userInfo.getUid(), 
-                        result.getSuccessfulSubscriptions().size(),
-                        result.getFailedSubscriptions() != null ? result.getFailedSubscriptions().size() : 0);
-                
-                // 发送欢迎消息，通知用户连接成功和订阅状态
-                stompConnectionManager.sendWelcomeMessage(sessionId, result);
-                
-            } else {
-                log.warn("⚠️ 自动订阅部分失败 - 用户: {}, 错误: {}", 
-                        userInfo.getUid(), result.getErrorMessage());
-            }
-            
-        } catch (Exception e) {
-            log.error("执行自动订阅异常 - 用户: {}, 会话: {}, 错误: {}", 
-                    userInfo.getUid(), sessionId, e.getMessage(), e);
-        }
-    }
 
 }
 

@@ -4,7 +4,6 @@ package org.nan.cloud.message.infrastructure.websocket.stomp.enums;
  * STOMP Topic和Destination统一管理 - 极简版
  * 
  * 设计理念：
- * - 最少的主题数量：只有5个核心主题模式
  * - 消息分类职责归于CommonStompMessage：通过messageType、subType等字段区分消息类型
  * - 前端统一处理：订阅少量主题，通过消息内容路由到具体处理逻辑
  * 
@@ -14,6 +13,7 @@ package org.nan.cloud.message.infrastructure.websocket.stomp.enums;
  * 3. /topic/device/{deviceId} - 设备相关消息
  * 4. /topic/task/{taskId} - 任务相关消息  
  * 5. /topic/system - 系统级消息
+ * 6. /topic/batch/{batchId} - 批量处理相关消息
  * 
  * @author Nan
  * @since 2.0.0 - 极简重构版
@@ -138,11 +138,11 @@ public final class StompTopic {
  *         }
  *     });
  *     
- *     // 2. 订阅组织消息（自动）
- *     // 服务端会自动订阅 /topic/org/{orgId}
+ *     // 2. 订阅组织消息（手动）
+ *     client.subscribe('/topic/org/' + orgId, handleOrgMessage);
  *     
- *     // 3. 订阅系统消息（自动）  
- *     // 服务端会自动订阅 /topic/system
+ *     // 3. 订阅系统消息（手动）  
+ *     client.subscribe('/topic/system', handleSystemMessage);
  *     
  *     // 4. 按需订阅设备消息
  *     subscribeToDevice('device123');

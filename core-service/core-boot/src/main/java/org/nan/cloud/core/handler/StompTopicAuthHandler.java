@@ -34,11 +34,10 @@ public class StompTopicAuthHandler {
     private final UserGroupTerminalGroupBindingRepository bindingRepository;
 
     // 主题路径正则表达式
-    private static final Pattern USER_TOPIC_PATTERN = Pattern.compile("^/topic/user/(\\d+)/.*$");
-    private static final Pattern ORG_TOPIC_PATTERN = Pattern.compile("^/topic/org/(\\d+)/.*$");
-    private static final Pattern TERMINAL_TOPIC_PATTERN = Pattern.compile("^/topic/terminal/([^/]+)/.*$");
-    private static final Pattern GLOBAL_TOPIC_PATTERN = Pattern.compile("^/topic/global/.*$");
-    private static final Pattern COMMAND_TASK_TOPIC_PATTERN = Pattern.compile("^/topic/commandTask/.*$");
+    private static final Pattern ORG_TOPIC_PATTERN = Pattern.compile("^/topic/org/(\\d+)");
+    private static final Pattern DEVICE_TOPIC_PATTERN = Pattern.compile("^/topic/device/");
+    private static final Pattern TASK_TOPIC_PATTERN = Pattern.compile("^/topic/task/.*$");
+    private static final Pattern BATCH_TOPIC_PATTERN = Pattern.compile("^/topic/batch/.*$");
 
 
     /**
@@ -156,39 +155,15 @@ public class StompTopicAuthHandler {
      */
     private boolean verifyTopicPermission(TopicPermissionRequest request, String topicPath, String topicType) {
         return switch (topicType) {
-            case "USER" -> verifyUserTopicPermission(request, topicPath);
             case "ORG" -> verifyOrgTopicPermission(request, topicPath);
-            case "TERMINAL" -> verifyTerminalTopicPermission(request, topicPath);
-            case "SYSTEM" -> verifySystemTopicPermission(request, topicPath);
-            case "BATCH_COMMAND" -> verifyBatchCommandTopicPermission(request, topicPath);
+            case "DEVICE" -> verifyTerminalTopicPermission(request, topicPath);
+            case "TASK" -> verifyTaskTopicPermission(request, topicPath);
+            case "BATCH" -> verifyBatchAggTopicPermission(request, topicPath);
             default -> {
                 log.warn("未知的主题类型: {} for 主题: {}", topicType, topicPath);
                 yield false;
             }
         };
-    }
-
-    /**
-     * 验证用户主题权限 - 只能访问自己的主题
-     */
-    private boolean verifyUserTopicPermission(TopicPermissionRequest request, String topicPath) {
-        Matcher matcher = USER_TOPIC_PATTERN.matcher(topicPath);
-        if (!matcher.matches()) {
-            log.warn("用户主题路径格式不正确: {}", topicPath);
-            return false;
-        }
-
-        String topicUserId = matcher.group(1);
-        Long requestUserId = request.getUid();
-
-        // 用户只能访问自己的主题
-        boolean hasPermission = requestUserId != null && requestUserId.toString().equals(topicUserId);
-
-        if (!hasPermission) {
-            log.debug("用户主题权限验证失败 - 请求用户: {}, 主题用户: {}", requestUserId, topicUserId);
-        }
-
-        return hasPermission;
     }
 
     /**
@@ -218,7 +193,7 @@ public class StompTopicAuthHandler {
      * 验证终端主题权限 - 需要检查用户组对终端组的权限绑定
      */
     private boolean verifyTerminalTopicPermission(TopicPermissionRequest request, String topicPath) {
-        Matcher matcher = TERMINAL_TOPIC_PATTERN.matcher(topicPath);
+        Matcher matcher = DEVICE_TOPIC_PATTERN.matcher(topicPath);
         if (!matcher.matches()) {
             log.warn("终端主题路径格式不正确: {}", topicPath);
             return false;
@@ -251,23 +226,20 @@ public class StompTopicAuthHandler {
     }
 
     /**
-     * 验证系统主题权限 - 需要系统级权限
+     * 验证任务主题权限
+     * @param request
+     * @param topicPath
+     * @return
      */
-    private boolean verifySystemTopicPermission(TopicPermissionRequest request, String topicPath) {
-        // 系统主题目前只允许组织管理员访问
-        if (request.getUserType().equals(UserTypeEnum.ORG_MANAGER_USER.getCode())) {
-            log.debug("系统主题权限验证通过 - 组织管理员用户: {}", request.getUid());
-            return true;
-        }
-
-        log.debug("系统主题权限验证失败 - 非组织管理员用户: {}", request.getUid());
-        return false;
+    private boolean verifyTaskTopicPermission(TopicPermissionRequest request, String topicPath) {
+        // todo
+        return true;
     }
 
     /**
      * 验证批量指令主题权限 - 需要操作权限
      */
-    private boolean verifyBatchCommandTopicPermission(TopicPermissionRequest request, String topicPath) {
+    private boolean verifyBatchAggTopicPermission(TopicPermissionRequest request, String topicPath) {
         // 批量指令主题需要特定的操作权限，目前允许所有已认证用户访问
         // 后续可以根据具体业务需求进行细化
         Long requestUid = request.getUid();
@@ -301,16 +273,14 @@ public class StompTopicAuthHandler {
         }
 
         // 根据路径模式推断类型
-        if (USER_TOPIC_PATTERN.matcher(topicPath).matches()) {
-            return "USER";
-        } else if (ORG_TOPIC_PATTERN.matcher(topicPath).matches()) {
+        if (ORG_TOPIC_PATTERN.matcher(topicPath).matches()) {
             return "ORG";
-        } else if (TERMINAL_TOPIC_PATTERN.matcher(topicPath).matches()) {
-            return "TERMINAL";
-        } else if (GLOBAL_TOPIC_PATTERN.matcher(topicPath).matches()) {
-            return "SYSTEM";
-        } else if (COMMAND_TASK_TOPIC_PATTERN.matcher(topicPath).matches()) {
-            return "BATCH_COMMAND";
+        } else if (DEVICE_TOPIC_PATTERN.matcher(topicPath).matches()) {
+            return "DEVICE";
+        } else if (TASK_TOPIC_PATTERN.matcher(topicPath).matches()) {
+            return "TASK";
+        } else if (BATCH_TOPIC_PATTERN.matcher(topicPath).matches()) {
+            return "BATCH";
         } else {
             return "UNKNOWN";
         }

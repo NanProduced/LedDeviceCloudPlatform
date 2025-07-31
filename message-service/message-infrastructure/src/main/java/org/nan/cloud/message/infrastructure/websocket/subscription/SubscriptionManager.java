@@ -9,6 +9,7 @@ import org.nan.cloud.message.infrastructure.websocket.routing.SubscriptionLevel;
 import org.nan.cloud.message.infrastructure.websocket.routing.TopicRoutingManager;
 import org.nan.cloud.message.infrastructure.websocket.security.GatewayUserInfo;
 import org.nan.cloud.message.infrastructure.websocket.stomp.enums.StompTopic;
+import org.nan.cloud.message.infrastructure.websocket.stomp.enums.StompTopicType;
 import org.nan.cloud.message.infrastructure.websocket.stomp.model.StompTopicSubscribeFeedbackMsg;
 import org.nan.cloud.message.infrastructure.websocket.sender.StompMessageSender;
 import org.springframework.context.annotation.Lazy;
@@ -26,13 +27,12 @@ import java.util.Set;
  * 核心职责：
  * 1. STOMP订阅生命周期管理 - 处理订阅/取消订阅事件
  * 2. 权限验证集成 - 通过Feign RPC调用core-service验证权限
- * 3. 自动订阅规则实现 - 基于明确业务规则的自动订阅
- * 4. 订阅状态维护 - 与TopicRoutingManager协作管理订阅状态
+ * 3. 订阅状态维护 - 与TopicRoutingManager协作管理订阅状态
+ * 4. 订阅反馈消息发送 - 向客户端发送订阅结果反馈
  * 
  * 设计原则：
  * - 权限验证通过core-service实现，避免在message-service中引入数据库逻辑
- * - 自动订阅基于明确规则：用户个人topic + 组织topic
- * - 终端topic需要显式订阅，不自动订阅
+ * - 所有订阅由客户端主动发起，服务器端不执行自动订阅
  * - 作为技术基础设施，对最终用户透明
  * 
  * @author Nan
@@ -68,25 +68,30 @@ public class SubscriptionManager {
     public boolean verifySubscriptionPermission(GatewayUserInfo userInfo, String topicPath, String sessionId) {
         try {
             log.debug("验证订阅权限 - 用户: {}, 主题: {}, 会话: {}", userInfo.getUid(), topicPath, sessionId);
-            
+
             // 构建权限验证请求
             TopicPermissionRequest request = buildPermissionRequest(userInfo, topicPath, sessionId);
-            
+
+            // 用户个人队列和系统队列不用验证
+            if (request.getTopicType().equals(StompTopicType.USER.name()) || request.getTopicType().equals(StompTopicType.SYSTEM.name())) {
+                return true;
+            }
+
             // 调用core-service验证权限
             TopicPermissionResponse response = stompPermissionClient.verifyTopicSubscriptionPermission(request);
-            
+
             if (response != null && Boolean.TRUE.equals(response.getHasPermission())) {
                 log.debug("✅ 订阅权限验证通过 - 用户: {}, 主题: {}", userInfo.getUid(), topicPath);
                 return true;
             } else {
                 String reason = response != null ? response.getDeniedReason() : "权限验证服务无响应";
-                log.warn("❌ 订阅权限验证失败 - 用户: {}, 主题: {}, 原因: {}", 
+                log.warn("❌ 订阅权限验证失败 - 用户: {}, 主题: {}, 原因: {}",
                         userInfo.getUid(), topicPath, reason);
                 return false;
             }
-            
+
         } catch (Exception e) {
-            log.error("订阅权限验证异常 - 用户: {}, 主题: {}, 错误: {}", 
+            log.error("订阅权限验证异常 - 用户: {}, 主题: {}, 错误: {}",
                     userInfo.getUid(), topicPath, e.getMessage(), e);
             // 权限验证异常时，为了安全起见，拒绝订阅
             return false;
@@ -233,74 +238,8 @@ public class SubscriptionManager {
         }
     }
     
-    // ==================== 自动订阅管理 ====================
+    // ==================== 会话清理管理 ====================
     
-    /**
-     * 为新连接的用户执行自动订阅
-     * 
-     * 自动订阅规则（基于明确的业务规则）：
-     * 1. 用户个人通知主题：/topic/user/{userId}/notifications
-     * 2. 组织公告主题：/topic/org/{orgId}/announcements
-     * 
-     * 注意：终端相关主题不自动订阅，需要用户进入特定页面后显式订阅
-     * 
-     * @param userInfo 用户信息
-     * @param sessionId 会话ID
-     * @return 自动订阅结果
-     */
-    public AutoSubscriptionResult performAutoSubscription(GatewayUserInfo userInfo, String sessionId) {
-        try {
-            String userId = userInfo.getUid().toString();
-            String orgId = userInfo.getOid().toString();
-            
-            log.info("开始自动订阅 - 用户: {}, 组织: {}, 会话: {}", userId, orgId, sessionId);
-            
-            // 构建自动订阅主题列表
-            List<String> autoSubscriptionTopics = buildAutoSubscriptionTopics(userInfo);
-            
-            // 使用auth认证信息中的信息构造订阅topic，不需要权限验证
-            // 执行自动订阅
-            List<String> successfulSubscriptions = new ArrayList<>();
-            List<String> failedSubscriptions = new ArrayList<>();
-            
-            for (String topicPath : autoSubscriptionTopics) {
-                try {
-                    SubscriptionLevel level = determineSubscriptionLevel(topicPath);
-                    topicRoutingManager.registerUserSubscription(userId, topicPath, level, sessionId);
-                    successfulSubscriptions.add(topicPath);
-                    
-                    log.debug("✅ 自动订阅成功 - 用户: {}, 主题: {}", userId, topicPath);
-                    
-                } catch (Exception e) {
-                    failedSubscriptions.add(topicPath);
-                    log.warn("❌ 自动订阅失败 - 用户: {}, 主题: {}, 错误: {}", 
-                            userId, topicPath, e.getMessage());
-                }
-            }
-            
-            log.info("✅ 自动订阅完成 - 用户: {}, 成功: {}, 失败: {}", 
-                    userId, successfulSubscriptions.size(), failedSubscriptions.size());
-            
-            return AutoSubscriptionResult.builder()
-                    .userId(userId)
-                    .sessionId(sessionId)
-                    .requestedTopics(autoSubscriptionTopics)
-                    .allowedTopics(autoSubscriptionTopics)
-                    .successfulSubscriptions(successfulSubscriptions)
-                    .failedSubscriptions(failedSubscriptions)
-                    .build();
-            
-        } catch (Exception e) {
-            log.error("自动订阅异常 - 用户: {}, 会话: {}, 错误: {}", 
-                    userInfo.getUid(), sessionId, e.getMessage(), e);
-            
-            return AutoSubscriptionResult.builder()
-                    .userId(userInfo.getUid().toString())
-                    .sessionId(sessionId)
-                    .errorMessage("自动订阅异常: " + e.getMessage())
-                    .build();
-        }
-    }
     
     /**
      * 清理用户会话相关的所有订阅
@@ -341,7 +280,7 @@ public class SubscriptionManager {
      * 构建权限验证请求
      */
     private TopicPermissionRequest buildPermissionRequest(GatewayUserInfo userInfo, String topicPath, String sessionId) {
-        // 从主题路径中提取终端ID（如果是终端相关主题）
+        // 从主题路径中提取资源ID（设备ID、任务ID等）
         String terminalId = extractTerminalIdFromTopic(topicPath);
         
         return TopicPermissionRequest.builder()
@@ -356,49 +295,39 @@ public class SubscriptionManager {
                 .build();
     }
     
-    /**
-     * 构建自动订阅主题列表
-     * 优化后：个人消息使用/user/queue，减少主题数量
-     */
-    private List<String> buildAutoSubscriptionTopics(GatewayUserInfo userInfo) {
-        List<String> topics = new ArrayList<>();
-        
-        String orgId = userInfo.getOid().toString();
-        
-        // 1. 组织消息主题 (广播类消息保持topic)
-        topics.add(StompTopic.buildOrgTopic(orgId));
-        
-        // 2. 系统消息主题 (全局广播消息)
-        topics.add(StompTopic.SYSTEM_TOPIC);
-        
-        // 注意：个人消息不需要自动订阅，因为使用/user/queue自动路由
-        // 注意：终端相关主题需要用户显式订阅
-        
-        return topics;
-    }
     
     /**
-     * 确定订阅层次
+     * 确定订阅层次 (根据极简化Topic结构)
      */
     private SubscriptionLevel determineSubscriptionLevel(String topicPath) {
-        // 用户个人主题和组织主题使用持久订阅
-        if (topicPath.startsWith("/topic/user/") || topicPath.startsWith("/topic/org/")) {
+        // 个人消息队列使用持久订阅
+        if (topicPath.startsWith("/user/queue/")) {
             return SubscriptionLevel.PERSISTENT;
         }
         
-        // 终端相关主题使用会话订阅
-        if (topicPath.startsWith("/topic/terminal/")) {
+        // 组织消息主题使用持久订阅
+        if (topicPath.startsWith("/topic/org/")) {
+            return SubscriptionLevel.PERSISTENT;
+        }
+        
+        // 系统消息主题使用全局订阅
+        if (topicPath.equals(StompTopic.SYSTEM_TOPIC)) {
+            return SubscriptionLevel.GLOBAL;
+        }
+        
+        // 设备相关主题使用会话订阅（按需订阅）
+        if (topicPath.startsWith("/topic/device/")) {
             return SubscriptionLevel.SESSION;
         }
         
-        // 批量指令相关主题使用临时订阅
-        if (topicPath.startsWith("/topic/commandTask/")) {
+        // 任务相关主题使用临时订阅
+        if (topicPath.startsWith("/topic/task/")) {
             return SubscriptionLevel.TEMPORARY;
         }
         
-        // 系统主题使用全局订阅
-        if (topicPath.startsWith("/topic/global/")) {
-            return SubscriptionLevel.GLOBAL;
+        // 批量聚合相关主题使用临时订阅
+        if (topicPath.startsWith("/topic/batch/")) {
+            return SubscriptionLevel.TEMPORARY;
         }
         
         // 默认使用会话订阅
@@ -406,31 +335,47 @@ public class SubscriptionManager {
     }
     
     /**
-     * 确定主题类型
+     * 确定主题类型 (根据极简化Topic结构)
      */
     private String determineTopicType(String topicPath) {
-        if (topicPath.startsWith("/topic/user/")) {
-            return "USER";
-        } else if (topicPath.startsWith("/topic/org/")) {
-            return "ORG";
-        } else if (topicPath.startsWith("/topic/terminal/")) {
-            return "TERMINAL";
-        } else if (topicPath.startsWith("/topic/global/")) {
-            return "SYSTEM";
-        } else if (topicPath.startsWith("/topic/commandTask/")) {
-            return "BATCH_COMMAND";
+        // 个人消息队列
+        if (topicPath.startsWith("/user/queue/")) {
+            return StompTopicType.USER.name();
+        }
+        // 组织消息主题
+        else if (topicPath.startsWith("/topic/org/")) {
+            return StompTopicType.ORG.name();
+        }
+        // 设备消息主题（包含终端）
+        else if (topicPath.startsWith("/topic/device/")) {
+            return StompTopicType.DEVICE.name();
+        }
+        // 任务消息主题
+        else if (topicPath.startsWith("/topic/task/")) {
+            return StompTopicType.TASK.name();
+        }
+        // 批量聚合消息主题
+        else if (topicPath.startsWith("/topic/batch/")) {
+            return StompTopicType.BATCH.name();
+        }
+        // 系统消息主题
+        else if (topicPath.equals(StompTopic.SYSTEM_TOPIC)) {
+            return StompTopicType.SYSTEM.name();
         }
         return "UNKNOWN";
     }
     
     /**
-     * 从主题路径中提取终端ID
+     * 从主题路径中提取资源ID (设备ID/任务ID/批量ID等)
      */
     private String extractTerminalIdFromTopic(String topicPath) {
-        if (topicPath != null && topicPath.startsWith("/topic/terminal/")) {
-            String[] parts = topicPath.split("/");
-            if (parts.length >= 4) {
-                return parts[3]; // /topic/terminal/{terminalId}/...
+        if (topicPath != null) {
+            // 设备主题: /topic/device/{deviceId}
+            if (topicPath.startsWith("/topic/device/")) {
+                String[] parts = topicPath.split("/");
+                if (parts.length >= 4) {
+                    return parts[3]; // /topic/device/{deviceId}
+                }
             }
         }
         return null;

@@ -3,6 +3,7 @@ package org.nan.cloud.message.infrastructure.websocket.sender;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.nan.cloud.message.infrastructure.websocket.stomp.model.CommonStompMessage;
+import org.springframework.messaging.simp.SimpMessageHeaderAccessor;
 import org.springframework.messaging.simp.SimpMessagingTemplate;
 import org.springframework.stereotype.Service;
 
@@ -79,34 +80,38 @@ public class StompMessageSender {
     }
     
     /**
-     * 发送消息到指定用户的默认通知队列
-     * 
-     * @param userId 用户ID
-     * @param message 消息内容
-     * @return 是否发送成功
-     */
-    public boolean sendToUser(String userId, CommonStompMessage message) {
-        return sendToUser(userId, "/queue/notifications", message);
-    }
-    
-    /**
      * 发送消息到指定会话
-     * 
+     *
+     * @param userId 用户Id
      * @param sessionId 会话ID
      * @param destination 目标路径
-     * @param message 消息内容
+     * @param payload 消息内容
      * @return 是否发送成功
      */
-    public boolean sendToSession(String sessionId, String destination, Object message) {
+    public boolean sendToSession(String userId, String sessionId,
+                                 String destination, Object payload) {
         try {
-            messagingTemplate.convertAndSendToUser(sessionId, destination, message);
-            
-            log.debug("✅ 会话消息发送成功 - 会话: {}, 目标: {}", sessionId, destination);
+            // 1. 利用 SimpMessageHeaderAccessor 构造带有 sessionId 的 headers
+            SimpMessageHeaderAccessor headerAccessor =
+                    SimpMessageHeaderAccessor.create();
+            headerAccessor.setSessionId(sessionId);
+            // 必须设置为 mutable，否则 header 会被 Spring 丢弃
+            headerAccessor.setLeaveMutable(true);
+
+            // 2. 调用 convertAndSendToUser，传入 username 和自定义 headers
+            messagingTemplate.convertAndSendToUser(
+                    userId,
+                    destination,
+                    payload,
+                    headerAccessor.getMessageHeaders()
+            );
+
+            log.debug("✅ 成功发给用户 {} 的会话 {} -> {}",
+                    userId, sessionId, destination);
             return true;
-            
         } catch (Exception e) {
-            log.error("❌ 会话消息发送失败 - 会话: {}, 目标: {}, 错误: {}", 
-                    sessionId, destination, e.getMessage(), e);
+            log.error("❌ 发消息失败 user={}, session={}, dest={}, err={}",
+                    userId, sessionId, destination, e.getMessage(), e);
             return false;
         }
     }
