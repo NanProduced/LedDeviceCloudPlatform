@@ -194,42 +194,12 @@ public final class StompTopic {
      * 用户通知消息队列
      */
     public static final String USER_NOTIFICATION_DESTINATION = "/queue/notifications";
-    
-    /**
-     * 用户消息结果队列
-     */
-    public static final String USER_MESSAGE_RESULT_DESTINATION = "/queue/message-result";
-    
-    /**
-     * 用户心跳响应队列
-     */
-    public static final String USER_PONG_DESTINATION = "/queue/pong";
-    
+
     /**
      * 用户订阅结果队列
      */
     public static final String USER_SUBSCRIBE_RESULT_DESTINATION = "/queue/subscribe-result";
-    
-    /**
-     * 用户错误消息队列
-     */
-    public static final String USER_ERROR_DESTINATION = "/queue/error";
-    
-    /**
-     * 用户自动订阅建议队列
-     */
-    public static final String USER_AUTO_SUBSCRIBE_DESTINATION = "/queue/auto-subscribe";
-    
-    /**
-     * 用户欢迎消息队列
-     */
-    public static final String USER_WELCOME_DESTINATION = "/queue/welcome";
-    
-    /**
-     * 批量指令结果队列
-     */
-    public static final String USER_BATCH_COMMAND_RESULT_DESTINATION = "/queue/batch-command-result";
-    
+
     // ==================== 应用端点 App Destination ====================
     
     /**

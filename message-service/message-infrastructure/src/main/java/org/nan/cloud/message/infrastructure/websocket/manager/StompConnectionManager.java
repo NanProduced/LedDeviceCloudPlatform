@@ -139,9 +139,6 @@ public class StompConnectionManager {
             // 5. TODO: 发布连接建立事件
             // eventPublisher.publishEvent(new StompConnectionEstablishedEvent(sessionInfo));
             
-            // 6. TODO: 初始化用户默认订阅（与SubscriptionManager集成）
-            // subscriptionManager.initializeDefaultSubscriptions(userId, sessionId);
-            
             // 7. 发送连接成功确认消息
             sendConnectionWelcomeMessage(userId, sessionId);
             

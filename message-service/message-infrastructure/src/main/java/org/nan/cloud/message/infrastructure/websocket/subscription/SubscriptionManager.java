@@ -18,6 +18,8 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Set;
 
+import static org.nan.cloud.message.infrastructure.websocket.stomp.enums.StompTopic.USER_SUBSCRIBE_RESULT_DESTINATION;
+
 /**
  * STOMP订阅管理器
  * 
@@ -487,8 +489,7 @@ public class SubscriptionManager {
             }
             
             // 发送反馈消息到用户的个人反馈队列
-            String feedbackDestination = "/queue/subscription-feedback";
-            boolean sent = stompMessageSender.sendToUser(userId, feedbackDestination, feedbackMsg);
+            boolean sent = stompMessageSender.sendToUser(userId, USER_SUBSCRIBE_RESULT_DESTINATION, feedbackMsg);
             
             if (sent) {
                 log.debug("✅ 订阅反馈消息发送成功 - 用户: {}, 主题: {}, 成功: {}", 
