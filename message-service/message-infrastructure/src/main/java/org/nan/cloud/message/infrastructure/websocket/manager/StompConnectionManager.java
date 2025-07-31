@@ -4,6 +4,7 @@ import lombok.*;
 import lombok.extern.slf4j.Slf4j;
 import org.nan.cloud.message.infrastructure.websocket.interceptor.StompPrincipal;
 import org.nan.cloud.message.infrastructure.websocket.security.GatewayUserInfo;
+import org.nan.cloud.message.infrastructure.websocket.listener.UserQueueSubscriptionListener;
 import org.nan.cloud.message.infrastructure.websocket.sender.StompMessageSender;
 import org.nan.cloud.message.infrastructure.websocket.stomp.enums.StompMessageTypes;
 import org.nan.cloud.message.infrastructure.websocket.stomp.enums.StompTopic;
@@ -46,11 +47,14 @@ public class StompConnectionManager {
     
     private final StompMessageSender messageSender;
     private final ApplicationEventPublisher eventPublisher;
+    private final UserQueueSubscriptionListener userQueueSubscriptionListener;
     
     public StompConnectionManager(@Lazy StompMessageSender messageSender,
-                                ApplicationEventPublisher eventPublisher) {
+                                ApplicationEventPublisher eventPublisher,
+                                @Lazy UserQueueSubscriptionListener userQueueSubscriptionListener) {
         this.messageSender = messageSender;
         this.eventPublisher = eventPublisher;
+        this.userQueueSubscriptionListener = userQueueSubscriptionListener;
     }
     
     /**
@@ -135,7 +139,11 @@ public class StompConnectionManager {
             // 5. TODO: 发布连接建立事件
             // eventPublisher.publishEvent(new StompConnectionEstablishedEvent(sessionInfo));
             
-            // 8. 记录连接统计信息
+            // 6. 注册等待欢迎消息的会话（等待客户端订阅 /user/queue/messages 后发送）
+            userQueueSubscriptionListener.registerPendingWelcomeMessage(sessionId, userId);
+            log.debug("✅ 已注册等待欢迎消息 - 用户: {}, 会话: {}", userId, sessionId);
+            
+            // 7. 记录连接统计信息
             logConnectionStats();
             
         } catch (Exception e) {
@@ -198,7 +206,10 @@ public class StompConnectionManager {
             // 5. TODO: 发布连接断开事件
             // eventPublisher.publishEvent(new StompConnectionDisconnectedEvent(sessionInfo));
             
-            // 6. 记录连接统计信息
+            // 6. 清理等待的欢迎消息
+            userQueueSubscriptionListener.removePendingWelcomeMessage(sessionId);
+            
+            // 7. 记录连接统计信息
             logConnectionStats();
             
         } catch (Exception e) {
@@ -482,56 +493,5 @@ public class StompConnectionManager {
      */
     public int broadcastToOrganization(Long organizationId, CommonStompMessage message) {
         return broadcastToOrganization(organizationId, StompTopic.USER_MESSAGES_QUEUE, message);
-    }
-
-    /**
-     * 发送连接成功消息
-     *
-     * 向用户发送连接成功消息，但需要客户端主动订阅才能收到
-     */
-    public void sendConnectSuccessMessage(String userId, String sessionId) {
-        try {
-            // 构建连接成功消息内容
-            String welcomeContent = 
-                    "🎉 欢迎连接到LED设备云平台消息中心！\\n" +
-                    "✅ STOMP连接已建立\\n" +
-                    "📡 请订阅以下主题以接收消息:\\n" +
-                    "   • /user/queue/messages (个人消息)\\n" +
-                    "   • /topic/org/{orgId} (组织消息)\\n" +
-                    "   • /topic/system (系统消息)";
-
-            // 构建推荐的订阅主题列表
-            List<String> recommendedSubscriptions = List.of(
-                    "/user/queue/messages",
-                    "/topic/org/{orgId}",
-                    "/topic/system"
-            );
-
-            // 发送连接成功消息到用户的个人消息队列  
-            // 注意：用户必须先订阅 /user/queue/messages 才能收到这条消息
-            CommonStompMessage welcomeStompMessage = CommonStompMessage.builder()
-                    .messageType(StompMessageTypes.CONNECTION_STATUS)
-                    .message("连接成功")
-                    .payload(Map.of(
-                            "title", "连接成功",
-                            "content", welcomeContent,
-                            "timestamp", System.currentTimeMillis(),
-                            "recommendedSubscriptions", recommendedSubscriptions
-                    ))
-                    .build();
-            
-            boolean sent = messageSender.sendToUser(userId, StompTopic.USER_MESSAGES_QUEUE, welcomeStompMessage);
-            
-            if (sent) {
-                log.info("✅ 欢迎消息发送成功 - 用户: {}, 会话: {}", userId, sessionId);
-            } else {
-                log.warn("⚠️ 欢迎消息发送失败 - 用户: {}, 会话: {}", userId, sessionId);
-            }
-
-            log.debug("✅ 欢迎消息已发送 - 会话: {}", sessionId);
-
-        } catch (Exception e) {
-            log.warn("发送欢迎消息失败 - 会话: {}, 错误: {}", sessionId, e.getMessage());
-        }
     }
 }

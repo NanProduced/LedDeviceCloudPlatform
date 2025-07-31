@@ -149,8 +149,8 @@ public class StompChannelInterceptor implements ChannelInterceptor {
             stompConnectionManager.registerConnection(sessionId, stompPrincipal, clientInfo);
             log.debug("✅ 连接已注册到StompConnectionManager");
             
-            // 发送连接成功消息（客户端需要主动订阅才能收到消息）
-            stompConnectionManager.sendConnectSuccessMessage(userInfo.getUid().toString(), sessionId);
+            // 注意：欢迎消息已改为在客户端订阅 /user/queue/messages 后由监听器发送
+            // 这样可以确保客户端能够接收到欢迎消息
             
         } catch (Exception e) {
             log.error("处理STOMP连接失败: {}", e.getMessage(), e);

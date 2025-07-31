@@ -185,7 +185,9 @@ public class SubscriptionManager {
             log.info("✅ 用户订阅成功 - 用户: {}, 主题: {}, 层次: {}", userId, topicPath, subscriptionLevel);
 
             // 4. 发送订阅成功反馈消息给客户端
-            sendSubscriptionFeedback(userInfo, topicPath, subscriptionLevel, true, null);
+            if (!topicPath.startsWith("/user/queue/message")) {
+                sendSubscriptionFeedback(userInfo, topicPath, subscriptionLevel, true, null);
+            }
 
             return SubscriptionResult.success(topicPath, subscriptionLevel);
             

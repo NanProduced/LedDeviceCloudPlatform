@@ -103,15 +103,6 @@ public class StompTopicSubscribeFeedbackMsg extends CommonStompMessage {
                 .targetType("USER")
                 .uids(List.of(uid))
                 .build());
-        
-        // 设置元数据
-        msg.setMetadata(Metadata.builder()
-                .priority(Priority.HIGH)
-                .persistent(false)
-                .requireAck(false)
-                .retryCount(0)
-                .ttl(30000L) // 30秒TTL
-                .build());
 
         return msg;
     }
@@ -141,15 +132,6 @@ public class StompTopicSubscribeFeedbackMsg extends CommonStompMessage {
                 .targetType("USER")
                 .uids(List.of(uid))
                 .build());
-        
-        // 设置元数据
-        msg.setMetadata(Metadata.builder()
-                .priority(Priority.HIGH)
-                .persistent(false)
-                .requireAck(false)
-                .retryCount(0)
-                .ttl(60000L) // 60秒TTL，失败消息保留更久
-                .build());
 
         return msg;
     }
@@ -176,15 +158,6 @@ public class StompTopicSubscribeFeedbackMsg extends CommonStompMessage {
         msg.setTarget(Target.builder()
                 .targetType("USER")
                 .uids(List.of(uid))
-                .build());
-        
-        // 设置元数据
-        msg.setMetadata(Metadata.builder()
-                .priority(Priority.NORMAL)
-                .persistent(false)
-                .requireAck(false)
-                .retryCount(0)
-                .ttl(15000L) // 15秒TTL
                 .build());
 
         return msg;
@@ -214,15 +187,6 @@ public class StompTopicSubscribeFeedbackMsg extends CommonStompMessage {
                 .targetType("USER")
                 .uids(List.of(uid))
                 .build());
-        
-        // 设置元数据
-        msg.setMetadata(Metadata.builder()
-                .priority(Priority.NORMAL)
-                .persistent(false)
-                .requireAck(false)
-                .retryCount(0)
-                .ttl(30000L) // 30秒TTL
-                .build());
 
         return msg;
     }
@@ -251,66 +215,6 @@ public class StompTopicSubscribeFeedbackMsg extends CommonStompMessage {
                 .targetType("USER")
                 .uids(List.of(uid))
                 .build());
-        
-        // 设置元数据
-        msg.setMetadata(Metadata.builder()
-                .priority(Priority.HIGH)
-                .persistent(false)
-                .requireAck(false)
-                .retryCount(0)
-                .ttl(120000L) // 2分钟TTL，权限错误消息保留更久
-                .build());
-
         return msg;
-    }
-
-    /**
-     * 从反馈消息中提取反馈数据
-     */
-    public TopicSubscribeFeedback getFeedbackData() {
-        if (this.getPayload() instanceof TopicSubscribeFeedback) {
-            return (TopicSubscribeFeedback) this.getPayload();
-        }
-        return null;
-    }
-
-    /**
-     * 判断是否为成功反馈
-     */
-    public boolean isSuccess() {
-        TopicSubscribeFeedback feedback = getFeedbackData();
-        return feedback != null && feedback.isSuccess();
-    }
-
-    /**
-     * 判断是否为订阅操作
-     */
-    public boolean isSubscribeOperation() {
-        TopicSubscribeFeedback feedback = getFeedbackData();
-        return feedback != null && "SUBSCRIBE".equals(feedback.getOperation());
-    }
-
-    /**
-     * 判断是否为取消订阅操作
-     */
-    public boolean isUnsubscribeOperation() {
-        TopicSubscribeFeedback feedback = getFeedbackData();
-        return feedback != null && "UNSUBSCRIBE".equals(feedback.getOperation());
-    }
-
-    /**
-     * 获取订阅的主题路径
-     */
-    public String getTopicPath() {
-        TopicSubscribeFeedback feedback = getFeedbackData();
-        return feedback != null ? feedback.getTopic() : null;
-    }
-
-    /**
-     * 获取错误消息
-     */
-    public String getErrorMessage() {
-        TopicSubscribeFeedback feedback = getFeedbackData();
-        return feedback != null ? feedback.getErrorMsg() : null;
     }
 }
