@@ -1,8 +1,8 @@
 package org.nan.cloud.message.infrastructure.websocket.processor.impl;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.nan.cloud.common.basic.utils.JsonUtils;
 import org.nan.cloud.message.api.enums.Priority;
 import org.nan.cloud.message.infrastructure.websocket.dispatcher.DispatchResult;
 import org.nan.cloud.message.infrastructure.websocket.dispatcher.StompMessageDispatcher;
@@ -54,7 +54,6 @@ import java.util.UUID;
 public class StatusMessageProcessor implements BusinessMessageProcessor {
     
     private final StompMessageDispatcher stompDispatcher;
-    private final ObjectMapper objectMapper;
     
     @Override
     public String getSupportedMessageType() {
@@ -96,7 +95,7 @@ public class StatusMessageProcessor implements BusinessMessageProcessor {
             log.debug("开始处理状态消息 - 路由键: {}", routingKey);
             
             // 解析消息内容
-            Map<String, Object> messageData = objectMapper.readValue(messagePayload, Map.class);
+            Map<String, Object> messageData = JsonUtils.fromJson(messagePayload, Map.class);
             
             // 根据路由键确定具体的处理策略
             if (routingKey.startsWith("stomp.device.status.")) {

@@ -95,6 +95,31 @@ message:
     email-enabled: false  # 本地环境关闭邮件通知
     sms-enabled: false    # 本地环境关闭短信通知
 
+  # Phase 3.1: STOMP可靠性功能配置（本地环境优化）
+  reliability:
+    # 是否启用可靠性功能
+    enabled: true
+    # 自动清理配置
+    cleanup:
+      enabled: true
+      # 投递记录保留时间（小时）- 本地环境较短
+      delivery-record-retention-hours: 12
+      # 连接状态超时时间（分钟）- 本地环境较短
+      connection-timeout-minutes: 30
+    # 监控统计配置
+    monitoring:
+      enabled: true
+      # 统计输出间隔（分钟）- 本地环境更频繁
+      stats-interval-minutes: 5
+    # 重试配置
+    retry:
+      # 默认最大重试次数 - 本地环境较少
+      default-max-retries: 2
+      # 默认初始延迟（秒）- 本地环境较短
+      default-initial-delay-seconds: 3
+      # 默认最大延迟（秒）- 本地环境较短
+      default-max-delay-seconds: 120
+
 # 日志配置（本地环境调试友好）
 logging:
   level:

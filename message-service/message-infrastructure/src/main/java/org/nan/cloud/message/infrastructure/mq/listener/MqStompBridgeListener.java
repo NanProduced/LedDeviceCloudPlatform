@@ -1,8 +1,8 @@
 package org.nan.cloud.message.infrastructure.mq.listener;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.nan.cloud.common.basic.utils.JsonUtils;
 import org.nan.cloud.message.infrastructure.aggregation.BatchCommandAggregator;
 import org.nan.cloud.message.infrastructure.aggregation.BatchProgressTracker;
 import org.nan.cloud.message.infrastructure.mq.config.MessageServiceRabbitConfig;
@@ -47,7 +47,6 @@ public class MqStompBridgeListener {
     private final BusinessMessageProcessorManager processorManager;
     private final MqToStompMessageConverter messageConverter;
     private final StompMessageDispatcher stompDispatcher;
-    private final ObjectMapper objectMapper;
     
     // Phase 2.3: 批量指令聚合引擎组件
     private final BatchCommandAggregator batchCommandAggregator;
@@ -102,7 +101,7 @@ public class MqStompBridgeListener {
                                                @Header("routingKey") String routingKey) {
         try {
             // 解析消息内容
-            Map<String, Object> messageData = objectMapper.readValue(messagePayload, Map.class);
+            Map<String, Object> messageData = JsonUtils.fromJson(messagePayload, Map.class);
             
             String deviceId = (String) messageData.get("deviceId");
             Long orgId = Long.valueOf(messageData.get("orgId").toString());
@@ -177,7 +176,7 @@ public class MqStompBridgeListener {
                                                 @Header("routingKey") String routingKey) {
         try {
             // 解析消息内容
-            Map<String, Object> messageData = objectMapper.readValue(messagePayload, Map.class);
+            Map<String, Object> messageData = JsonUtils.fromJson(messagePayload, Map.class);
             
             String commandId = (String) messageData.get("commandId");
             String deviceId = (String) messageData.get("deviceId");
@@ -254,7 +253,7 @@ public class MqStompBridgeListener {
                                                      @Header("routingKey") String routingKey) {
         try {
             // 解析消息内容
-            Map<String, Object> messageData = objectMapper.readValue(messagePayload, Map.class);
+            Map<String, Object> messageData = JsonUtils.fromJson(messagePayload, Map.class);
             
             String notificationType = (String) messageData.get("notificationType");
             Long orgId = Long.valueOf(messageData.get("orgId").toString());
@@ -310,7 +309,7 @@ public class MqStompBridgeListener {
             log.debug("收到批量指令进度消息 - 路由键: {}", routingKey);
             
             // Phase 2.3: 解析消息并交给聚合引擎处理
-            Map<String, Object> messageData = objectMapper.readValue(messagePayload, Map.class);
+            Map<String, Object> messageData = JsonUtils.fromJson(messagePayload, Map.class);
             String batchId = (String) messageData.get("batchId");
             String messageType = (String) messageData.get("messageType");
             
@@ -364,7 +363,7 @@ public class MqStompBridgeListener {
                                                        @Header("routingKey") String routingKey) {
         try {
             // 解析消息内容
-            Map<String, Object> messageData = objectMapper.readValue(messagePayload, Map.class);
+            Map<String, Object> messageData = JsonUtils.fromJson(messagePayload, Map.class);
             
             String batchId = (String) messageData.get("batchId");
             Long orgId = Long.valueOf(messageData.get("orgId").toString());

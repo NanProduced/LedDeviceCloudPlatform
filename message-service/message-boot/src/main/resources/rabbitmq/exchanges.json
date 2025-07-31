@@ -1,44 +1,23 @@
 [
   {
-    "name": "device.topic",
+    "name": "stomp.push.topic",
     "type": "topic",
     "durable": true,
     "autoDelete": false,
-    "description": "设备事件交换器 - 处理设备上线/下线、状态变更、告警等事件"
+    "description": "STOMP实时推送交换器 - 主要的消息推送交换器，对应@Bean: stompPushExchange()"
   },
   {
-    "name": "user.topic", 
+    "name": "stomp.bridge.topic",
     "type": "topic",
     "durable": true,
     "autoDelete": false,
-    "description": "用户事件交换器 - 处理用户登录/登出、权限变更、行为跟踪等事件"
+    "description": "STOMP桥接处理交换器 - 用于内部桥接逻辑，对应@Bean: stompBridgeExchange()"
   },
   {
-    "name": "message.topic",
-    "type": "topic", 
-    "durable": true,
-    "autoDelete": false,
-    "description": "消息事件交换器 - 处理实时消息推送、消息状态变更等事件"
-  },
-  {
-    "name": "business.topic",
-    "type": "topic",
-    "durable": true, 
-    "autoDelete": false,
-    "description": "业务事件交换器 - 处理任务创建/完成、工作流状态变更、数据同步等事件"
-  },
-  {
-    "name": "system.topic",
-    "type": "topic",
-    "durable": true,
-    "autoDelete": false, 
-    "description": "系统事件交换器 - 处理系统维护通知、公告发布、配置变更等事件"
-  },
-  {
-    "name": "dead.letter",
+    "name": "stomp.dlx.topic",
     "type": "direct",
     "durable": true,
     "autoDelete": false,
-    "description": "死信交换器 - 处理失败消息重试和最终处理"
+    "description": "STOMP死信交换器 - 统一死信处理，对应@Bean: stompDlxExchange()"
   }
 ]

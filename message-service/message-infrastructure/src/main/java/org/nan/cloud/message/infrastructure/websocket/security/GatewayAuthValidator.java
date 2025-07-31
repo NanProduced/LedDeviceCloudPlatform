@@ -1,9 +1,8 @@
 package org.nan.cloud.message.infrastructure.websocket.security;
 
 import com.fasterxml.jackson.databind.JsonNode;
-import com.fasterxml.jackson.databind.ObjectMapper;
-import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.nan.cloud.common.basic.utils.JsonUtils;
 import org.springframework.stereotype.Component;
 import org.springframework.web.socket.WebSocketSession;
 
@@ -30,10 +29,7 @@ import java.util.Map;
  */
 @Slf4j
 @Component
-@RequiredArgsConstructor
 public class GatewayAuthValidator {
-    
-    private final ObjectMapper objectMapper;
     
     /**
      * CLOUD-AUTH请求头名称
@@ -55,7 +51,7 @@ public class GatewayAuthValidator {
             log.debug("解码CLOUD-AUTH头: {}", jsonString);
             
             // 解析JSON
-            JsonNode jsonNode = objectMapper.readTree(jsonString);
+            JsonNode jsonNode = JsonUtils.fromJson(jsonString);
             
             // 提取用户信息字段
             Long uid = jsonNode.has("uid") ? jsonNode.get("uid").asLong() : null;

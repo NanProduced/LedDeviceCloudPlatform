@@ -21,7 +21,8 @@ import org.springframework.context.annotation.Configuration;
 @Configuration
 @EnableConfigurationProperties({
     WebSocketProperties.class,
-    MessageProperties.class
+    MessageProperties.class,
+    ReliabilityProperties.class
 })
 public class MessageConfigurationProperties {
     

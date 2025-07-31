@@ -1,92 +1,50 @@
 [
   {
-    "name": "message.realtime.queue",
+    "name": "stomp.device.status.queue",
+    "durable": true,
+    "exclusive": false,
+    "autoDelete": false,
+    "ttl": 30000,
+    "deadLetterExchange": "stomp.dlx.topic",
+    "deadLetterRoutingKey": "device.status.dlq",
+    "description": "设备状态队列 - 设备状态变更推送，对应@Bean: deviceStatusQueue()"
+  },
+  {
+    "name": "stomp.command.result.queue",
     "durable": true,
     "exclusive": false,
     "autoDelete": false,
     "ttl": 300000,
-    "maxLength": 10000,
-    "deadLetterExchange": "dead.letter",
-    "deadLetterRoutingKey": "message.failed",
-    "description": "实时消息处理队列"
+    "deadLetterExchange": "stomp.dlx.topic",
+    "deadLetterRoutingKey": "command.result.dlq",
+    "description": "指令结果队列 - 指令执行结果推送，对应@Bean: commandResultQueue()"
   },
   {
-    "name": "device.event.queue", 
+    "name": "stomp.system.notification.queue",
     "durable": true,
     "exclusive": false,
     "autoDelete": false,
-    "ttl": 600000,
-    "maxLength": 50000,
-    "deadLetterExchange": "dead.letter",
-    "deadLetterRoutingKey": "device.failed",
-    "description": "设备事件处理队列"
-  },
-  {
-    "name": "user.event.queue",
-    "durable": true,
-    "exclusive": false, 
-    "autoDelete": false,
-    "ttl": 600000,
-    "maxLength": 20000,
-    "deadLetterExchange": "dead.letter",
-    "deadLetterRoutingKey": "user.failed",
-    "description": "用户事件处理队列"
-  },
-  {
-    "name": "business.event.queue",
-    "durable": true,
-    "exclusive": false,
-    "autoDelete": false, 
     "ttl": 1800000,
-    "maxLength": 30000,
-    "deadLetterExchange": "dead.letter",
-    "deadLetterRoutingKey": "business.failed",
-    "description": "业务事件处理队列"
+    "deadLetterExchange": "stomp.dlx.topic",
+    "deadLetterRoutingKey": "system.notification.dlq",
+    "description": "系统通知队列 - 系统通知推送，对应@Bean: systemNotificationQueue()"
   },
   {
-    "name": "system.notification.queue",
+    "name": "stomp.batch.progress.queue",
     "durable": true,
     "exclusive": false,
     "autoDelete": false,
-    "ttl": 3600000,
-    "maxLength": 5000,
-    "deadLetterExchange": "dead.letter",
-    "deadLetterRoutingKey": "system.failed", 
-    "description": "系统通知处理队列"
+    "ttl": 180000,
+    "deadLetterExchange": "stomp.dlx.topic",
+    "deadLetterRoutingKey": "batch.progress.dlq",
+    "description": "批量进度队列 - 批量指令进度推送，对应@Bean: batchProgressQueue()"
   },
   {
-    "name": "message.failed.queue",
+    "name": "stomp.bridge.dlq",
     "durable": true,
     "exclusive": false,
     "autoDelete": false,
-    "description": "失败消息处理队列"
-  },
-  {
-    "name": "device.failed.queue",
-    "durable": true,
-    "exclusive": false,
-    "autoDelete": false,
-    "description": "设备事件失败处理队列"
-  },
-  {
-    "name": "user.failed.queue", 
-    "durable": true,
-    "exclusive": false,
-    "autoDelete": false,
-    "description": "用户事件失败处理队列"
-  },
-  {
-    "name": "business.failed.queue",
-    "durable": true,
-    "exclusive": false,
-    "autoDelete": false,
-    "description": "业务事件失败处理队列"
-  },
-  {
-    "name": "system.failed.queue",
-    "durable": true,
-    "exclusive": false,
-    "autoDelete": false,
-    "description": "系统事件失败处理队列"
+    "ttl": 86400000,
+    "description": "统一死信队列 - 简化的死信处理，对应@Bean: bridgeDlq()"
   }
 ]
