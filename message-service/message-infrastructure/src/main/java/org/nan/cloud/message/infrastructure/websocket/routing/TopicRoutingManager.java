@@ -308,9 +308,7 @@ public class TopicRoutingManager {
                 .matcher(message -> "USER".equals(message.getSubType_1()))
                 .topicGenerator(message -> {
                     if (message.getTarget() != null && message.getTarget().getUids() != null) {
-                        return message.getTarget().getUids().stream()
-                                .map(uid -> StompTopic.buildUserNotificationTopic(uid.toString()))
-                                .toList();
+                        return List.of(StompTopic.USER_MESSAGES_QUEUE);
                     }
                     return Collections.emptyList();
                 })
@@ -327,7 +325,7 @@ public class TopicRoutingManager {
                 .matcher(message -> "ORG".equals(message.getSubType_1()))
                 .topicGenerator(message -> {
                     if (message.getTarget() != null && message.getTarget().getOid() != null) {
-                        return List.of(StompTopic.buildOrgAnnouncementTopic(message.getTarget().getOid().toString()));
+                        return List.of(StompTopic.buildOrgTopic(message.getTarget().getOid().toString()));
                     }
                     return Collections.emptyList();
                 })
@@ -345,7 +343,7 @@ public class TopicRoutingManager {
                 .topicGenerator(message -> {
                     String terminalId = message.getSource().getResourceId();
                     if (terminalId != null) {
-                        return List.of(StompTopic.buildTerminalStatusTopic(terminalId));
+                        return List.of(StompTopic.buildDeviceTopic(terminalId));
                     }
                     return Collections.emptyList();
                 })
@@ -362,9 +360,7 @@ public class TopicRoutingManager {
                 .matcher(message -> true) // 所有指令反馈都匹配
                 .topicGenerator(message -> {
                     if (message.getTarget() != null && message.getTarget().getUids() != null) {
-                        return message.getTarget().getUids().stream()
-                                .map(uid -> StompTopic.buildUserCommandFeedbackTopic(uid.toString()))
-                                .toList();
+                        return List.of(StompTopic.USER_MESSAGES_QUEUE);
                     }
                     return Collections.emptyList();
                 })
@@ -382,7 +378,7 @@ public class TopicRoutingManager {
                 .topicGenerator(message -> {
                     String taskId = message.getSource().getTaskId();
                     if (taskId != null) {
-                        return List.of(StompTopic.buildBatchCommandSummaryTopic(taskId));
+                        return List.of(StompTopic.buildBatchAggTopic(taskId));
                     }
                     return Collections.emptyList();
                 })
@@ -397,7 +393,7 @@ public class TopicRoutingManager {
                 .ruleName("SYSTEM_MESSAGE")
                 .priority(1)
                 .matcher(message -> true)
-                .topicGenerator(message -> List.of(StompTopic.GLOBAL_SYSTEM_ANNOUNCEMENT_TOPIC))
+                .topicGenerator(message -> List.of(StompTopic.SYSTEM_TOPIC))
                 .build();
     }
     
@@ -412,7 +408,7 @@ public class TopicRoutingManager {
                 .topicGenerator(message -> {
                     Long orgId = message.getTarget().getOid();
                     if (orgId != null) {
-                        return List.of(StompTopic.buildOrgMonitoringTopic(orgId.toString()));
+                        return List.of(StompTopic.ORG_TOPIC_TEMPLATE);
                     }
                     return Collections.emptyList();
                 })
@@ -426,11 +422,11 @@ public class TopicRoutingManager {
         List<String> fallbackTopics = new ArrayList<>();
         
         // 如果有明确的目标主题路径，使用它
-        if (message.getTarget() != null && message.getTarget().getTopicPath() != null) {
-            fallbackTopics.add(message.getTarget().getTopicPath());
+        if (message.getTarget() != null && message.getTarget().getDestination() != null) {
+            fallbackTopics.add(message.getTarget().getDestination());
         } else {
             // 否则使用系统默认主题
-            fallbackTopics.add(StompTopic.GLOBAL_SYSTEM_ANNOUNCEMENT_TOPIC);
+            fallbackTopics.add(StompTopic.SYSTEM_TOPIC);
         }
         
         return TopicRoutingDecision.builder()

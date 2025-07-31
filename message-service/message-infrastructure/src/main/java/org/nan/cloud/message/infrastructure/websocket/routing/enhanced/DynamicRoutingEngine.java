@@ -252,7 +252,7 @@ public class DynamicRoutingEngine {
         
         // 基于消息目标获取候选路径
         if (message.getTarget() != null) {
-            String topicPath = message.getTarget().getTopicPath();
+            String topicPath = message.getTarget().getDestination();
             if (topicPath != null) {
                 // 分割多个主题路径
                 String[] paths = topicPath.split(",");

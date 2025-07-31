@@ -340,7 +340,7 @@ public class NotificationMessageProcessor implements BusinessMessageProcessor {
                             .build())
                     .target(CommonStompMessage.Target.builder()
                             .targetType("TOPIC")
-                            .topicPath(StompTopic.GLOBAL_SYSTEM_ANNOUNCEMENT_TOPIC)
+                            .destination(StompTopic.SYSTEM_TOPIC)
                             .build())
                     .payload(messageData)
                     .message(title + ": " + content)
@@ -375,8 +375,6 @@ public class NotificationMessageProcessor implements BusinessMessageProcessor {
                                                              String category, Object notificationData, 
                                                              Long expireTime, List<String> targetRoles, 
                                                              List<Long> targetOrgIds) {
-        // 根据类别选择主题
-        String topicPath = determineSystemNotificationTopic(category);
         
         return CommonStompMessage.builder()
                 .messageId(notificationId != null ? notificationId : UUID.randomUUID().toString())
@@ -392,7 +390,7 @@ public class NotificationMessageProcessor implements BusinessMessageProcessor {
                 .target(CommonStompMessage.Target.builder()
                         .targetType(targetOrgIds != null && !targetOrgIds.isEmpty() ? "MULTI_ORG" : "GLOBAL")
                         .oid(targetOrgIds != null && targetOrgIds.size() == 1 ? targetOrgIds.get(0) : null)
-                        .topicPath(topicPath)
+                        .destination(StompTopic.SYSTEM_TOPIC)
                         .build())
                 .payload(Map.of(
                 ))
@@ -429,10 +427,7 @@ public class NotificationMessageProcessor implements BusinessMessageProcessor {
                         .targetType(targetUserIds != null && !targetUserIds.isEmpty() ? "USERS" : "ORG")
                         .uids(targetUserIds)
                         .oid(orgId)
-                        .topicPath(targetUserIds != null && !targetUserIds.isEmpty() ? 
-                                  buildUserNotificationTopics(targetUserIds) : 
-                                  (orgId != null ? StompTopic.buildOrgAnnouncementTopic(orgId.toString()) : 
-                                   StompTopic.GLOBAL_SYSTEM_ANNOUNCEMENT_TOPIC))
+                        .destination(StompTopic.USER_MESSAGES_QUEUE)
                         .build())
                 .payload(Map.of(
                         "businessType", businessType,
@@ -477,7 +472,7 @@ public class NotificationMessageProcessor implements BusinessMessageProcessor {
                 .target(CommonStompMessage.Target.builder()
                         .targetType("USER")
                         .uids(List.of(targetUserId))
-                        .topicPath(StompTopic.buildUserNotificationTopic(targetUserId.toString()))
+                        .destination(StompTopic.USER_MESSAGES_QUEUE)
                         .build())
                 .payload(Map.of(
                         "targetUserId", targetUserId,
@@ -523,9 +518,7 @@ public class NotificationMessageProcessor implements BusinessMessageProcessor {
                         .targetType(targetUserIds != null && !targetUserIds.isEmpty() ? "USERS" : "ORG")
                         .uids(targetUserIds)
                         .oid(orgId)
-                        .topicPath(targetUserIds != null && !targetUserIds.isEmpty() ? 
-                                  buildUserNotificationTopics(targetUserIds) : 
-                                  StompTopic.buildOrgAnnouncementTopic(orgId.toString()))
+                        .destination(StompTopic.USER_MESSAGES_QUEUE)
                         .build())
                 .payload(null)
                 .message(title + ": " + content)
@@ -536,35 +529,6 @@ public class NotificationMessageProcessor implements BusinessMessageProcessor {
                         .requireAck("HIGH".equalsIgnoreCase(priority))
                         .build())
                 .build();
-    }
-    
-    /**
-     * 根据系统通知类别确定主题路径
-     */
-    private String determineSystemNotificationTopic(String category) {
-        if (category == null) {
-            return StompTopic.GLOBAL_SYSTEM_ANNOUNCEMENT_TOPIC;
-        }
-        
-        switch (category.toUpperCase()) {
-            case "MAINTENANCE":
-                return StompTopic.GLOBAL_MAINTENANCE_TOPIC;
-            case "EMERGENCY":
-            case "CRITICAL":
-                return StompTopic.GLOBAL_EMERGENCY_TOPIC;
-            case "ANNOUNCEMENT":
-            default:
-                return StompTopic.GLOBAL_SYSTEM_ANNOUNCEMENT_TOPIC;
-        }
-    }
-    
-    /**
-     * 构建用户通知主题路径列表
-     */
-    private String buildUserNotificationTopics(List<Long> userIds) {
-        return userIds.stream()
-                .map(userId -> StompTopic.buildUserNotificationTopic(userId.toString()))
-                .collect(Collectors.joining(","));
     }
     
     /**

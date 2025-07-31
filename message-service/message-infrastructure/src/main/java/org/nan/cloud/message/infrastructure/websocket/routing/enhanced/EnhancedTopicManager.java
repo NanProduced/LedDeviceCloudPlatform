@@ -264,17 +264,12 @@ public class EnhancedTopicManager {
         
         // 基于用户ID生成Topic
         if (message.getTarget().getUids() != null) {
-            for (Long userId : message.getTarget().getUids()) {
-                topics.add(StompTopic.buildUserNotificationTopic(userId.toString()));
-                
-                // 生成用户分组Topic
-                topics.add("/topic/user-groups/" + (userId % 10) + "/messages");
-            }
+            topics.add(StompTopic.USER_MESSAGES_QUEUE);
         }
         
         // 基于组织ID生成Topic
         if (message.getTarget().getOid() != null) {
-            topics.add(StompTopic.buildOrgAnnouncementTopic(message.getTarget().getOid().toString()));
+            topics.add(StompTopic.buildOrgTopic(message.getTarget().getOid().toString()));
             
             // 生成组织层次Topic
             topics.addAll(generateOrgHierarchicalTopics(message.getTarget().getOid()));

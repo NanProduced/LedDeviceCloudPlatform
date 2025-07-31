@@ -13,7 +13,6 @@ import org.nan.cloud.message.infrastructure.websocket.stomp.model.CommonStompMes
 import org.springframework.stereotype.Component;
 
 import java.time.LocalDateTime;
-import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 
@@ -331,7 +330,7 @@ public class StatusMessageProcessor implements BusinessMessageProcessor {
                             .build())
                     .target(CommonStompMessage.Target.builder()
                             .targetType("TOPIC")
-                            .topicPath(StompTopic.GLOBAL_SYSTEM_ANNOUNCEMENT_TOPIC)
+                            .destination(StompTopic.SYSTEM_TOPIC)
                             .build())
                     .payload(messageData)
                     .message("通用状态变更: " + routingKey)
@@ -378,8 +377,8 @@ public class StatusMessageProcessor implements BusinessMessageProcessor {
                 .target(CommonStompMessage.Target.builder()
                         .targetType("TERMINAL_AND_ORG")
                         .oid(orgId)
-                        .topicPath(StompTopic.buildTerminalStatusTopic(deviceId) + 
-                                  (orgId != null ? "," + StompTopic.buildOrgDeviceStatusTopic(orgId.toString()) : ""))
+                        .destination(StompTopic.buildDeviceTopic(deviceId) +
+                                  (orgId != null ? "," + StompTopic.buildOrgTopic(orgId.toString()) : ""))
                         .build())
                 .payload(Map.of(
                         "deviceId", deviceId,
@@ -422,8 +421,8 @@ public class StatusMessageProcessor implements BusinessMessageProcessor {
                 .target(CommonStompMessage.Target.builder()
                         .targetType("ORG")
                         .oid(orgId)
-                        .topicPath(orgId != null ? StompTopic.buildOrgUserStatusTopic(orgId.toString()) : 
-                                  StompTopic.GLOBAL_SYSTEM_ANNOUNCEMENT_TOPIC)
+                        .destination(orgId != null ? StompTopic.buildOrgTopic(orgId.toString()) :
+                                  StompTopic.USER_MESSAGES_QUEUE)
                         .build())
                 .payload(Map.of(
                         "userId", userId,
@@ -465,7 +464,7 @@ public class StatusMessageProcessor implements BusinessMessageProcessor {
                         .build())
                 .target(CommonStompMessage.Target.builder()
                         .targetType("SYSTEM_ADMIN")
-                        .topicPath(StompTopic.SYSTEM_ADMIN_TOPIC)
+                        .destination(StompTopic.SYSTEM_TOPIC)
                         .build())
                 .payload(Map.of(
                         "serviceId", serviceId,
@@ -509,7 +508,7 @@ public class StatusMessageProcessor implements BusinessMessageProcessor {
                         .build())
                 .target(CommonStompMessage.Target.builder()
                         .targetType("SYSTEM")
-                        .topicPath(StompTopic.SYSTEM_MONITOR_TOPIC)
+                        .destination(StompTopic.SYSTEM_TOPIC)
                         .build())
                 .payload(Map.of(
                         "connectionId", connectionId,

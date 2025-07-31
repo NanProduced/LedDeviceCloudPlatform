@@ -454,7 +454,7 @@ public class BatchCommandAggregator {
      * 推送聚合更新
      */
     @Async
-    private void pushAggregationUpdate(BatchCommandAggregationData aggregationData,
+    public void pushAggregationUpdate(BatchCommandAggregationData aggregationData,
                                      PushTrigger trigger, String reason) {
         try {
             log.debug("推送批量任务聚合更新 - 批量ID: {}, 触发器: {}, 原因: {}", 

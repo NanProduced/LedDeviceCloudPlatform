@@ -55,7 +55,7 @@ public class BatchResultCollector {
             Priority priority = determinePriority(aggregationData, trigger);
             
             // 构建主题路径
-            String topicPath = buildSummaryTopicPath(aggregationData);
+            String topicPath = buildBatchAggTopicPath(aggregationData);
             
             return CommonStompMessage.builder()
                     .messageId(UUID.randomUUID().toString())
@@ -74,7 +74,7 @@ public class BatchResultCollector {
                             .targetType("USER_AND_TOPIC")
                             .uids(aggregationData.getUserId() != null ? List.of(aggregationData.getUserId()) : null)
                             .oid(aggregationData.getOrgId())
-                            .topicPath(topicPath)
+                            .destination(topicPath)
                             .build())
                     .payload(summaryPayload)
                     .message(buildSummaryMessage(aggregationData))
@@ -114,7 +114,7 @@ public class BatchResultCollector {
             Priority priority = determinePriority(aggregationData, trigger);
             
             // 构建主题路径
-            String topicPath = buildDetailedTopicPath(aggregationData);
+            String topicPath = buildBatchAggTopicPath(aggregationData);
             
             return CommonStompMessage.builder()
                     .messageId(UUID.randomUUID().toString())
@@ -133,7 +133,7 @@ public class BatchResultCollector {
                             .targetType("USER_AND_DETAILED_TOPIC")
                             .uids(aggregationData.getUserId() != null ? List.of(aggregationData.getUserId()) : null)
                             .oid(aggregationData.getOrgId())
-                            .topicPath(topicPath)
+                            .destination(topicPath)
                             .build())
                     .payload(detailedPayload)
                     .message(buildDetailedMessageString(aggregationData))
@@ -170,7 +170,7 @@ public class BatchResultCollector {
             Priority priority = aggregationData.isSuccessfullyCompleted() ? Priority.NORMAL : Priority.HIGH;
             
             // 构建主题路径
-            String topicPath = buildFinalResultTopicPath(aggregationData);
+            String topicPath = buildBatchAggTopicPath(aggregationData);
             
             return CommonStompMessage.builder()
                     .messageId(UUID.randomUUID().toString())
@@ -189,7 +189,7 @@ public class BatchResultCollector {
                             .targetType("USER_AND_RESULT_TOPIC")
                             .uids(aggregationData.getUserId() != null ? List.of(aggregationData.getUserId()) : null)
                             .oid(aggregationData.getOrgId())
-                            .topicPath(topicPath)
+                            .destination(topicPath)
                             .build())
                     .payload(finalPayload)
                     .message(buildFinalResultMessageString(aggregationData))
@@ -309,47 +309,15 @@ public class BatchResultCollector {
     }
     
     // ==================== 主题路径构建方法 ====================
-    
-    /**
-     * 构建摘要主题路径
-     */
-    private String buildSummaryTopicPath(BatchCommandAggregationData aggregationData) {
-        String batchTopic = StompTopic.buildBatchCommandSummaryTopic(aggregationData.getBatchId());
-        
+
+    public String buildBatchAggTopicPath(BatchCommandAggregationData aggregationData) {
+        String batchAggTopic = StompTopic.buildBatchAggTopic(aggregationData.getBatchId());
+
         if (aggregationData.getUserId() != null) {
-            String userTopic = StompTopic.buildUserTaskProgressTopic(aggregationData.getUserId().toString());
-            return batchTopic + "," + userTopic;
+            return batchAggTopic + "," + StompTopic.USER_MESSAGES_QUEUE;
         }
-        
-        return batchTopic;
-    }
-    
-    /**
-     * 构建详细主题路径
-     */
-    private String buildDetailedTopicPath(BatchCommandAggregationData aggregationData) {
-        String detailedTopic = StompTopic.buildBatchCommandDetailedTopic(aggregationData.getBatchId());
-        
-        if (aggregationData.getOrgId() != null) {
-            String orgTopic = StompTopic.buildOrgMonitoringTopic(aggregationData.getOrgId().toString());
-            return detailedTopic + "," + orgTopic;
-        }
-        
-        return detailedTopic;
-    }
-    
-    /**
-     * 构建最终结果主题路径
-     */
-    private String buildFinalResultTopicPath(BatchCommandAggregationData aggregationData) {
-        String resultTopic = StompTopic.buildBatchCommandResultTopic(aggregationData.getBatchId());
-        
-        if (aggregationData.getUserId() != null) {
-            String userResultTopic = StompTopic.USER_BATCH_COMMAND_RESULT_DESTINATION;
-            return resultTopic + "," + userResultTopic;
-        }
-        
-        return resultTopic;
+
+        return batchAggTopic;
     }
     
     // ==================== 消息文本构建方法 ====================

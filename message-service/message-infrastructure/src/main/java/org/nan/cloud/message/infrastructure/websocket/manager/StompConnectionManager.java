@@ -8,6 +8,7 @@ import org.nan.cloud.message.infrastructure.websocket.interceptor.StompPrincipal
 import org.nan.cloud.message.infrastructure.websocket.security.GatewayUserInfo;
 import org.nan.cloud.message.infrastructure.websocket.sender.StompMessageSender;
 import org.nan.cloud.message.infrastructure.websocket.stomp.enums.StompMessageTypes;
+import org.nan.cloud.message.infrastructure.websocket.stomp.enums.StompTopic;
 import org.nan.cloud.message.infrastructure.websocket.stomp.model.CommonStompMessage;
 import org.nan.cloud.message.infrastructure.websocket.subscription.AutoSubscriptionResult;
 import org.springframework.context.ApplicationEventPublisher;
@@ -22,7 +23,7 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.CopyOnWriteArraySet;
 import java.util.concurrent.atomic.AtomicLong;
 
-import static org.nan.cloud.message.infrastructure.websocket.stomp.enums.StompTopic.USER_NOTIFICATION_DESTINATION;
+// 已废弃：import static org.nan.cloud.message.infrastructure.websocket.stomp.enums.StompTopic.USER_NOTIFICATION_DESTINATION;
 
 /**
  * STOMP连接管理器
@@ -462,7 +463,7 @@ public class StompConnectionManager {
             welcomeMessage.setMetadata(metadata);
             
             // 发送欢迎消息到用户的通知队列
-            sendToUser(userId, USER_NOTIFICATION_DESTINATION, welcomeMessage);
+            sendToUser(userId, StompTopic.USER_MESSAGES_QUEUE, welcomeMessage);
             
             log.debug("为用户 {} 发送连接欢迎消息成功 - sessionId: {}", userId, sessionId);
             
@@ -543,7 +544,7 @@ public class StompConnectionManager {
      * @return 是否发送成功
      */
     public boolean sendToUser(String userId, CommonStompMessage message) {
-        return sendToUser(userId, USER_NOTIFICATION_DESTINATION, message);
+        return sendToUser(userId, StompTopic.USER_MESSAGES_QUEUE, message);
     }
     
     /**
@@ -554,7 +555,7 @@ public class StompConnectionManager {
      * @return 成功发送的用户数量
      */
     public int broadcastToOrganization(Long organizationId, CommonStompMessage message) {
-        return broadcastToOrganization(organizationId, USER_NOTIFICATION_DESTINATION, message);
+        return broadcastToOrganization(organizationId, StompTopic.USER_MESSAGES_QUEUE, message);
     }
 
     /**

@@ -269,7 +269,7 @@ public class CommandMessageProcessor implements BusinessMessageProcessor {
                             .build())
                     .target(CommonStompMessage.Target.builder()
                             .targetType("TOPIC")
-                            .topicPath(StompTopic.GLOBAL_SYSTEM_ANNOUNCEMENT_TOPIC)
+                            .destination(StompTopic.USER_MESSAGES_QUEUE)
                             .build())
                     .payload(messageData)
                     .message("通用指令消息: " + routingKey)
@@ -318,8 +318,8 @@ public class CommandMessageProcessor implements BusinessMessageProcessor {
                         .targetType("USER_AND_TERMINAL")
                         .uids(List.of(userId))
                         .oid(orgId)
-                        .topicPath(StompTopic.buildUserCommandFeedbackTopic(userId.toString()) + "," +
-                                  StompTopic.buildTerminalCommandTopic(deviceId))
+                        .destination(StompTopic.USER_MESSAGES_QUEUE + "," +
+                                  StompTopic.buildDeviceTopic(deviceId))
                         .build())
                 .payload(Map.of(
                         "commandId", commandId,
@@ -365,8 +365,8 @@ public class CommandMessageProcessor implements BusinessMessageProcessor {
                         .targetType("USER_AND_TOPIC")
                         .uids(List.of(userId))
                         .oid(orgId)
-                        .topicPath(StompTopic.buildBatchCommandSummaryTopic(batchId) + "," +
-                                  StompTopic.buildUserTaskProgressTopic(userId.toString()))
+                        .destination(StompTopic.buildBatchAggTopic(batchId) + "," +
+                                  StompTopic.USER_MESSAGES_QUEUE)
                         .build())
                 .payload(Map.of(
                         "batchId", batchId,
@@ -412,8 +412,7 @@ public class CommandMessageProcessor implements BusinessMessageProcessor {
                         .targetType("USER_AND_ORG")
                         .uids(userId != null ? List.of(userId) : null)
                         .oid(orgId)
-                        .topicPath(orgId != null ? StompTopic.buildOrgAlertTopic(orgId.toString()) : 
-                                  StompTopic.GLOBAL_SYSTEM_ANNOUNCEMENT_TOPIC)
+                        .destination(StompTopic.USER_MESSAGES_QUEUE)
                         .build())
                 .payload(Map.of(
                         "commandId", commandId != null ? commandId : "",

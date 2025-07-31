@@ -247,7 +247,7 @@ public class StompMessageDispatcher {
                     .target(CommonStompMessage.Target.builder()
                             .targetType("USER")
                             .uids(List.of(Long.valueOf(userId)))
-                            .topicPath(StompTopic.buildUserNotificationTopic(userId))
+                            .destination(StompTopic.USER_MESSAGES_QUEUE)
                             .build())
                     .payload(Map.of(
                             "title", title,
@@ -309,7 +309,7 @@ public class StompMessageDispatcher {
                     .target(CommonStompMessage.Target.builder()
                             .targetType("ORGANIZATION")
                             .oid(organizationId)
-                            .topicPath(StompTopic.buildOrgAnnouncementTopic(organizationId.toString()))
+                            .destination(StompTopic.buildOrgTopic(organizationId.toString()))
                             .build())
                     .payload(Map.of(
                             "title", title,
@@ -355,7 +355,8 @@ public class StompMessageDispatcher {
                             .build())
                     .target(CommonStompMessage.Target.builder()
                             .targetType("TOPIC")
-                            .topicPath(StompTopic.buildTerminalStatusTopic(terminalId))
+                            .resourceTid(Long.valueOf(terminalId))
+                            .destination(StompTopic.buildDeviceTopic(terminalId))
                             .build())
                     .payload(Map.of(
                             "terminalId", terminalId,
@@ -366,7 +367,7 @@ public class StompMessageDispatcher {
                     .build();
             
             // 向终端状态主题发布消息
-            sendToTopic(message.getTarget().getTopicPath(), message);
+            sendToTopic(message.getTarget().getDestination(), message);
             log.info("✅ 终端状态消息发送完成 - 终端ID: {}, 类型: {}", terminalId, type);
             
         } catch (Exception e) {
@@ -399,7 +400,7 @@ public class StompMessageDispatcher {
                     .target(CommonStompMessage.Target.builder()
                             .targetType("USER")
                             .uids(List.of(Long.valueOf(executorUserId)))
-                            .topicPath(StompTopic.buildUserCommandFeedbackTopic(executorUserId))
+                            .destination(StompTopic.USER_MESSAGES_QUEUE)
                             .build())
                     .payload(Map.of(
                             "terminalId", terminalId,
@@ -452,7 +453,8 @@ public class StompMessageDispatcher {
                             .build())
                     .target(CommonStompMessage.Target.builder()
                             .targetType("BATCH_USERS")
-                            .topicPath(StompTopic.buildBatchCommandSummaryTopic(taskId))
+                            .resourceTaskId(taskId)
+                            .destination(StompTopic.buildTaskTopic(taskId))
                             .build())
                     .payload(Map.of(
                             "taskId", taskId,
@@ -466,7 +468,7 @@ public class StompMessageDispatcher {
                     .build();
             
             // 向批量指令主题发布进度消息
-            sendToTopic(message.getTarget().getTopicPath(), message);
+            sendToTopic(message.getTarget().getDestination(), message);
             
             // 同时向相关用户发送个人进度通知
             if (targetUserIds != null && !targetUserIds.isEmpty()) {
@@ -518,7 +520,7 @@ public class StompMessageDispatcher {
             enrichMessage(message);
             
             // 向全局系统主题广播
-            sendToTopic(StompTopic.GLOBAL_SYSTEM_ANNOUNCEMENT_TOPIC, message);
+            sendToTopic(StompTopic.SYSTEM_TOPIC, message);
             
             // 同时向所有在线用户发送
             int onlineUserCount = stompConnectionManager.getOnlineUserCount();

@@ -1,5 +1,6 @@
 package org.nan.cloud.message.infrastructure.websocket.stomp.model;
 
+import com.fasterxml.jackson.annotation.JsonInclude;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
@@ -99,6 +100,7 @@ public class CommonStompMessage {
     @Builder
     @AllArgsConstructor
     @NoArgsConstructor
+    @JsonInclude(JsonInclude.Include.NON_NULL)
     public static class Target {
 
         private String targetType;
@@ -107,7 +109,11 @@ public class CommonStompMessage {
 
         private Long oid;
 
-        private String topicPath;
+        private String destination;
+
+        private Long resourceTid;
+
+        private String resourceTaskId;
     }
 
     /**
@@ -254,7 +260,7 @@ public class CommonStompMessage {
                 .payload(payload)
                 .target(Target.builder()
                         .targetType("TOPIC")
-                        .topicPath(topicPath)
+                        .destination(topicPath)
                         .build())
                 .metadata(Metadata.builder()
                         .priority(Priority.NORMAL)

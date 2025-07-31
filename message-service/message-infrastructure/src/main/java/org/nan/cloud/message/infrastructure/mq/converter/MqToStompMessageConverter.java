@@ -46,7 +46,7 @@ public class MqToStompMessageConverter {
         CommonStompMessage.Target target = CommonStompMessage.Target.builder()
                 .targetType("TERMINAL")
                 .oid(orgId)
-                .topicPath("/topic/terminal/" + deviceId + "/status")
+                .destination("/topic/terminal/" + deviceId + "/status")
                 .build();
         
         // 构建消息元数据
@@ -98,7 +98,7 @@ public class MqToStompMessageConverter {
                 .targetType("USER_AND_TERMINAL")
                 .uids(List.of(userId))
                 .oid(orgId)
-                .topicPath("/topic/user/" + userId + "/commands," + "/topic/terminal/" + deviceId + "/commands")
+                .destination("/topic/user/" + userId + "/commands," + "/topic/terminal/" + deviceId + "/commands")
                 .build();
         
         // 构建消息元数据
@@ -152,14 +152,14 @@ public class MqToStompMessageConverter {
                     .targetType("USERS")
                     .uids(targetUserIds)
                     .oid(orgId)
-                    .topicPath(buildUserNotificationTopics(targetUserIds))
+                    .destination(buildUserNotificationTopics(targetUserIds))
                     .build();
         } else {
             // 发送给整个组织
             target = CommonStompMessage.Target.builder()
                     .targetType("ORG")
                     .oid(orgId)
-                    .topicPath("/topic/org/" + orgId + "/notifications")
+                    .destination("/topic/org/" + orgId + "/notifications")
                     .build();
         }
         
@@ -212,7 +212,7 @@ public class MqToStompMessageConverter {
                 .targetType("USER")
                 .uids(List.of(userId))
                 .oid(orgId)
-                .topicPath("/topic/commandTask/" + batchId + "/progress")
+                .destination("/topic/commandTask/" + batchId + "/progress")
                 .build();
         
         // 构建消息元数据

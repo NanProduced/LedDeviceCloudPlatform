@@ -18,7 +18,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Set;
 
-import static org.nan.cloud.message.infrastructure.websocket.stomp.enums.StompTopic.USER_SUBSCRIBE_RESULT_DESTINATION;
+// 已废弃：import static org.nan.cloud.message.infrastructure.websocket.stomp.enums.StompTopic.USER_SUBSCRIBE_RESULT_DESTINATION;
 
 /**
  * STOMP订阅管理器
@@ -358,20 +358,21 @@ public class SubscriptionManager {
     
     /**
      * 构建自动订阅主题列表
+     * 优化后：个人消息使用/user/queue，减少主题数量
      */
     private List<String> buildAutoSubscriptionTopics(GatewayUserInfo userInfo) {
         List<String> topics = new ArrayList<>();
         
-        String userId = userInfo.getUid().toString();
         String orgId = userInfo.getOid().toString();
         
-        // 1. 用户个人通知主题
-        topics.add(StompTopic.buildUserNotificationTopic(userId));
+        // 1. 组织消息主题 (广播类消息保持topic)
+        topics.add(StompTopic.buildOrgTopic(orgId));
         
-        // 2. 组织公告主题
-        topics.add(StompTopic.buildOrgAnnouncementTopic(orgId));
+        // 2. 系统消息主题 (全局广播消息)
+        topics.add(StompTopic.SYSTEM_TOPIC);
         
-        // 注意：不自动订阅终端相关主题，需要用户显式订阅
+        // 注意：个人消息不需要自动订阅，因为使用/user/queue自动路由
+        // 注意：终端相关主题需要用户显式订阅
         
         return topics;
     }
@@ -488,8 +489,8 @@ public class SubscriptionManager {
                         userId, topicPath, errorMessage);
             }
             
-            // 发送反馈消息到用户的个人反馈队列
-            boolean sent = stompMessageSender.sendToUser(userId, USER_SUBSCRIBE_RESULT_DESTINATION, feedbackMsg);
+            // 发送反馈消息到用户的个人消息队列
+            boolean sent = stompMessageSender.sendToUser(userId, StompTopic.USER_MESSAGES_QUEUE, feedbackMsg);
             
             if (sent) {
                 log.debug("✅ 订阅反馈消息发送成功 - 用户: {}, 主题: {}, 成功: {}", 
@@ -541,9 +542,8 @@ public class SubscriptionManager {
                         userId, topicPath, errorMessage);
             }
             
-            // 发送反馈消息到用户的个人反馈队列
-            String feedbackDestination = "/queue/subscription-feedback";
-            boolean sent = stompMessageSender.sendToUser(userId, feedbackDestination, feedbackMsg);
+            // 发送反馈消息到用户的个人消息队列
+            boolean sent = stompMessageSender.sendToUser(userId, StompTopic.USER_MESSAGES_QUEUE, feedbackMsg);
             
             if (sent) {
                 log.debug("✅ 取消订阅反馈消息发送成功 - 用户: {}, 主题: {}, 成功: {}", 
