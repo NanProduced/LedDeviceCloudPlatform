@@ -11,6 +11,7 @@ import org.nan.cloud.message.infrastructure.websocket.stomp.enums.StompMessageTy
 import org.nan.cloud.message.infrastructure.websocket.stomp.model.CommonStompMessage;
 import org.nan.cloud.message.infrastructure.websocket.subscription.AutoSubscriptionResult;
 import org.springframework.context.ApplicationEventPublisher;
+import org.springframework.context.annotation.Lazy;
 import org.springframework.stereotype.Component;
 
 import java.security.Principal;
@@ -45,11 +46,16 @@ import static org.nan.cloud.message.infrastructure.websocket.stomp.enums.StompTo
  */
 @Slf4j
 @Component
-@RequiredArgsConstructor
 public class StompConnectionManager {
     
     private final StompMessageSender messageSender;
     private final ApplicationEventPublisher eventPublisher;
+    
+    public StompConnectionManager(@Lazy StompMessageSender messageSender,
+                                ApplicationEventPublisher eventPublisher) {
+        this.messageSender = messageSender;
+        this.eventPublisher = eventPublisher;
+    }
     
     /**
      * 用户连接映射表

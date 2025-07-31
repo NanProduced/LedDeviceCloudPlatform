@@ -42,13 +42,22 @@ import static org.nan.cloud.message.infrastructure.websocket.stomp.enums.StompMe
  */
 @Slf4j
 @Component
-@RequiredArgsConstructor
 public class StompAckHandler {
     
     private final MessageDeliveryTracker deliveryTracker;
     private final StompConnectionManager connectionManager;
     private final StompMessageSender messageSender;
     private final ApplicationEventPublisher eventPublisher;
+    
+    public StompAckHandler(MessageDeliveryTracker deliveryTracker,
+                          StompConnectionManager connectionManager,
+                          StompMessageSender messageSender,
+                          ApplicationEventPublisher eventPublisher) {
+        this.deliveryTracker = deliveryTracker;
+        this.connectionManager = connectionManager;
+        this.messageSender = messageSender;
+        this.eventPublisher = eventPublisher;
+    }
     
     /**
      * 客户端连接状态缓存

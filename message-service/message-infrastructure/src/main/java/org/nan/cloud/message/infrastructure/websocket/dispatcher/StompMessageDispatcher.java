@@ -1,6 +1,5 @@
 package org.nan.cloud.message.infrastructure.websocket.dispatcher;
 
-import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.nan.cloud.message.infrastructure.websocket.routing.enhanced.DynamicRoutingEngine;
 import org.nan.cloud.message.infrastructure.websocket.routing.enhanced.MessageAggregator;
@@ -48,7 +47,6 @@ import java.util.UUID;
  */
 @Slf4j
 @Component
-@RequiredArgsConstructor
 public class StompMessageDispatcher {
 
     private final StompConnectionManager stompConnectionManager;
@@ -59,6 +57,20 @@ public class StompMessageDispatcher {
     private final MessageAggregator messageAggregator;
     private final DynamicRoutingEngine dynamicRoutingEngine;
     private final RoutingStrategyManager routingStrategyManager;
+    
+    public StompMessageDispatcher(StompConnectionManager stompConnectionManager,
+                                TopicRoutingManager topicRoutingManager,
+                                StompMessageSender messageSender,
+                                MessageAggregator messageAggregator,
+                                DynamicRoutingEngine dynamicRoutingEngine,
+                                RoutingStrategyManager routingStrategyManager) {
+        this.stompConnectionManager = stompConnectionManager;
+        this.topicRoutingManager = topicRoutingManager;
+        this.messageSender = messageSender;
+        this.messageAggregator = messageAggregator;
+        this.dynamicRoutingEngine = dynamicRoutingEngine;
+        this.routingStrategyManager = routingStrategyManager;
+    }
     
     // ==================== 智能路由分发 ====================
     

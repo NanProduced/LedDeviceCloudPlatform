@@ -9,6 +9,8 @@ import org.nan.cloud.message.infrastructure.websocket.routing.SubscriptionLevel;
 import org.nan.cloud.message.infrastructure.websocket.routing.TopicRoutingManager;
 import org.nan.cloud.message.infrastructure.websocket.security.GatewayUserInfo;
 import org.nan.cloud.message.infrastructure.websocket.stomp.enums.StompTopic;
+import org.nan.cloud.message.infrastructure.websocket.stomp.model.StompTopicSubscribeFeedbackMsg;
+import org.nan.cloud.message.infrastructure.websocket.sender.StompMessageSender;
 import org.springframework.context.annotation.Lazy;
 import org.springframework.stereotype.Component;
 
@@ -40,12 +42,15 @@ public class SubscriptionManager {
     
     private final TopicRoutingManager topicRoutingManager;
     private final StompPermissionClient stompPermissionClient;
+    private final StompMessageSender stompMessageSender;
 
     public SubscriptionManager(TopicRoutingManager topicRoutingManager,
-                               @Lazy StompPermissionClient stompPermissionClient
+                               @Lazy StompPermissionClient stompPermissionClient,
+                               @Lazy StompMessageSender stompMessageSender
     ) {
         this.topicRoutingManager = topicRoutingManager;
         this.stompPermissionClient = stompPermissionClient;
+        this.stompMessageSender = stompMessageSender;
     }
 
     // ==================== 订阅权限验证 ====================
@@ -156,7 +161,12 @@ public class SubscriptionManager {
             
             // 1. 验证订阅权限
             if (!verifySubscriptionPermission(userInfo, topicPath, sessionId)) {
-                return SubscriptionResult.denied("无权限订阅主题: " + topicPath);
+                String errorMessage = "无权限订阅主题: " + topicPath;
+                
+                // 发送订阅失败反馈消息给客户端
+                sendSubscriptionFeedback(userInfo, topicPath, null, false, errorMessage);
+                
+                return SubscriptionResult.denied(errorMessage);
             }
             
             // 2. 确定订阅层次
@@ -167,12 +177,21 @@ public class SubscriptionManager {
             
             log.info("✅ 用户订阅成功 - 用户: {}, 主题: {}, 层次: {}", userId, topicPath, subscriptionLevel);
 
+            // 4. 发送订阅成功反馈消息给客户端
+            sendSubscriptionFeedback(userInfo, topicPath, subscriptionLevel, true, null);
+
             return SubscriptionResult.success(topicPath, subscriptionLevel);
             
         } catch (Exception e) {
             log.error("处理用户订阅失败 - 用户: {}, 主题: {}, 错误: {}", 
                     userInfo.getUid(), topicPath, e.getMessage(), e);
-            return SubscriptionResult.error("订阅处理异常: " + e.getMessage());
+            
+            String errorMessage = "订阅处理异常: " + e.getMessage();
+            
+            // 发送订阅异常反馈消息给客户端
+            sendSubscriptionFeedback(userInfo, topicPath, null, false, errorMessage);
+            
+            return SubscriptionResult.error(errorMessage);
         }
     }
     
@@ -193,12 +212,22 @@ public class SubscriptionManager {
             topicRoutingManager.removeUserSubscription(userId, topicPath, sessionId);
             
             log.info("✅ 用户取消订阅成功 - 用户: {}, 主题: {}", userId, topicPath);
+            
+            // 发送取消订阅成功反馈消息给客户端
+            sendUnsubscriptionFeedback(userInfo, topicPath, true, null);
+            
             return SubscriptionResult.success(topicPath, null);
             
         } catch (Exception e) {
             log.error("处理用户取消订阅失败 - 用户: {}, 主题: {}, 错误: {}", 
                     userInfo.getUid(), topicPath, e.getMessage(), e);
-            return SubscriptionResult.error("取消订阅处理异常: " + e.getMessage());
+            
+            String errorMessage = "取消订阅处理异常: " + e.getMessage();
+            
+            // 发送取消订阅失败反馈消息给客户端
+            sendUnsubscriptionFeedback(userInfo, topicPath, false, errorMessage);
+            
+            return SubscriptionResult.error(errorMessage);
         }
     }
     
@@ -402,5 +431,129 @@ public class SubscriptionManager {
             }
         }
         return null;
+    }
+    
+    // ==================== 订阅反馈消息发送 ====================
+    
+    /**
+     * 发送订阅反馈消息给客户端
+     * 
+     * @param userInfo 用户信息
+     * @param topicPath 主题路径
+     * @param subscriptionLevel 订阅层次（成功时）
+     * @param success 是否成功
+     * @param errorMessage 错误消息（失败时）
+     */
+    private void sendSubscriptionFeedback(GatewayUserInfo userInfo, String topicPath, 
+                                        SubscriptionLevel subscriptionLevel, boolean success, String errorMessage) {
+        try {
+            String userId = userInfo.getUid().toString();
+            
+            // 创建反馈消息
+            StompTopicSubscribeFeedbackMsg feedbackMsg;
+            
+            if (success) {
+                // 创建成功反馈消息
+                feedbackMsg = StompTopicSubscribeFeedbackMsg.successFeedback(
+                    userInfo.getUid(), 
+                    subscriptionLevel, 
+                    topicPath
+                );
+                
+                log.debug("📤 准备发送订阅成功反馈 - 用户: {}, 主题: {}, 层次: {}", 
+                        userId, topicPath, subscriptionLevel);
+                
+            } else {
+                // 创建失败反馈消息
+                if (errorMessage != null && errorMessage.contains("无权限")) {
+                    // 权限不足的特殊处理
+                    feedbackMsg = StompTopicSubscribeFeedbackMsg.permissionDeniedFeedback(
+                        userInfo.getUid(), 
+                        topicPath, 
+                        "TOPIC_SUBSCRIBE" // 可以根据实际权限需求调整
+                    );
+                } else {
+                    // 一般失败情况
+                    feedbackMsg = StompTopicSubscribeFeedbackMsg.failureFeedback(
+                        userInfo.getUid(), 
+                        subscriptionLevel, 
+                        topicPath, 
+                        errorMessage
+                    );
+                }
+                
+                log.debug("📤 准备发送订阅失败反馈 - 用户: {}, 主题: {}, 错误: {}", 
+                        userId, topicPath, errorMessage);
+            }
+            
+            // 发送反馈消息到用户的个人反馈队列
+            String feedbackDestination = "/queue/subscription-feedback";
+            boolean sent = stompMessageSender.sendToUser(userId, feedbackDestination, feedbackMsg);
+            
+            if (sent) {
+                log.debug("✅ 订阅反馈消息发送成功 - 用户: {}, 主题: {}, 成功: {}", 
+                        userId, topicPath, success);
+            } else {
+                log.warn("⚠️ 订阅反馈消息发送失败 - 用户: {}, 主题: {}", userId, topicPath);
+            }
+            
+        } catch (Exception e) {
+            log.error("发送订阅反馈消息异常 - 用户: {}, 主题: {}, 错误: {}", 
+                    userInfo.getUid(), topicPath, e.getMessage(), e);
+        }
+    }
+    
+    /**
+     * 发送取消订阅反馈消息给客户端
+     * 
+     * @param userInfo 用户信息
+     * @param topicPath 主题路径
+     * @param success 是否成功
+     * @param errorMessage 错误消息（失败时）
+     */
+    private void sendUnsubscriptionFeedback(GatewayUserInfo userInfo, String topicPath, 
+                                          boolean success, String errorMessage) {
+        try {
+            String userId = userInfo.getUid().toString();
+            
+            // 创建取消订阅反馈消息
+            StompTopicSubscribeFeedbackMsg feedbackMsg;
+            
+            if (success) {
+                // 创建取消订阅成功反馈消息
+                feedbackMsg = StompTopicSubscribeFeedbackMsg.unsubscribeSuccessFeedback(
+                    userInfo.getUid(), 
+                    topicPath
+                );
+                
+                log.debug("📤 准备发送取消订阅成功反馈 - 用户: {}, 主题: {}", userId, topicPath);
+                
+            } else {
+                // 创建取消订阅失败反馈消息
+                feedbackMsg = StompTopicSubscribeFeedbackMsg.unsubscribeFailureFeedback(
+                    userInfo.getUid(), 
+                    topicPath, 
+                    errorMessage
+                );
+                
+                log.debug("📤 准备发送取消订阅失败反馈 - 用户: {}, 主题: {}, 错误: {}", 
+                        userId, topicPath, errorMessage);
+            }
+            
+            // 发送反馈消息到用户的个人反馈队列
+            String feedbackDestination = "/queue/subscription-feedback";
+            boolean sent = stompMessageSender.sendToUser(userId, feedbackDestination, feedbackMsg);
+            
+            if (sent) {
+                log.debug("✅ 取消订阅反馈消息发送成功 - 用户: {}, 主题: {}, 成功: {}", 
+                        userId, topicPath, success);
+            } else {
+                log.warn("⚠️ 取消订阅反馈消息发送失败 - 用户: {}, 主题: {}", userId, topicPath);
+            }
+            
+        } catch (Exception e) {
+            log.error("发送取消订阅反馈消息异常 - 用户: {}, 主题: {}, 错误: {}", 
+                    userInfo.getUid(), topicPath, e.getMessage(), e);
+        }
     }
 }
