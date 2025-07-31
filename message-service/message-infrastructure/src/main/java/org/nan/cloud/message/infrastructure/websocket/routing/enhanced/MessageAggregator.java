@@ -1,4 +1,4 @@
-package org.nan.cloud.message.infrastructure.routing.enhanced;
+package org.nan.cloud.message.infrastructure.websocket.routing.enhanced;
 
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;

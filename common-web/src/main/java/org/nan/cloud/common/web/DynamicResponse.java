@@ -75,4 +75,12 @@ public class DynamicResponse<T> implements Serializable {
         dynamicResponse.setMsg(Arrays.toString(args));
         return dynamicResponse;
     }
+
+    public static <T> DynamicResponse<T> fail(String msg) {
+        DynamicResponse<T> dynamicResponse = new DynamicResponse<>();
+        dynamicResponse.setCode(ExceptionEnum.SERVER_ERROR.getCode());
+        dynamicResponse.setMsg(msg);
+        dynamicResponse.setData(null);
+        return dynamicResponse;
+    }
 }
