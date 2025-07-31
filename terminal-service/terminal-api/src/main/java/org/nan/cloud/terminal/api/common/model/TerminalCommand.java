@@ -23,6 +23,10 @@ public class TerminalCommand {
     @Schema(description = "指令操作类型", example = "api/brightness")
     @JsonProperty("author_url")
     private String authorUrl;
+    
+    @Schema(description = "发送指令的用户ID")
+    @JsonProperty("user_id")
+    private Long userId;
 
     @Schema(description = "指令对象")
     private Content content;

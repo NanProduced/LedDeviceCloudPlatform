@@ -5,7 +5,6 @@ import lombok.Data;
 import lombok.EqualsAndHashCode;
 import lombok.NoArgsConstructor;
 import lombok.AllArgsConstructor;
-import org.nan.cloud.message.api.enums.Priority;
 import org.nan.cloud.message.infrastructure.websocket.routing.SubscriptionLevel;
 import org.nan.cloud.message.infrastructure.websocket.stomp.enums.StompMessageTypes;
 

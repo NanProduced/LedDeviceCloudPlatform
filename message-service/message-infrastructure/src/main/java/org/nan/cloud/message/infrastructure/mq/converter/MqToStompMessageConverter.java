@@ -93,12 +93,12 @@ public class MqToStompMessageConverter {
                 .taskId(commandId)
                 .build();
         
-        // 构建消息目标信息 - 指令结果发送给执行用户和相关终端主题
+        // 构建消息目标信息 - 指令结果主要发送给执行用户
         CommonStompMessage.Target target = CommonStompMessage.Target.builder()
-                .targetType("USER_AND_TERMINAL")
+                .targetType("USER")
                 .uids(List.of(userId))
                 .oid(orgId)
-                .destination("/topic/user/" + userId + "/commands," + "/topic/terminal/" + deviceId + "/commands")
+                .destination("/user/queue/messages")  // 使用简化的用户消息队列
                 .build();
         
         // 构建消息元数据

@@ -5,6 +5,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.nan.cloud.common.basic.utils.JsonUtils;
 import org.nan.cloud.terminal.api.common.model.TerminalCommand;
 import org.nan.cloud.terminal.api.common.utils.CommandIdGenerator;
+import org.nan.cloud.terminal.mq.producer.CommandConfirmationMessageService;
 import org.nan.cloud.terminal.config.properties.TerminalInfrastructureProperties;
 import org.nan.cloud.terminal.infrastructure.config.RedisConfig;
 import org.nan.cloud.terminal.infrastructure.connection.ShardedConnectionManager;
@@ -44,6 +45,7 @@ public class TerminalCommandManager {
     private final TerminalOnlineStatusManager onlineStatusManager;
     private final ShardedConnectionManager connectionManager;
     private final TerminalInfrastructureProperties terminalInfrastructureProperties;
+    private final CommandConfirmationMessageService commandConfirmationMessageService;
 
     /**
      * 智能指令去重和存储
@@ -176,16 +178,68 @@ public class TerminalCommandManager {
     }
 
     private void handleCommandExecution(Long oid, Long tid, Integer commandId) {
+        // 获取指令详情
+        String detailKey = String.format(RedisConfig.RedisKeys.COMMAND_DETAIL_PATTERN, oid, tid, commandId);
+        String commandJson = stringRedisTemplate.opsForValue().get(detailKey);
+        TerminalCommand command = null;
+        
+        if (commandJson != null) {
+            command = JsonUtils.fromJson(commandJson, TerminalCommand.class);
+        }
+        
         // 更新指令状态为已执行
         updateCommandStatus(oid, tid, commandId, CommandStatus.EXECUTED);
         // 从待执行队列中移除
         removeCommandFromQueue(oid, tid, commandId);
+        
+        // 发送指令执行成功的MQ消息
+        if (command != null && command.getUserId() != null) {
+            try {
+                commandConfirmationMessageService.sendCommandExecutionSuccessAsync(
+                        oid, tid, commandId, command, command.getUserId());
+                log.info("✅ 指令执行成功消息已发送 - oid: {}, tid: {}, commandId: {}, userId: {}", 
+                        oid, tid, commandId, command.getUserId());
+            } catch (Exception e) {
+                log.error("发送指令执行成功消息异常 - oid: {}, tid: {}, commandId: {}, 错误: {}", 
+                        oid, tid, commandId, e.getMessage(), e);
+            }
+        } else {
+            log.warn("无法发送指令执行成功消息 - 指令信息不完整: oid={}, tid={}, commandId={}", 
+                    oid, tid, commandId);
+        }
+        
         log.info("指令执行确认: oid={}, tid={}, commandId={}", oid, tid, commandId);
     }
 
     private void handleCommandRejection(Long oid, Long tid, Integer commandId, String result) {
+        // 获取指令详情
+        String detailKey = String.format(RedisConfig.RedisKeys.COMMAND_DETAIL_PATTERN, oid, tid, commandId);
+        String commandJson = stringRedisTemplate.opsForValue().get(detailKey);
+        TerminalCommand command = null;
+        
+        if (commandJson != null) {
+            command = JsonUtils.fromJson(commandJson, TerminalCommand.class);
+        }
+        
         updateCommandStatus(oid, tid, commandId, CommandStatus.REJECTED);
         removeCommandFromQueue(oid, tid, commandId);
+        
+        // 发送指令被拒绝的MQ消息
+        if (command != null && command.getUserId() != null) {
+            try {
+                commandConfirmationMessageService.sendCommandRejectionAsync(
+                        oid, tid, commandId, command, command.getUserId(), result);
+                log.info("✅ 指令拒绝消息已发送 - oid: {}, tid: {}, commandId: {}, userId: {}, reason: {}", 
+                        oid, tid, commandId, command.getUserId(), result);
+            } catch (Exception e) {
+                log.error("发送指令拒绝消息异常 - oid: {}, tid: {}, commandId: {}, 错误: {}", 
+                        oid, tid, commandId, e.getMessage(), e);
+            }
+        } else {
+            log.warn("无法发送指令拒绝消息 - 指令信息不完整: oid={}, tid={}, commandId={}", 
+                    oid, tid, commandId);
+        }
+        
         log.info("指令被拒绝: oid={}, tid={}, commandId={}, reason={}", oid, tid, commandId, result);
     }
 
