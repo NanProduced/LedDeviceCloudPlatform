@@ -42,7 +42,7 @@ public class SubscriptionManager {
     private final StompPermissionClient stompPermissionClient;
 
     public SubscriptionManager(TopicRoutingManager topicRoutingManager,
-                               @Lazy StompPermissionClient stompPermissionClient // 临时解决循环依赖
+                               @Lazy StompPermissionClient stompPermissionClient
     ) {
         this.topicRoutingManager = topicRoutingManager;
         this.stompPermissionClient = stompPermissionClient;
@@ -166,6 +166,7 @@ public class SubscriptionManager {
             topicRoutingManager.registerUserSubscription(userId, topicPath, subscriptionLevel, sessionId);
             
             log.info("✅ 用户订阅成功 - 用户: {}, 主题: {}, 层次: {}", userId, topicPath, subscriptionLevel);
+
             return SubscriptionResult.success(topicPath, subscriptionLevel);
             
         } catch (Exception e) {

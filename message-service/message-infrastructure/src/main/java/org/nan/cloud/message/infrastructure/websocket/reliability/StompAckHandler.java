@@ -20,6 +20,7 @@ import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 
 import static org.nan.cloud.message.infrastructure.websocket.stomp.enums.StompMessageTypes.SUBSCRIPTION_STATUS;
+import static org.nan.cloud.message.infrastructure.websocket.stomp.enums.StompMessageTypes.TOPIC_SUBSCRIBE_FEEDBACK;
 
 /**
  * STOMP消息确认处理器
@@ -206,7 +207,7 @@ public class StompAckHandler {
         try {
             CommonStompMessage welcomeMessage = CommonStompMessage.builder()
                 .messageId(deliveryTracker.generateMessageId())
-                .messageType(SUBSCRIPTION_STATUS)
+                .messageType(TOPIC_SUBSCRIBE_FEEDBACK)
                 .message("欢迎使用消息服务，确认机制已启用")
                 .timestamp(LocalDateTime.now())
                 .metadata(CommonStompMessage.Metadata.builder()

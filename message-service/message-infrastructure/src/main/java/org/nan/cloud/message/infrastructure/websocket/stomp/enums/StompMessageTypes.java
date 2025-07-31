@@ -40,5 +40,6 @@ public enum StompMessageTypes {
     /* websocket连接消息 */
     CONNECTION_STATUS,           // 连接状态消息
     SUBSCRIPTION_STATUS,        // 订阅状态消息
-    HEARTBEAT;                   // 心跳消息
+    HEARTBEAT,                   // 心跳消息
+    TOPIC_SUBSCRIBE_FEEDBACK;   // 主题订阅反馈
 }
