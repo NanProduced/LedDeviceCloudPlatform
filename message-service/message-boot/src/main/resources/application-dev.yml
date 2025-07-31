@@ -34,8 +34,9 @@ spring:
         refresh-enabled: true
         file-extension: yml
 
-# 用户在线状态管理配置
+# 消息服务配置
 message:
+  # 用户在线状态管理配置
   online-status:
     # 默认过期时间（秒）
     default-expire-seconds: 1800  # 30分钟
@@ -52,3 +53,28 @@ message:
     # 集群配置
     cluster:
       enabled: false  # 开发环境关闭集群同步
+  
+  # Phase 3.1: STOMP可靠性功能配置
+  reliability:
+    # 是否启用可靠性功能
+    enabled: true
+    # 自动清理配置
+    cleanup:
+      enabled: true
+      # 投递记录保留时间（小时）
+      delivery-record-retention-hours: 24
+      # 连接状态超时时间（分钟）
+      connection-timeout-minutes: 60
+    # 监控统计配置
+    monitoring:
+      enabled: true
+      # 统计输出间隔（分钟）
+      stats-interval-minutes: 10
+    # 重试配置
+    retry:
+      # 默认最大重试次数
+      default-max-retries: 3
+      # 默认初始延迟（秒）
+      default-initial-delay-seconds: 5
+      # 默认最大延迟（秒）
+      default-max-delay-seconds: 300
