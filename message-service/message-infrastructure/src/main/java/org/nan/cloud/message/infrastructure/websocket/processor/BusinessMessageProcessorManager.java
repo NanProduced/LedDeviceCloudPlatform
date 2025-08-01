@@ -63,12 +63,10 @@ public class BusinessMessageProcessorManager implements InitializingBean {
      * @param messageType MQ消息类型
      * @param messagePayload MQ消息载荷
      * @param routingKey MQ路由键
-     * @param messageHeaders MQ消息头部信息
      * @return 处理结果
      */
     public BusinessMessageProcessor.BusinessMessageProcessResult processMessage(
-            String messageType, String messagePayload, String routingKey, 
-            Map<String, Object> messageHeaders) {
+            String messageType, String messagePayload, String routingKey) {
         
         try {
             log.debug("开始处理业务消息 - 类型: {}, 路由键: {}", messageType, routingKey);
@@ -88,7 +86,7 @@ public class BusinessMessageProcessorManager implements InitializingBean {
             
             // 执行消息处理
             BusinessMessageProcessor.BusinessMessageProcessResult result = 
-                    selectedProcessor.process(messagePayload, routingKey, messageHeaders);
+                    selectedProcessor.process(messagePayload, routingKey);
             
             if (result.isSuccess()) {
                 log.info("✅ 业务消息处理成功 - 处理器: {}, 消息ID: {}, 分发结果: {}", 

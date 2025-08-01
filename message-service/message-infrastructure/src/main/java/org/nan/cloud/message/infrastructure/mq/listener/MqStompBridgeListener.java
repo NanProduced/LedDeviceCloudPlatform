@@ -14,6 +14,7 @@ import org.nan.cloud.message.infrastructure.websocket.processor.BusinessMessageP
 import org.nan.cloud.message.infrastructure.websocket.stomp.model.CommonStompMessage;
 import org.springframework.amqp.rabbit.annotation.RabbitListener;
 import org.springframework.messaging.handler.annotation.Header;
+import org.springframework.messaging.handler.annotation.Headers;
 import org.springframework.messaging.handler.annotation.Payload;
 import org.springframework.stereotype.Component;
 
@@ -61,13 +62,13 @@ public class MqStompBridgeListener {
     @RabbitListener(queues = MessageServiceRabbitConfig.DEVICE_STATUS_QUEUE)
     public void handleDeviceStatusMessage(@Payload String messagePayload, 
                                         @Header Map<String, Object> headers,
-                                        @Header("routingKey") String routingKey) {
+                                        @Header(name = "amqp_receivedRoutingKey", required = false) String routingKey) {
         try {
             log.debug("收到设备状态消息 - 路由键: {}", routingKey);
             
             // 优先使用业务消息处理器管理器
             BusinessMessageProcessor.BusinessMessageProcessResult processResult = 
-                    processorManager.processMessage("DEVICE_STATUS", messagePayload, routingKey, headers);
+                    processorManager.processMessage("DEVICE_STATUS", messagePayload, routingKey);
             
             if (processResult.isSuccess()) {
                 log.info("✅ 设备状态消息处理完成 - 路由键: {}, 消息ID: {}, 分发结果: {}", 
@@ -99,7 +100,7 @@ public class MqStompBridgeListener {
      */
     private void handleDeviceStatusMessageLegacy(@Payload String messagePayload, 
                                                @Header Map<String, Object> headers,
-                                               @Header("routingKey") String routingKey) {
+                                               @Header(name = "amqp_receivedRoutingKey", required = false) String routingKey) {
         try {
             // 解析消息内容
             Map<String, Object> messageData = JsonUtils.fromJson(messagePayload, Map.class);
@@ -135,15 +136,14 @@ public class MqStompBridgeListener {
      */
     @RabbitListener(queues = MessageServiceRabbitConfig.COMMAND_RESULT_QUEUE)
     public void handleCommandResultMessage(@Payload Message message,
-                                         @Header Map<String, Object> headers,
-                                         @Header("routingKey") String routingKey) {
+                                         @Header(name = "amqp_receivedRoutingKey", required = false) String routingKey) {
         try {
             log.debug("收到指令执行结果消息 - 路由键: {}", routingKey);
             
             // 优先使用业务消息处理器管理器
             String messagePayload = JsonUtils.toJson(message.getPayload());
             BusinessMessageProcessor.BusinessMessageProcessResult processResult = 
-                    processorManager.processMessage("COMMAND_RESULT", messagePayload, routingKey, headers);
+                    processorManager.processMessage("COMMAND_RESULT", messagePayload, routingKey);
             
             if (processResult.isSuccess()) {
                 log.info("✅ 指令结果消息处理完成 - 路由键: {}, 消息ID: {}, 分发结果: {}", 
@@ -156,14 +156,14 @@ public class MqStompBridgeListener {
             log.info("⬇️ 指令结果消息处理器失败，降级到原有逻辑 - 路由键: {}, 错误: {}", 
                     routingKey, processResult.getErrorMessage());
             
-            handleCommandResultMessageLegacy(message, headers, routingKey);
+            handleCommandResultMessageLegacy(message, routingKey);
             
         } catch (Exception e) {
             log.error("指令结果消息桥接异常 - 路由键: {}, 错误: {}", routingKey, e.getMessage(), e);
             
             // 异常情况下也尝试降级处理
             try {
-                handleCommandResultMessageLegacy(message, headers, routingKey);
+                handleCommandResultMessageLegacy(message, routingKey);
             } catch (Exception fallbackException) {
                 log.error("指令结果消息降级处理也失败 - 路由键: {}, 错误: {}", routingKey, fallbackException.getMessage(), fallbackException);
             }
@@ -173,9 +173,7 @@ public class MqStompBridgeListener {
     /**
      * 指令结果消息降级处理方法（原有逻辑）
      */
-    private void handleCommandResultMessageLegacy(Message message,
-                                                @Header Map<String, Object> headers,
-                                                @Header("routingKey") String routingKey) {
+    private void handleCommandResultMessageLegacy(Message message, String routingKey) {
         try {
             // 从Message对象中提取payload
             Map<String, Object> messageData = extractPayloadFromMessage(message);
@@ -214,13 +212,13 @@ public class MqStompBridgeListener {
     @RabbitListener(queues = MessageServiceRabbitConfig.SYSTEM_NOTIFICATION_QUEUE)
     public void handleSystemNotificationMessage(@Payload String messagePayload,
                                               @Header Map<String, Object> headers,
-                                              @Header("routingKey") String routingKey) {
+                                              @Header(name = "amqp_receivedRoutingKey", required = false) String routingKey) {
         try {
             log.debug("收到系统通知消息 - 路由键: {}", routingKey);
             
             // 优先使用业务消息处理器管理器
             BusinessMessageProcessor.BusinessMessageProcessResult processResult = 
-                    processorManager.processMessage("SYSTEM_NOTIFICATION", messagePayload, routingKey, headers);
+                    processorManager.processMessage("SYSTEM_NOTIFICATION", messagePayload, routingKey);
             
             if (processResult.isSuccess()) {
                 log.info("✅ 系统通知消息处理完成 - 路由键: {}, 消息ID: {}, 分发结果: {}", 
@@ -252,7 +250,7 @@ public class MqStompBridgeListener {
      */
     private void handleSystemNotificationMessageLegacy(@Payload String messagePayload,
                                                      @Header Map<String, Object> headers,
-                                                     @Header("routingKey") String routingKey) {
+                                                     @Header(name = "amqp_receivedRoutingKey", required = false) String routingKey) {
         try {
             // 解析消息内容
             Map<String, Object> messageData = JsonUtils.fromJson(messagePayload, Map.class);
@@ -306,7 +304,7 @@ public class MqStompBridgeListener {
     @RabbitListener(queues = MessageServiceRabbitConfig.BATCH_PROGRESS_QUEUE)
     public void handleBatchCommandProgressMessage(@Payload String messagePayload,
                                                 @Header Map<String, Object> headers,
-                                                @Header("routingKey") String routingKey) {
+                                                @Header(name = "amqp_receivedRoutingKey", required = false) String routingKey) {
         try {
             log.debug("收到批量指令进度消息 - 路由键: {}", routingKey);
             
@@ -330,7 +328,7 @@ public class MqStompBridgeListener {
             
             // 优先使用业务消息处理器管理器
             BusinessMessageProcessor.BusinessMessageProcessResult processResult = 
-                    processorManager.processMessage("BATCH_COMMAND_PROGRESS", messagePayload, routingKey, headers);
+                    processorManager.processMessage("BATCH_COMMAND_PROGRESS", messagePayload, routingKey);
             
             if (processResult.isSuccess()) {
                 log.info("✅ 批量指令进度消息处理完成 - 路由键: {}, 消息ID: {}, 分发结果: {}", 
@@ -362,7 +360,7 @@ public class MqStompBridgeListener {
      */
     private void handleBatchCommandProgressMessageLegacy(@Payload String messagePayload,
                                                        @Header Map<String, Object> headers,
-                                                       @Header("routingKey") String routingKey) {
+                                                       @Header(name = "amqp_receivedRoutingKey", required = false) String routingKey) {
         try {
             // 解析消息内容
             Map<String, Object> messageData = JsonUtils.fromJson(messagePayload, Map.class);
@@ -526,7 +524,7 @@ public class MqStompBridgeListener {
     @RabbitListener(queues = MessageServiceRabbitConfig.BRIDGE_DLQ)
     public void handleBridgeFailureMessage(@Payload String messagePayload,
                                          @Header Map<String, Object> headers,
-                                         @Header("routingKey") String routingKey) {
+                                         @Header(name = "amqp_receivedRoutingKey", required = false) String routingKey) {
         try {
             log.error("收到消息桥接失败消息 - 路由键: {}", routingKey);
             

@@ -89,8 +89,7 @@ public class NotificationMessageProcessor implements BusinessMessageProcessor {
     }
     
     @Override
-    public BusinessMessageProcessResult process(String messagePayload, String routingKey, 
-                                              Map<String, Object> messageHeaders) {
+    public BusinessMessageProcessResult process(String messagePayload, String routingKey) {
         try {
             log.debug("开始处理通知消息 - 路由键: {}", routingKey);
             
@@ -99,15 +98,15 @@ public class NotificationMessageProcessor implements BusinessMessageProcessor {
             
             // 根据路由键确定具体的处理策略
             if (routingKey.startsWith("stomp.system.notification.")) {
-                return processSystemNotification(messageData, routingKey, messageHeaders);
+                return processSystemNotification(messageData, routingKey);
             } else if (routingKey.startsWith("stomp.business.notification.")) {
-                return processBusinessNotification(messageData, routingKey, messageHeaders);
+                return processBusinessNotification(messageData, routingKey);
             } else if (routingKey.startsWith("stomp.user.notification.")) {
-                return processUserNotification(messageData, routingKey, messageHeaders);
+                return processUserNotification(messageData, routingKey);
             } else if (routingKey.startsWith("stomp.org.notification.")) {
-                return processOrgNotification(messageData, routingKey, messageHeaders);
+                return processOrgNotification(messageData, routingKey);
             } else {
-                return processGenericNotification(messageData, routingKey, messageHeaders);
+                return processGenericNotification(messageData, routingKey);
             }
             
         } catch (Exception e) {
@@ -123,8 +122,7 @@ public class NotificationMessageProcessor implements BusinessMessageProcessor {
      * 路由键：stomp.system.notification.{type}.{priority}
      */
     private BusinessMessageProcessResult processSystemNotification(Map<String, Object> messageData, 
-                                                                 String routingKey, 
-                                                                 Map<String, Object> messageHeaders) {
+                                                                 String routingKey) {
         try {
             log.debug("处理系统通知消息 - 路由键: {}", routingKey);
             
@@ -173,8 +171,7 @@ public class NotificationMessageProcessor implements BusinessMessageProcessor {
      * 路由键：stomp.business.notification.{businessType}.{orgId}
      */
     private BusinessMessageProcessResult processBusinessNotification(Map<String, Object> messageData, 
-                                                                   String routingKey, 
-                                                                   Map<String, Object> messageHeaders) {
+                                                                   String routingKey) {
         try {
             log.debug("处理业务通知消息 - 路由键: {}", routingKey);
             
@@ -223,8 +220,7 @@ public class NotificationMessageProcessor implements BusinessMessageProcessor {
      * 路由键：stomp.user.notification.{userId}.{type}
      */
     private BusinessMessageProcessResult processUserNotification(Map<String, Object> messageData, 
-                                                               String routingKey, 
-                                                               Map<String, Object> messageHeaders) {
+                                                               String routingKey) {
         try {
             log.debug("处理用户通知消息 - 路由键: {}", routingKey);
             
@@ -272,8 +268,7 @@ public class NotificationMessageProcessor implements BusinessMessageProcessor {
      * 路由键：stomp.org.notification.{orgId}.{type}
      */
     private BusinessMessageProcessResult processOrgNotification(Map<String, Object> messageData, 
-                                                              String routingKey, 
-                                                              Map<String, Object> messageHeaders) {
+                                                              String routingKey) {
         try {
             log.debug("处理组织通知消息 - 路由键: {}", routingKey);
             
@@ -318,8 +313,7 @@ public class NotificationMessageProcessor implements BusinessMessageProcessor {
      * 处理通用通知消息
      */
     private BusinessMessageProcessResult processGenericNotification(Map<String, Object> messageData, 
-                                                                  String routingKey, 
-                                                                  Map<String, Object> messageHeaders) {
+                                                                  String routingKey) {
         try {
             log.debug("处理通用通知消息 - 路由键: {}", routingKey);
             

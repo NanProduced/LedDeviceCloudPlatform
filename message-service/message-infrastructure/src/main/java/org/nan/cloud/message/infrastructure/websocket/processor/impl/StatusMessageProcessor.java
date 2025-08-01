@@ -88,8 +88,7 @@ public class StatusMessageProcessor implements BusinessMessageProcessor {
     }
     
     @Override
-    public BusinessMessageProcessResult process(String messagePayload, String routingKey, 
-                                              Map<String, Object> messageHeaders) {
+    public BusinessMessageProcessResult process(String messagePayload, String routingKey) {
         try {
             log.debug("开始处理状态消息 - 路由键: {}", routingKey);
             
@@ -98,15 +97,15 @@ public class StatusMessageProcessor implements BusinessMessageProcessor {
             
             // 根据路由键确定具体的处理策略
             if (routingKey.startsWith("stomp.device.status.")) {
-                return processDeviceStatus(messageData, routingKey, messageHeaders);
+                return processDeviceStatus(messageData, routingKey);
             } else if (routingKey.startsWith("stomp.user.status.")) {
-                return processUserStatus(messageData, routingKey, messageHeaders);
+                return processUserStatus(messageData, routingKey);
             } else if (routingKey.startsWith("stomp.service.status.")) {
-                return processServiceStatus(messageData, routingKey, messageHeaders);
+                return processServiceStatus(messageData, routingKey);
             } else if (routingKey.startsWith("stomp.connection.status.")) {
-                return processConnectionStatus(messageData, routingKey, messageHeaders);
+                return processConnectionStatus(messageData, routingKey);
             } else {
-                return processGenericStatus(messageData, routingKey, messageHeaders);
+                return processGenericStatus(messageData, routingKey);
             }
             
         } catch (Exception e) {
@@ -122,8 +121,7 @@ public class StatusMessageProcessor implements BusinessMessageProcessor {
      * 路由键：stomp.device.status.{orgId}.{deviceId}
      */
     private BusinessMessageProcessResult processDeviceStatus(Map<String, Object> messageData, 
-                                                           String routingKey, 
-                                                           Map<String, Object> messageHeaders) {
+                                                           String routingKey) {
         try {
             log.debug("处理设备状态变更 - 路由键: {}", routingKey);
             
@@ -169,8 +167,7 @@ public class StatusMessageProcessor implements BusinessMessageProcessor {
      * 路由键：stomp.user.status.{orgId}.{userId}
      */
     private BusinessMessageProcessResult processUserStatus(Map<String, Object> messageData, 
-                                                         String routingKey, 
-                                                         Map<String, Object> messageHeaders) {
+                                                         String routingKey) {
         try {
             log.debug("处理用户状态变更 - 路由键: {}", routingKey);
             
@@ -216,8 +213,7 @@ public class StatusMessageProcessor implements BusinessMessageProcessor {
      * 路由键：stomp.service.status.{serviceId}
      */
     private BusinessMessageProcessResult processServiceStatus(Map<String, Object> messageData, 
-                                                            String routingKey, 
-                                                            Map<String, Object> messageHeaders) {
+                                                            String routingKey) {
         try {
             log.debug("处理服务状态变更 - 路由键: {}", routingKey);
             
@@ -263,8 +259,7 @@ public class StatusMessageProcessor implements BusinessMessageProcessor {
      * 路由键：stomp.connection.status.{connectionType}.{resourceId}
      */
     private BusinessMessageProcessResult processConnectionStatus(Map<String, Object> messageData, 
-                                                               String routingKey, 
-                                                               Map<String, Object> messageHeaders) {
+                                                               String routingKey) {
         try {
             log.debug("处理连接状态变更 - 路由键: {}", routingKey);
             
@@ -310,8 +305,7 @@ public class StatusMessageProcessor implements BusinessMessageProcessor {
      * 处理通用状态消息
      */
     private BusinessMessageProcessResult processGenericStatus(Map<String, Object> messageData, 
-                                                            String routingKey, 
-                                                            Map<String, Object> messageHeaders) {
+                                                            String routingKey) {
         try {
             log.debug("处理通用状态消息 - 路由键: {}", routingKey);
             

@@ -48,11 +48,9 @@ public interface BusinessMessageProcessor {
      * 
      * @param messagePayload MQ消息载荷（JSON字符串）
      * @param routingKey MQ路由键
-     * @param messageHeaders MQ消息头部信息
      * @return 处理结果
      */
-    BusinessMessageProcessResult process(String messagePayload, String routingKey, 
-                                       java.util.Map<String, Object> messageHeaders);
+    BusinessMessageProcessResult process(String messagePayload, String routingKey);
     
     /**
      * 获取处理器优先级

@@ -82,8 +82,7 @@ public class CommandMessageProcessor implements BusinessMessageProcessor {
     }
     
     @Override
-    public BusinessMessageProcessResult process(String messagePayload, String routingKey, 
-                                              Map<String, Object> messageHeaders) {
+    public BusinessMessageProcessResult process(String messagePayload, String routingKey) {
         try {
             log.debug("开始处理指令消息 - 路由键: {}", routingKey);
             
@@ -92,13 +91,13 @@ public class CommandMessageProcessor implements BusinessMessageProcessor {
             
             // 根据路由键确定具体的处理策略
             if (routingKey.startsWith("stomp.command.result.")) {
-                return processCommandResult(messageData, routingKey, messageHeaders);
+                return processCommandResult(messageData, routingKey);
             } else if (routingKey.startsWith("stomp.batch.progress.")) {
-                return processBatchCommandProgress(messageData, routingKey, messageHeaders);
+                return processBatchCommandProgress(messageData, routingKey);
             } else if (routingKey.contains(".command.error.")) {
-                return processCommandError(messageData, routingKey, messageHeaders);
+                return processCommandError(messageData, routingKey);
             } else {
-                return processGenericCommand(messageData, routingKey, messageHeaders);
+                return processGenericCommand(messageData, routingKey);
             }
             
         } catch (Exception e) {
@@ -114,14 +113,13 @@ public class CommandMessageProcessor implements BusinessMessageProcessor {
      * 路由键：stomp.command.result.{orgId}.{userId}
      */
     private BusinessMessageProcessResult processCommandResult(Map<String, Object> messageData, 
-                                                            String routingKey, 
-                                                            Map<String, Object> messageHeaders) {
+                                                            String routingKey) {
         try {
             log.debug("处理单个指令执行结果 - 路由键: {}", routingKey);
             
             // 提取消息字段
             String commandId = (String) messageData.get("commandId");
-            String tid = (String) messageData.get("terminalId");
+            Long tid = getLongValue(messageData, "terminalId");
             Long orgId = getLongValue(messageData, "orgId");
             Long userId = getLongValue(messageData, "userId");
             String result = (String) messageData.get("result");
@@ -158,8 +156,7 @@ public class CommandMessageProcessor implements BusinessMessageProcessor {
      * 路由键：stomp.batch.progress.{userId}.{batchId}
      */
     private BusinessMessageProcessResult processBatchCommandProgress(Map<String, Object> messageData, 
-                                                                   String routingKey, 
-                                                                   Map<String, Object> messageHeaders) {
+                                                                   String routingKey) {
         try {
             log.debug("处理批量指令进度消息 - 路由键: {}", routingKey);
             
@@ -208,8 +205,7 @@ public class CommandMessageProcessor implements BusinessMessageProcessor {
      * 处理指令执行错误消息
      */
     private BusinessMessageProcessResult processCommandError(Map<String, Object> messageData, 
-                                                           String routingKey, 
-                                                           Map<String, Object> messageHeaders) {
+                                                           String routingKey) {
         try {
             log.debug("处理指令执行错误消息 - 路由键: {}", routingKey);
             
@@ -247,8 +243,7 @@ public class CommandMessageProcessor implements BusinessMessageProcessor {
      * 处理通用指令消息
      */
     private BusinessMessageProcessResult processGenericCommand(Map<String, Object> messageData, 
-                                                             String routingKey, 
-                                                             Map<String, Object> messageHeaders) {
+                                                             String routingKey) {
         try {
             log.debug("处理通用指令消息 - 路由键: {}", routingKey);
             
@@ -297,7 +292,7 @@ public class CommandMessageProcessor implements BusinessMessageProcessor {
     /**
      * 构建指令执行结果STOMP消息
      */
-    private CommonStompMessage buildCommandResultMessage(String commandId, String deviceId, 
+    private CommonStompMessage buildCommandResultMessage(String commandId, Long tid,
                                                         Long orgId, Long userId, String result) {
         return CommonStompMessage.builder()
                 .messageId(UUID.randomUUID().toString())
@@ -315,15 +310,15 @@ public class CommandMessageProcessor implements BusinessMessageProcessor {
                         .uids(List.of(userId))
                         .oid(orgId)
                         .destination(StompTopic.USER_MESSAGES_QUEUE + "," +
-                                  StompTopic.buildDeviceTopic(deviceId))
+                                  StompTopic.buildDeviceTopic(tid.toString()))
                         .build())
                 .payload(Map.of(
                         "commandId", commandId,
-                        "deviceId", deviceId,
+                        "deviceId", tid,
                         "result", result != null ? result : "",
                         "timestamp", LocalDateTime.now()
                 ))
-                .message(String.format("设备%s指令%s执行结果: %s", deviceId, commandId, result))
+                .message(String.format("设备%s指令%s执行结果: %s", tid, commandId, result))
                 .metadata(CommonStompMessage.Metadata.builder()
                         .priority(Priority.HIGH)
                         .persistent(true)
