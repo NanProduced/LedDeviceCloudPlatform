@@ -39,14 +39,12 @@ public class TerminalCommand {
 
 
     @Data
+    @NoArgsConstructor
+    @AllArgsConstructor
     @Schema(description = "指令对象封装")
     public static class Content {
 
         @Schema(description = "指令对应的json,{}为空")
         private String raw;
-
-        public Content(String raw) {
-            this.raw = raw;
-        }
     }
 }

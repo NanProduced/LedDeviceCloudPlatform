@@ -9,6 +9,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.nan.cloud.terminal.infrastructure.connection.ConnectionManager;
 import org.nan.cloud.terminal.config.security.auth.TerminalPrincipal;
 import org.nan.cloud.terminal.websocket.session.TerminalWebSocketSession;
+import org.nan.cloud.terminal.cache.TerminalOnlineStatusManager;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.stereotype.Component;
 
@@ -34,6 +35,7 @@ public class NettyWebSocketFrameHandler extends SimpleChannelInboundHandler<WebS
 
     private final ConnectionManager connectionManager;
     private final StringRedisTemplate redisTemplate;
+    private final TerminalOnlineStatusManager onlineStatusManager;
 
     // 本地会话缓存
     private final ConcurrentHashMap<String, TerminalWebSocketSession> localSessions = 
@@ -118,9 +120,13 @@ public class NettyWebSocketFrameHandler extends SimpleChannelInboundHandler<WebS
         }
 
         Long tid = terminalSession.getTid();
+        Long oid = terminalSession.getOid();
         
         // 更新心跳时间
         terminalSession.setLastHeartbeatTime(System.currentTimeMillis());
+        
+        // 更新终端活跃状态到Redis (用于离线检测)
+        onlineStatusManager.updateTerminalActivity(oid, tid);
 
         // 处理不同类型的WebSocket帧
         if (frame instanceof TextWebSocketFrame) {

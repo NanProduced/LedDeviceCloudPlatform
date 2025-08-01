@@ -32,12 +32,11 @@
             <artifactId>terminal-api</artifactId>
         </dependency>
         
-        <!-- 消息队列消费者依赖 -->
+        <!-- 消息队列生产者依赖 -->
         <dependency>
             <groupId>org.nan</groupId>
-            <artifactId>common-mq-consumer</artifactId>
+            <artifactId>common-mq-producer</artifactId>
         </dependency>
-        
         
         <!-- Netty高性能网络框架 -->
         <dependency>

@@ -3,11 +3,13 @@ package org.nan.cloud.terminal.api.dto.command;
 import io.swagger.v3.oas.annotations.media.Schema;
 import lombok.Data;
 import lombok.EqualsAndHashCode;
+import lombok.NoArgsConstructor;
 import lombok.experimental.SuperBuilder;
 import org.nan.cloud.terminal.api.common.model.TerminalCommand;
 import org.nan.cloud.terminal.api.common.redis.ShareKeys;
 
 @Data
+@NoArgsConstructor
 @EqualsAndHashCode(callSuper = true)
 @SuperBuilder
 public class SingleCommandSendResult extends CommandSendResult{

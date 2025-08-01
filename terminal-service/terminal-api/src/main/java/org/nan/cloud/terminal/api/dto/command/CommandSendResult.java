@@ -1,9 +1,11 @@
 package org.nan.cloud.terminal.api.dto.command;
 
 import lombok.Data;
+import lombok.NoArgsConstructor;
 import lombok.experimental.SuperBuilder;
 
 @Data
+@NoArgsConstructor
 @SuperBuilder
 public class CommandSendResult {
 

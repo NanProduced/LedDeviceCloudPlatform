@@ -23,7 +23,7 @@ import org.springframework.scheduling.annotation.EnableScheduling;
  * @author LedDeviceCloudPlatform Team
  * @since 1.0.0
  */
-@SpringBootApplication
+@SpringBootApplication(scanBasePackages = "org.nan.cloud")
 @EnableDiscoveryClient
 @EnableScheduling
 @EnableConfigurationProperties

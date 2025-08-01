@@ -147,7 +147,7 @@ public class TerminalOnlineStatusManager {
 
         // 获取所有组织的在线终端键
         Set<String> onlineKeys = stringRedisTemplate.keys("terminal:online:org:*");
-        if (onlineKeys == null || onlineKeys.isEmpty()) {
+        if (onlineKeys.isEmpty()) {
             return;
         }
 

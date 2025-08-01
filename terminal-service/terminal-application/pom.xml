@@ -26,19 +26,6 @@
             <artifactId>spring-boot-starter</artifactId>
         </dependency>
         
-        <!-- 复用消息队列客户端 -->
-        <dependency>
-            <groupId>org.nan</groupId>
-            <artifactId>common-mq-producer</artifactId>
-            <version>${project.version}</version>
-        </dependency>
-        
-        <dependency>
-            <groupId>org.nan</groupId>
-            <artifactId>common-mq-consumer</artifactId>
-            <version>${project.version}</version>
-        </dependency>
-        
         <!-- JSON处理 -->
         <dependency>
             <groupId>com.fasterxml.jackson.core</groupId>

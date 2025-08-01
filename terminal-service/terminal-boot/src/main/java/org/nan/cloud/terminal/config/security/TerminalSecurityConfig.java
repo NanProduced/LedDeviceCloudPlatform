@@ -126,6 +126,9 @@ public class TerminalSecurityConfig {
                 // WebSocket端点使用自定义认证
                 .requestMatchers("/ColorWebSocket/websocket/chat").permitAll()
                 
+                // RPC接口无需认证(微服务间调用)
+                .requestMatchers("/rpc/**").permitAll()
+                
                 // 设备API端点需要Basic Auth认证
                 .requestMatchers("/wp-json/**").authenticated()
                 .requestMatchers("/api/terminal/**").authenticated()

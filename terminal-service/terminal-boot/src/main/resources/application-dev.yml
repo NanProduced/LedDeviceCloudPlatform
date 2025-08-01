@@ -39,3 +39,28 @@ spring:
         max-retry: 3
         refresh-enabled: true
         file-extension: yml
+
+  # RabbitMQ配置
+  rabbitmq:
+    host: 192.168.1.185
+    port: 5672
+    username: nan
+    password: nan
+    virtual-host: /
+
+# 消息队列配置
+nan:
+  mq:
+    enabled: true
+    application-name: ${spring.application.name}
+    default-exchange:
+      name: stomp.push.topic
+      type: topic
+      durable: true
+    producer:
+      confirm-enabled: true
+      returns-enabled: true
+      retry-enabled: true
+      max-retry-attempts: 3
+      retry-interval: 1000ms
+      send-timeout: 5000ms

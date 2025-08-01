@@ -28,7 +28,7 @@ import java.util.concurrent.atomic.AtomicLong;
  * @since 1.0.0
  */
 @Slf4j
-@Component
+//@Component  示例，具体实现由引用服务自行实现
 @RequiredArgsConstructor
 public class MessageConsumerManager {
     

@@ -21,6 +21,7 @@ public enum ExceptionEnum {
     OPERATION_NOT_SUPPORTED(1012, "operation not supported"),
     CREATE_FAILED(1013, "create failed"),
     UPDATE_FAILED(1014, "update failed"),
+    RPC_REQUEST_FAILED(1015, "RPC Request failed"),
 
     /* 参数校验 -> 4xxx */
     USER_NAME_DUPLICATION_EXCEPTION(4001, "Username is duplication"),
