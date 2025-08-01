@@ -121,7 +121,14 @@ public class StompMessageDispatcher {
             // Phase 2.4: Step 4 - 执行增强路由分发
             for (String topicPath : routingDecision.getTargets()) {
                 try {
-                    sendToTopic(topicPath, messageToDispatch);
+                    if (topicPath.startsWith("/queue")) {
+                        for (Long uid : messageToDispatch.getTarget().getUids()) {
+                            sendToUser(uid.toString(), messageToDispatch);
+                        }
+                    }
+                    else {
+                        sendToTopic(topicPath, messageToDispatch);
+                    }
                     result.incrementSuccessCount();
                     result.addSuccessfulTopic(topicPath);
                 } catch (Exception e) {

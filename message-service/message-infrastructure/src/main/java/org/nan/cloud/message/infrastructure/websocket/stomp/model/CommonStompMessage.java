@@ -79,6 +79,7 @@ public class CommonStompMessage {
     @Builder
     @AllArgsConstructor
     @NoArgsConstructor
+    @JsonInclude(JsonInclude.Include.NON_NULL)
     public static class Source {
 
         private String serviceId;
@@ -124,6 +125,7 @@ public class CommonStompMessage {
     @Builder
     @AllArgsConstructor
     @NoArgsConstructor
+    @JsonInclude(JsonInclude.Include.NON_NULL)
     public static class Metadata {
 
         private Priority priority;
