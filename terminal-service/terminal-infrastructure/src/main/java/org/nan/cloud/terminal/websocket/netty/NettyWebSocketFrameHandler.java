@@ -11,7 +11,6 @@ import org.nan.cloud.terminal.config.security.auth.TerminalPrincipal;
 import org.nan.cloud.terminal.websocket.session.TerminalWebSocketSession;
 import org.nan.cloud.terminal.cache.TerminalOnlineStatusManager;
 import org.springframework.data.redis.core.StringRedisTemplate;
-import org.springframework.stereotype.Component;
 
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.TimeUnit;
@@ -29,7 +28,6 @@ import java.util.concurrent.TimeUnit;
  * @since 1.0.0
  */
 @Slf4j
-@Component
 @RequiredArgsConstructor
 public class NettyWebSocketFrameHandler extends SimpleChannelInboundHandler<WebSocketFrame> {
 

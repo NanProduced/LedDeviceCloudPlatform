@@ -48,7 +48,7 @@ public class TerminalOnlineStatusManager {
      * 获取组织在线终端列表
      */
     public Set<Long> getOnlineTerminals(Long oid) {
-        String onlineKey = String.format(RedisConfig.RedisKeys.TERMINAL_ONLINE_COUNT_PATTERN, oid);
+        String onlineKey = String.format(RedisConfig.RedisKeys.TERMINAL_ONLINE_KEY_PATTERN, oid);
         Set<String> terminalIds = stringRedisTemplate.opsForZSet().range(onlineKey, 0, -1);
         if (CollectionUtils.isEmpty(terminalIds)) return Collections.emptySet();
         return terminalIds.stream()
@@ -68,7 +68,7 @@ public class TerminalOnlineStatusManager {
         }
 
         // 如果计数缓存不存在，从Sorted Set重新计算
-        String onlineKey = String.format(RedisConfig.RedisKeys.TERMINAL_ONLINE_COUNT_PATTERN, oid);
+        String onlineKey = String.format(RedisConfig.RedisKeys.TERMINAL_ONLINE_KEY_PATTERN, oid);
         Long actualCount = stringRedisTemplate.opsForZSet().count(onlineKey, Double.NEGATIVE_INFINITY, Double.POSITIVE_INFINITY);
 
         // 重新设置计数缓存
@@ -130,8 +130,12 @@ public class TerminalOnlineStatusManager {
             // 从在线列表移除
             stringRedisTemplate.opsForZSet().remove(onlineKey, tid.toString());
 
-            // 减少计数
-            stringRedisTemplate.opsForValue().decrement(countKey);
+            // 减少计数，防止负数
+            Long currentCount = stringRedisTemplate.opsForValue().decrement(countKey);
+            if (currentCount < 0) {
+                log.warn("检测到在线计数为负数，重置为0: oid={}, count={}", oid, currentCount);
+                stringRedisTemplate.opsForValue().set(countKey, "0", Duration.ofMinutes(2));
+            }
 
             log.info("终端离线: oid={}, tid={}", oid, tid);
         }
@@ -167,9 +171,14 @@ public class TerminalOnlineStatusManager {
                 Long removedCount = stringRedisTemplate.opsForZSet().remove(onlineKey, (Object[]) terminalArray);
 
                 if (removedCount > 0) {
-                    // 更新计数
+                    // 更新计数，防止负数
                     String countKey = String.format(RedisConfig.RedisKeys.TERMINAL_ONLINE_COUNT_PATTERN, oid);
-                    stringRedisTemplate.opsForValue().decrement(countKey, removedCount);
+                    Long currentCount = stringRedisTemplate.opsForValue().decrement(countKey, removedCount);
+                    if (currentCount < 0) {
+                        log.warn("定时清理导致计数为负数，重置为0: oid={}, count={}, removedCount={}", 
+                                oid, currentCount, removedCount);
+                        stringRedisTemplate.opsForValue().set(countKey, "0", Duration.ofMinutes(2));
+                    }
 
                     totalCleaned += removedCount;
                     log.info("清理离线终端: oid={}, count={}", oid, removedCount);

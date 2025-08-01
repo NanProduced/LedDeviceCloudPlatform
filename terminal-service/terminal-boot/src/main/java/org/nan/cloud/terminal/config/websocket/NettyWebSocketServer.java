@@ -16,9 +16,13 @@ import org.nan.cloud.terminal.infrastructure.mapper.auth.TerminalAccountMapper;
 import org.nan.cloud.terminal.application.repository.TerminalRepository;
 import org.nan.cloud.terminal.websocket.netty.NettyWebSocketAuthHandler;
 import org.nan.cloud.terminal.websocket.netty.NettyWebSocketFrameHandler;
+import org.nan.cloud.terminal.infrastructure.connection.ConnectionManager;
+import org.nan.cloud.terminal.cache.TerminalOnlineStatusManager;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.ApplicationArguments;
 import org.springframework.boot.ApplicationRunner;
+import org.springframework.context.ApplicationContext;
+import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Component;
 
@@ -45,7 +49,10 @@ public class NettyWebSocketServer implements ApplicationRunner {
     @Value("${terminal.websocket.port:8843}")
     private int websocketPort;
 
-    private final NettyWebSocketFrameHandler frameHandler;
+    // 注入创建Handler所需的依赖，而不是直接注入Handler实例
+    private final ConnectionManager connectionManager;
+    private final StringRedisTemplate stringRedisTemplate;
+    private final TerminalOnlineStatusManager onlineStatusManager;
     private final TerminalRepository terminalRepository;
     private final PasswordEncoder passwordEncoder;
 
@@ -88,8 +95,8 @@ public class NettyWebSocketServer implements ApplicationRunner {
                         pipeline.addLast(new NettyWebSocketAuthHandler(terminalRepository, passwordEncoder));
                         // 4) WebSocket 协议处理：path 必须和客户端 URL path 对应
                         pipeline.addLast(new WebSocketServerProtocolHandler("/ColorWebSocket/websocket/chat", null, true));
-                        // 5) WebSocket帧处理器
-                        pipeline.addLast(frameHandler);
+                        // 5) WebSocket帧处理器 - 每个连接创建新实例
+                        pipeline.addLast(new NettyWebSocketFrameHandler(connectionManager, stringRedisTemplate, onlineStatusManager));
                         
                         log.info("pipeline配置完成，当前handlers: {}", pipeline.names());
                     }
