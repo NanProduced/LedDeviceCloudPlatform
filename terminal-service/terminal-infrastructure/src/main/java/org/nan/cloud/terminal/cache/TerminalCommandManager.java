@@ -18,9 +18,7 @@ import org.springframework.stereotype.Component;
 import org.springframework.util.CollectionUtils;
 
 import java.time.Duration;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Set;
+import java.util.*;
 
 /**
  *  指令管理<p>
@@ -116,6 +114,7 @@ public class TerminalCommandManager {
             boolean sent = sendViaWebSocket(oid, tid, command);
             if (sent) {
                 log.info("WebSocket指令下发成功: oid={}, tid={}, commandId={}", oid, tid, commandId);
+                markCommandsAsSent(oid, tid, Collections.singletonList(command));
                 return command;
             }
         }

@@ -3,6 +3,7 @@ package org.nan.cloud.message.infrastructure.mq.listener;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.nan.cloud.common.basic.utils.JsonUtils;
+import org.nan.cloud.common.mq.core.message.Message;
 import org.nan.cloud.message.infrastructure.aggregation.BatchCommandAggregator;
 import org.nan.cloud.message.infrastructure.aggregation.BatchProgressTracker;
 import org.nan.cloud.message.infrastructure.mq.config.MessageServiceRabbitConfig;
@@ -133,13 +134,14 @@ public class MqStompBridgeListener {
      * 路由键：stomp.command.result.{orgId}.{userId}
      */
     @RabbitListener(queues = MessageServiceRabbitConfig.COMMAND_RESULT_QUEUE)
-    public void handleCommandResultMessage(@Payload String messagePayload,
+    public void handleCommandResultMessage(@Payload Message message,
                                          @Header Map<String, Object> headers,
                                          @Header("routingKey") String routingKey) {
         try {
             log.debug("收到指令执行结果消息 - 路由键: {}", routingKey);
             
             // 优先使用业务消息处理器管理器
+            String messagePayload = JsonUtils.toJson(message.getPayload());
             BusinessMessageProcessor.BusinessMessageProcessResult processResult = 
                     processorManager.processMessage("COMMAND_RESULT", messagePayload, routingKey, headers);
             
@@ -154,14 +156,14 @@ public class MqStompBridgeListener {
             log.info("⬇️ 指令结果消息处理器失败，降级到原有逻辑 - 路由键: {}, 错误: {}", 
                     routingKey, processResult.getErrorMessage());
             
-            handleCommandResultMessageLegacy(messagePayload, headers, routingKey);
+            handleCommandResultMessageLegacy(message, headers, routingKey);
             
         } catch (Exception e) {
             log.error("指令结果消息桥接异常 - 路由键: {}, 错误: {}", routingKey, e.getMessage(), e);
             
             // 异常情况下也尝试降级处理
             try {
-                handleCommandResultMessageLegacy(messagePayload, headers, routingKey);
+                handleCommandResultMessageLegacy(message, headers, routingKey);
             } catch (Exception fallbackException) {
                 log.error("指令结果消息降级处理也失败 - 路由键: {}, 错误: {}", routingKey, fallbackException.getMessage(), fallbackException);
             }
@@ -171,12 +173,12 @@ public class MqStompBridgeListener {
     /**
      * 指令结果消息降级处理方法（原有逻辑）
      */
-    private void handleCommandResultMessageLegacy(@Payload String messagePayload,
+    private void handleCommandResultMessageLegacy(Message message,
                                                 @Header Map<String, Object> headers,
                                                 @Header("routingKey") String routingKey) {
         try {
-            // 解析消息内容
-            Map<String, Object> messageData = JsonUtils.fromJson(messagePayload, Map.class);
+            // 从Message对象中提取payload
+            Map<String, Object> messageData = extractPayloadFromMessage(message);
             
             String commandId = (String) messageData.get("commandId");
             String deviceId = (String) messageData.get("deviceId");
@@ -482,6 +484,38 @@ public class MqStompBridgeListener {
         } catch (NumberFormatException e) {
             return null;
         }
+    }
+    
+    /**
+     * 从完整的Message对象中提取payload部分
+     * 
+     * @param message Message对象
+     * @return payload部分的Map数据
+     */
+    @SuppressWarnings("unchecked")
+    private Map<String, Object> extractPayloadFromMessage(Message message) {
+        Object payloadObj = message.getPayload();
+        
+        // 如果payload是Map类型，直接返回
+        if (payloadObj instanceof Map) {
+            log.debug("从Message对象中提取payload成功");
+            return (Map<String, Object>) payloadObj;
+        }
+        
+        // 如果payload是字符串，尝试解析为Map
+        if (payloadObj instanceof String) {
+            try {
+                Map<String, Object> payloadMap = JsonUtils.fromJson((String) payloadObj, Map.class);
+                log.debug("从字符串payload中解析Map成功");
+                return payloadMap;
+            } catch (Exception e) {
+                log.warn("解析字符串payload失败: {}", e.getMessage());
+                throw new RuntimeException("无法解析payload内容", e);
+            }
+        }
+        
+        log.warn("不支持的payload类型: {}", payloadObj != null ? payloadObj.getClass() : "null");
+        throw new RuntimeException("不支持的payload类型");
     }
     
     

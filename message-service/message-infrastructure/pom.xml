@@ -20,6 +20,13 @@
             <artifactId>message-application</artifactId>
         </dependency>
         
+        <!-- Common MQ Core 模块依赖 - 用于Message对象 -->
+        <dependency>
+            <groupId>org.nan</groupId>
+            <artifactId>common-mq-core</artifactId>
+            <version>1.0-SNAPSHOT</version>
+        </dependency>
+        
         <!-- Core Service API 依赖 - 用于权限验证 -->
         <dependency>
             <groupId>org.nan</groupId>

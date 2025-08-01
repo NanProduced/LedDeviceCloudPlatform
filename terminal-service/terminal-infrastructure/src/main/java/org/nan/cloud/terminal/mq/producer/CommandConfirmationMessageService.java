@@ -142,7 +142,8 @@ public class CommandConfirmationMessageService {
         Map<String, Object> payload = new HashMap<>();
         
         // 基础信息
-        payload.put("commandId", commandId);
+        payload.put("commandId", commandId.toString());
+        payload.put("deviceId", tid.toString());
         payload.put("terminalId", tid);
         payload.put("orgId", oid);
         payload.put("userId", userId);
