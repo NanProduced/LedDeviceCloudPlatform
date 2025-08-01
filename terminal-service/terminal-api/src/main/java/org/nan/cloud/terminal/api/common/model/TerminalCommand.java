@@ -25,8 +25,7 @@ public class TerminalCommand {
     private String authorUrl;
     
     @Schema(description = "发送指令的用户ID")
-    @JsonProperty("user_id")
-    private Long userId;
+    private Long uid;
 
     @Schema(description = "指令对象")
     private Content content;

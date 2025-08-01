@@ -17,9 +17,7 @@ import org.springframework.web.bind.annotation.RequestBody;
  * @author Nan
  * @since 1.0.0
  */
-@FeignClient(
-    value = "core-service"
-)
+@FeignClient(value = "core-service")
 public interface StompPermissionClient {
 
     String prefix = "/rpc/permissions/stomp";

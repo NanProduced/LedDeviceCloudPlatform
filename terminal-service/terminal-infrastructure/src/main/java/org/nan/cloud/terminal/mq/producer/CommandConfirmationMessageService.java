@@ -143,26 +143,15 @@ public class CommandConfirmationMessageService {
         
         // 基础信息
         payload.put("commandId", commandId);
-        payload.put("deviceId", tid.toString());
         payload.put("terminalId", tid);
         payload.put("orgId", oid);
         payload.put("userId", userId);
+        payload.put("result", "success");
         
         // 执行结果
         payload.put("executionStatus", "SUCCESS");
         payload.put("executionResult", "Executable comment");
         payload.put("message", "指令执行成功");
-        
-        // 指令详情
-        if (command != null) {
-            payload.put("originalCommand", Map.of(
-                    "content", command.getContent(),
-                    "authorUrl", command.getAuthorUrl() != null ? command.getAuthorUrl() : "system"
-            ));
-        }
-        
-        // 时间信息
-        payload.put("timestamp", System.currentTimeMillis());
         payload.put("confirmTime", LocalDateTime.now().toString());
         
         return payload;
@@ -181,10 +170,10 @@ public class CommandConfirmationMessageService {
         payload.put("terminalId", tid);
         payload.put("orgId", oid);
         payload.put("userId", userId);
+        payload.put("result", "failed");
         
         // 执行结果
         payload.put("executionStatus", "REJECTED");
-        payload.put("executionResult", rejectionReason);
         payload.put("message", "指令被设备拒绝执行");
         payload.put("rejectionReason", rejectionReason);
         
@@ -192,7 +181,7 @@ public class CommandConfirmationMessageService {
         if (command != null) {
             payload.put("originalCommand", Map.of(
                     "content", command.getContent(),
-                    "authorUrl", command.getAuthorUrl() != null ? command.getAuthorUrl() : "system"
+                    "authorUrl", command.getAuthorUrl()
             ));
         }
         

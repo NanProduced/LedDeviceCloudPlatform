@@ -12,7 +12,7 @@ import org.nan.cloud.core.api.TerminalApi;
 import org.nan.cloud.core.facade.TerminalFacade;
 import org.springframework.web.bind.annotation.RestController;
 
-@Tag(name = "Terminal(终端控制器)", description = "终端相关的所以操作")
+@Tag(name = "Terminal(终端控制器)", description = "终端相关的所有操作")
 @RestController
 @RequiredArgsConstructor
 public class TerminalController implements TerminalApi {

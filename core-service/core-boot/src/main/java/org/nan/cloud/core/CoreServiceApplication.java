@@ -6,7 +6,8 @@ import org.springframework.cloud.openfeign.EnableFeignClients;
 
 @SpringBootApplication(scanBasePackages = "org.nan.cloud")
 @EnableFeignClients(basePackages = {
-    "org.nan.cloud.auth.api.client"
+    "org.nan.cloud.auth.api.client",
+    "org.nan.cloud.terminal.api.feign"
 })
 public class CoreServiceApplication {
 

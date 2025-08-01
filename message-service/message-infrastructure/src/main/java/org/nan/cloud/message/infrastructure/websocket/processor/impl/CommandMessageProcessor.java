@@ -121,15 +121,13 @@ public class CommandMessageProcessor implements BusinessMessageProcessor {
             
             // 提取消息字段
             String commandId = (String) messageData.get("commandId");
-            String deviceId = (String) messageData.get("deviceId");
+            String tid = (String) messageData.get("terminalId");
             Long orgId = getLongValue(messageData, "orgId");
             Long userId = getLongValue(messageData, "userId");
             String result = (String) messageData.get("result");
-            String status = (String) messageData.get("status");
-            Object resultData = messageData.get("resultData");
             
             // 验证必要字段
-            if (commandId == null || deviceId == null || userId == null) {
+            if (commandId == null || tid == null || userId == null) {
                 String errorMsg = "指令结果消息缺少必要字段: commandId, deviceId, userId";
                 log.warn("⚠️ {}", errorMsg);
                 return BusinessMessageProcessResult.failure(null, errorMsg);
@@ -137,13 +135,13 @@ public class CommandMessageProcessor implements BusinessMessageProcessor {
             
             // 构建STOMP消息
             CommonStompMessage stompMessage = buildCommandResultMessage(
-                    commandId, deviceId, orgId, userId, result, status, resultData);
+                    commandId, tid, orgId, userId, result);
             
             // 分发消息
             DispatchResult dispatchResult = stompDispatcher.smartDispatch(stompMessage);
             
             log.info("✅ 指令结果消息处理完成 - 指令: {}, 设备: {}, 用户: {}, 结果: {}", 
-                    commandId, deviceId, userId, result);
+                    commandId, tid, userId, result);
             
             return BusinessMessageProcessResult.success(stompMessage.getMessageId(), 
                     dispatchResult, stompMessage);
@@ -300,18 +298,16 @@ public class CommandMessageProcessor implements BusinessMessageProcessor {
      * 构建指令执行结果STOMP消息
      */
     private CommonStompMessage buildCommandResultMessage(String commandId, String deviceId, 
-                                                        Long orgId, Long userId, String result, 
-                                                        String status, Object resultData) {
+                                                        Long orgId, Long userId, String result) {
         return CommonStompMessage.builder()
                 .messageId(UUID.randomUUID().toString())
                 .timestamp(LocalDateTime.now())
                 .messageType(StompMessageTypes.COMMAND_FEEDBACK)
                 .subType_1("SINGLE")
-                .subType_2(status != null ? status : result)
+                .subType_2(result)
                 .source(CommonStompMessage.Source.builder()
                         .serviceId("terminal-service")
                         .resourceType("COMMAND")
-                        .resourceId(commandId)
                         .executionId(commandId)
                         .build())
                 .target(CommonStompMessage.Target.builder()
@@ -325,8 +321,6 @@ public class CommandMessageProcessor implements BusinessMessageProcessor {
                         "commandId", commandId,
                         "deviceId", deviceId,
                         "result", result != null ? result : "",
-                        "status", status != null ? status : "",
-                        "resultData", resultData != null ? resultData : Map.of(),
                         "timestamp", LocalDateTime.now()
                 ))
                 .message(String.format("设备%s指令%s执行结果: %s", deviceId, commandId, result))

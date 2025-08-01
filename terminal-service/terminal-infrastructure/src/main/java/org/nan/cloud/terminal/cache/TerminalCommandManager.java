@@ -107,7 +107,7 @@ public class TerminalCommandManager {
     /**
      * 指令下发
      */
-    public boolean sendCommand(Long oid, Long tid, TerminalCommand command) {
+    public TerminalCommand sendCommand(Long oid, Long tid, TerminalCommand command) {
         Integer commandId = saveCommandWithDeduplication(oid, tid, command);
 
         // 检查终端在线状态
@@ -116,13 +116,13 @@ public class TerminalCommandManager {
             boolean sent = sendViaWebSocket(oid, tid, command);
             if (sent) {
                 log.info("WebSocket指令下发成功: oid={}, tid={}, commandId={}", oid, tid, commandId);
-                return true;
+                return command;
             }
         }
         // 离线或WebSocket下发失败：等待HTTP拉取
         updateCommandStatus(oid, tid, commandId, CommandStatus.PENDING);
         log.debug("指令已保存等待拉取: oid={}, tid={}, commandId={}", oid, tid, commandId);
-        return true;
+        return command;
     }
 
     /**
@@ -193,12 +193,12 @@ public class TerminalCommandManager {
         removeCommandFromQueue(oid, tid, commandId);
         
         // 发送指令执行成功的MQ消息
-        if (command != null && command.getUserId() != null) {
+        if (command != null && command.getUid() != null) {
             try {
                 commandConfirmationMessageService.sendCommandExecutionSuccessAsync(
-                        oid, tid, commandId, command, command.getUserId());
+                        oid, tid, commandId, command, command.getUid());
                 log.info("✅ 指令执行成功消息已发送 - oid: {}, tid: {}, commandId: {}, userId: {}", 
-                        oid, tid, commandId, command.getUserId());
+                        oid, tid, commandId, command.getUid());
             } catch (Exception e) {
                 log.error("发送指令执行成功消息异常 - oid: {}, tid: {}, commandId: {}, 错误: {}", 
                         oid, tid, commandId, e.getMessage(), e);
@@ -225,12 +225,12 @@ public class TerminalCommandManager {
         removeCommandFromQueue(oid, tid, commandId);
         
         // 发送指令被拒绝的MQ消息
-        if (command != null && command.getUserId() != null) {
+        if (command != null && command.getUid() != null) {
             try {
                 commandConfirmationMessageService.sendCommandRejectionAsync(
-                        oid, tid, commandId, command, command.getUserId(), result);
+                        oid, tid, commandId, command, command.getUid(), result);
                 log.info("✅ 指令拒绝消息已发送 - oid: {}, tid: {}, commandId: {}, userId: {}, reason: {}", 
-                        oid, tid, commandId, command.getUserId(), result);
+                        oid, tid, commandId, command.getUid(), result);
             } catch (Exception e) {
                 log.error("发送指令拒绝消息异常 - oid: {}, tid: {}, commandId: {}, 错误: {}", 
                         oid, tid, commandId, e.getMessage(), e);
