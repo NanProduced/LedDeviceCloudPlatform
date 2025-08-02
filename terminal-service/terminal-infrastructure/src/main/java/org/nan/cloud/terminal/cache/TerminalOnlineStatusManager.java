@@ -5,6 +5,8 @@ import lombok.Data;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.nan.cloud.terminal.infrastructure.config.RedisConfig;
+import org.nan.cloud.terminal.infrastructure.connection.ConnectionManager;
+import org.nan.cloud.terminal.websocket.session.TerminalWebSocketSession;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.data.redis.core.ZSetOperations;
 import org.springframework.scheduling.annotation.Scheduled;
@@ -21,8 +23,10 @@ import java.util.stream.Collectors;
 public class TerminalOnlineStatusManager {
 
     private static final int OFFLINE_THRESHOLD_SECONDS = 60;
+    private static final int ONLINE_COUNT_CACHE_MINUTES = 30; // 在线计数缓存超时时间（分钟）
 
     private final StringRedisTemplate stringRedisTemplate;
+    private final ConnectionManager connectionManager;
 
     public void updateTerminalActivity(Long oid, Long tid) {
         long currentTime = System.currentTimeMillis();
@@ -38,7 +42,7 @@ public class TerminalOnlineStatusManager {
         if (isNewOnline) {
             String countKey = String.format(RedisConfig.RedisKeys.TERMINAL_ONLINE_COUNT_PATTERN, oid);
             stringRedisTemplate.opsForValue().increment(countKey);
-            stringRedisTemplate.expire(countKey, Duration.ofMinutes(2)); // 设置过期时间防止堆积
+            stringRedisTemplate.expire(countKey, Duration.ofMinutes(ONLINE_COUNT_CACHE_MINUTES)); // 设置过期时间防止堆积
             log.info("终端上线: oid={}, tid={}", oid, tid);
         }
         log.debug("更新终端活跃: oid={}, tid={}", oid, tid);
@@ -72,7 +76,7 @@ public class TerminalOnlineStatusManager {
         Long actualCount = stringRedisTemplate.opsForZSet().count(onlineKey, Double.NEGATIVE_INFINITY, Double.POSITIVE_INFINITY);
 
         // 重新设置计数缓存
-        stringRedisTemplate.opsForValue().set(countKey, actualCount.toString(), Duration.ofMinutes(2));
+        stringRedisTemplate.opsForValue().set(countKey, actualCount.toString(), Duration.ofMinutes(ONLINE_COUNT_CACHE_MINUTES));
 
         return actualCount;
     }
@@ -134,10 +138,27 @@ public class TerminalOnlineStatusManager {
             Long currentCount = stringRedisTemplate.opsForValue().decrement(countKey);
             if (currentCount < 0) {
                 log.warn("检测到在线计数为负数，重置为0: oid={}, count={}", oid, currentCount);
-                stringRedisTemplate.opsForValue().set(countKey, "0", Duration.ofMinutes(2));
+                stringRedisTemplate.opsForValue().set(countKey, "0", Duration.ofMinutes(ONLINE_COUNT_CACHE_MINUTES));
             }
 
             log.info("终端离线: oid={}, tid={}", oid, tid);
+        }
+    }
+
+    /**
+     * 检查终端WebSocket连接是否有效
+     */
+    private boolean isWebSocketConnected(Long tid) {
+        try {
+            Optional<Object> sessionOpt = connectionManager.getConnection(tid);
+            if (sessionOpt.isPresent() && sessionOpt.get() instanceof TerminalWebSocketSession) {
+                TerminalWebSocketSession session = (TerminalWebSocketSession) sessionOpt.get();
+                return session.isConnected();
+            }
+            return false;
+        } catch (Exception e) {
+            log.debug("检查WebSocket连接状态异常: tid={}", tid, e);
+            return false;
         }
     }
 
@@ -161,27 +182,52 @@ public class TerminalOnlineStatusManager {
             // 提取组织ID
             Long oid = extractOidFromKey(onlineKey);
 
-            // 查找过期的终端（score < cutoffTime）
-            Set<String> expiredTerminals = stringRedisTemplate.opsForZSet()
+            // 查找超时的终端（score < cutoffTime）但需要进一步验证WebSocket连接状态
+            Set<String> timeoutTerminals = stringRedisTemplate.opsForZSet()
                     .rangeByScore(onlineKey, 0, cutoffTime);
 
-            if (!expiredTerminals.isEmpty()) {
-                // 批量移除过期终端
-                String[] terminalArray = expiredTerminals.toArray(new String[0]);
-                Long removedCount = stringRedisTemplate.opsForZSet().remove(onlineKey, (Object[]) terminalArray);
-
-                if (removedCount > 0) {
-                    // 更新计数，防止负数
-                    String countKey = String.format(RedisConfig.RedisKeys.TERMINAL_ONLINE_COUNT_PATTERN, oid);
-                    Long currentCount = stringRedisTemplate.opsForValue().decrement(countKey, removedCount);
-                    if (currentCount < 0) {
-                        log.warn("定时清理导致计数为负数，重置为0: oid={}, count={}, removedCount={}", 
-                                oid, currentCount, removedCount);
-                        stringRedisTemplate.opsForValue().set(countKey, "0", Duration.ofMinutes(2));
+            if (!timeoutTerminals.isEmpty()) {
+                List<String> reallyOfflineTerminals = new ArrayList<>();
+                
+                // 对于每个超时的终端，检查其WebSocket连接状态
+                for (String tidStr : timeoutTerminals) {
+                    try {
+                        Long tid = Long.valueOf(tidStr);
+                        
+                        // 如果WebSocket连接仍然有效，则不应该被清理
+                        if (!isWebSocketConnected(tid)) {
+                            reallyOfflineTerminals.add(tidStr);
+                        } else {
+                            // WebSocket连接仍然有效，更新活跃时间避免下次被误清理
+                            updateTerminalActivity(oid, tid);
+                            log.debug("终端WebSocket连接有效，更新活跃时间: oid={}, tid={}", oid, tid);
+                        }
+                    } catch (NumberFormatException e) {
+                        log.warn("终端ID格式错误，将被清理: oid={}, tid={}", oid, tidStr);
+                        reallyOfflineTerminals.add(tidStr);
                     }
+                }
 
-                    totalCleaned += removedCount;
-                    log.info("清理离线终端: oid={}, count={}", oid, removedCount);
+                // 只清理真正离线的终端
+                if (!reallyOfflineTerminals.isEmpty()) {
+                    String[] terminalArray = reallyOfflineTerminals.toArray(new String[0]);
+                    Long removedCount = stringRedisTemplate.opsForZSet().remove(onlineKey, (Object[]) terminalArray);
+
+                    if (removedCount > 0) {
+                        // 更新计数，防止负数
+                        String countKey = String.format(RedisConfig.RedisKeys.TERMINAL_ONLINE_COUNT_PATTERN, oid);
+                        Long currentCount = stringRedisTemplate.opsForValue().decrement(countKey, removedCount);
+                        if (currentCount < 0) {
+                            log.warn("定时清理导致计数为负数，重置为0: oid={}, count={}, removedCount={}", 
+                                    oid, currentCount, removedCount);
+                            stringRedisTemplate.opsForValue().set(countKey, "0", Duration.ofMinutes(ONLINE_COUNT_CACHE_MINUTES));
+                        }
+
+                        totalCleaned += removedCount;
+                        log.info("清理离线终端: oid={}, 超时终端数={}, 实际清理数={}", oid, timeoutTerminals.size(), removedCount);
+                    }
+                } else {
+                    log.debug("组织 {} 的所有超时终端都有有效WebSocket连接，无需清理", oid);
                 }
             }
         }

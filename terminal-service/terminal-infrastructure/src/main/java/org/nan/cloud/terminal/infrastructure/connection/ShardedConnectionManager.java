@@ -5,6 +5,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.nan.cloud.terminal.cache.TerminalOnlineStatusManager;
 import org.nan.cloud.terminal.cache.WebsocketConnectionCacheHandler;
 import org.nan.cloud.terminal.websocket.session.TerminalWebSocketSession;
+import org.springframework.context.annotation.Lazy;
 import org.springframework.stereotype.Component;
 import io.netty.handler.codec.http.websocketx.TextWebSocketFrame;
 
@@ -83,7 +84,7 @@ public class ShardedConnectionManager implements ConnectionManager {
     private final TerminalOnlineStatusManager terminalOnlineStatusManager;
     private final WebsocketConnectionCacheHandler websocketConnectionCacheHandler;
 
-    public ShardedConnectionManager(TerminalOnlineStatusManager terminalOnlineStatusManager, WebsocketConnectionCacheHandler websocketConnectionCacheHandler) {
+    public ShardedConnectionManager(@Lazy TerminalOnlineStatusManager terminalOnlineStatusManager, WebsocketConnectionCacheHandler websocketConnectionCacheHandler) {
         // 初始化16个组织分片
         this.shards = new OrganizationShard[SHARD_COUNT];
         for (int i = 0; i < SHARD_COUNT; i++) {

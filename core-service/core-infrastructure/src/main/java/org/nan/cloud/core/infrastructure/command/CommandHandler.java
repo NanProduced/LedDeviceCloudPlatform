@@ -15,7 +15,7 @@ public class CommandHandler {
 
     private final TerminalCommandClient terminalCommandClient;
 
-    public boolean handleBrightnessCommand(Long tid, Integer brightness) {
+    public SingleCommandSendResult handleBrightnessCommand(Long tid, Integer brightness) {
         SendSingleCommandRequest request = new SendSingleCommandRequest();
         TerminalCommand command = TerminalCommand.builder()
                 .post(tid.intValue())
@@ -25,12 +25,7 @@ public class CommandHandler {
                 .build();
         request.setTid(tid);
         request.setCommand(command);
-        SingleCommandSendResult singleCommandSendResult = terminalCommandClient.sendCommand(request);
-        if (singleCommandSendResult.isSuccess()) return true;
-        else {
-            log.error("RPC 下发指令失败: {}", singleCommandSendResult.getTraceId());
-            return false;
-        }
+        return terminalCommandClient.sendCommand(request);
     }
 
 }
