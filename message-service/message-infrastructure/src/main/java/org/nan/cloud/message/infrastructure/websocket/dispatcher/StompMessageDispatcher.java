@@ -1,18 +1,17 @@
 package org.nan.cloud.message.infrastructure.websocket.dispatcher;
 
 import lombok.extern.slf4j.Slf4j;
-import org.nan.cloud.message.infrastructure.websocket.routing.enhanced.DynamicRoutingEngine;
-import org.nan.cloud.message.infrastructure.websocket.routing.enhanced.MessageAggregator;
-import org.nan.cloud.message.infrastructure.websocket.routing.enhanced.RoutingStrategyManager;
 import org.nan.cloud.message.infrastructure.websocket.manager.StompConnectionManager;
 import org.nan.cloud.message.infrastructure.websocket.routing.TopicRoutingDecision;
 import org.nan.cloud.message.infrastructure.websocket.routing.TopicRoutingManager;
 import org.nan.cloud.message.infrastructure.websocket.sender.StompMessageSender;
-import org.nan.cloud.message.infrastructure.websocket.stomp.enums.StompMessageTypes;
+import org.nan.cloud.message.api.stomp.StompMessageTypes;
 import org.nan.cloud.message.infrastructure.websocket.stomp.enums.StompTopic;
-import org.nan.cloud.message.infrastructure.websocket.stomp.model.CommonStompMessage;
+import org.nan.cloud.message.api.stomp.CommonStompMessage;
 import org.springframework.stereotype.Component;
+import org.springframework.util.CollectionUtils;
 
+import java.time.Instant;
 import java.time.LocalDateTime;
 import java.util.HashMap;
 import java.util.List;
@@ -53,106 +52,47 @@ public class StompMessageDispatcher {
     private final TopicRoutingManager topicRoutingManager;
     private final StompMessageSender messageSender;
     
-    // Phase 2.4: 增强版Topic模式组件
-    private final MessageAggregator messageAggregator;
-    private final DynamicRoutingEngine dynamicRoutingEngine;
-    private final RoutingStrategyManager routingStrategyManager;
-    
     public StompMessageDispatcher(StompConnectionManager stompConnectionManager,
                                 TopicRoutingManager topicRoutingManager,
-                                StompMessageSender messageSender,
-                                MessageAggregator messageAggregator,
-                                DynamicRoutingEngine dynamicRoutingEngine,
-                                RoutingStrategyManager routingStrategyManager) {
+                                StompMessageSender messageSender) {
         this.stompConnectionManager = stompConnectionManager;
         this.topicRoutingManager = topicRoutingManager;
         this.messageSender = messageSender;
-        this.messageAggregator = messageAggregator;
-        this.dynamicRoutingEngine = dynamicRoutingEngine;
-        this.routingStrategyManager = routingStrategyManager;
     }
     
     // ==================== 智能路由分发 ====================
-    
-    /**
-     * 智能分发消息 (Phase 2.4增强版)
-     * 集成消息聚合、动态路由引擎和增强Topic管理
-     * 
-     * @param message STOMP消息
-     * @return 分发结果统计
-     */
+
     public DispatchResult smartDispatch(CommonStompMessage message) {
         try {
-            log.debug("开始智能分发消息 (Phase 2.4) - 消息类型: {}, 消息ID: {}", message.getMessageType(), message.getMessageId());
-            
+            log.debug("开始智能分发消息 - 消息类型: {}, 消息ID: {}", message.getMessageType(), message.getMessageId());
+
             // 设置消息基础信息
             enrichMessage(message);
-            
-            // Phase 2.4: Step 1 - 消息聚合处理
-            MessageAggregator.AggregationResult aggregationResult = messageAggregator.aggregateMessage(message);
-            
-            // 如果消息被加入聚合队列，则等待聚合触发
-            if (aggregationResult.getType() == MessageAggregator.AggregationResultType.QUEUED) {
-                log.debug("消息已加入聚合队列 - 消息ID: {}", message.getMessageId());
-                return DispatchResult.queued(message.getMessageId());
-            }
-            
-            // 获取要分发的消息（可能是聚合后的消息）
-            CommonStompMessage messageToDispatch = aggregationResult.hasMessage() ? 
-                    aggregationResult.getAggregatedMessage() : message;
-            
-            // Phase 2.4: Step 2 - 选择路由策略
-            RoutingStrategyManager.RoutingStrategy strategy = routingStrategyManager.selectStrategy(messageToDispatch);
-            
-            // Phase 2.4: Step 3 - 动态路由决策
-            DynamicRoutingEngine.RoutingDecision routingDecision = dynamicRoutingEngine.makeRoutingDecision(messageToDispatch);
-            
-            DispatchResult result = new DispatchResult(messageToDispatch.getMessageId());
-            
-            // 如果动态路由决策失败，回退到传统路由
-            if (!routingDecision.isSuccess()) {
-                log.warn("动态路由决策失败，回退到传统路由 - 消息ID: {}, 原因: {}", 
-                        messageToDispatch.getMessageId(), routingDecision.getFailureReason());
-                
-                TopicRoutingDecision fallbackDecision = topicRoutingManager.decideRouting(messageToDispatch);
-                return executeFallbackRouting(messageToDispatch, fallbackDecision, result);
-            }
-            
-            // Phase 2.4: Step 4 - 执行增强路由分发
-            for (String topicPath : routingDecision.getTargets()) {
+            TopicRoutingDecision topicRoutingDecision = topicRoutingManager.decideRouting(message);
+
+            DispatchResult result = new DispatchResult(message.getMessageId());
+
+            for (String topic : topicRoutingDecision.getTargetTopics()) {
                 try {
-                    if (topicPath.startsWith("/queue")) {
-                        for (Long uid : messageToDispatch.getTarget().getUids()) {
-                            sendToUser(uid.toString(), messageToDispatch);
-                        }
+                    if (topic.startsWith("/queue/")) {
+                        sendToUser(message.getContext().getUid().toString(), message);
                     }
                     else {
-                        sendToTopic(topicPath, messageToDispatch);
+                        sendToTopic(topic, message);
                     }
                     result.incrementSuccessCount();
-                    result.addSuccessfulTopic(topicPath);
+                    result.addSuccessfulTopic(topic);
                 } catch (Exception e) {
-                    log.error("向主题分发消息失败 - 主题: {}, 消息ID: {}, 错误: {}", 
-                            topicPath, messageToDispatch.getMessageId(), e.getMessage(), e);
+                    log.error("向主题分发消息失败 - 主题: {}, 消息ID: {}, 错误: {}",
+                            topic, message.getMessageId(), e.getMessage(), e);
                     result.incrementFailureCount();
-                    result.addFailedTopic(topicPath, e.getMessage());
+                    result.addFailedTopic(topic, e.getMessage());
                 }
+
             }
-            
-            // 记录聚合信息
-            if (aggregationResult.getType() == MessageAggregator.AggregationResultType.AGGREGATED) {
-                result.setAggregatedMessageCount(aggregationResult.getOriginalMessages().size());
-                log.info("✅ 增强智能分发完成 (含聚合) - 消息ID: {}, 路由策略: {}, 聚合消息数: {}, 成功: {}, 失败: {}", 
-                        messageToDispatch.getMessageId(), routingDecision.getStrategy(), 
-                        aggregationResult.getOriginalMessages().size(), result.getSuccessCount(), result.getFailureCount());
-            } else {
-                log.info("✅ 增强智能分发完成 - 消息ID: {}, 路由策略: {}, 成功: {}, 失败: {}", 
-                        messageToDispatch.getMessageId(), routingDecision.getStrategy(), 
-                        result.getSuccessCount(), result.getFailureCount());
-            }
-                    
+
             return result;
-            
+
         } catch (Exception e) {
             log.error("增强智能分发消息失败 - 消息ID: {}, 错误: {}", message.getMessageId(), e.getMessage(), e);
             return DispatchResult.failure(message.getMessageId(), e.getMessage());
@@ -236,258 +176,20 @@ public class StompMessageDispatcher {
         }
     }
     
-    /**
-     * 发送用户通知消息
-     * <p>通知消息为用于前端在浏览器弹窗显示的业务消息，如操作反馈等</p>
-     * 
-     * @param userId 用户ID
-     * @param title 通知标题
-     * @param content 通知内容
-     * @param notificationType 通知类型
-     */
-    public void sendUserNotification(String userId, String title, String content, String notificationType) {
-        try {
-            CommonStompMessage message = CommonStompMessage.builder()
-                    .messageType(StompMessageTypes.NOTIFICATION)
-                    .subType_1("USER")
-                    .subType_2(notificationType)
-                    .target(CommonStompMessage.Target.builder()
-                            .targetType("USER")
-                            .uids(List.of(Long.valueOf(userId)))
-                            .destination(StompTopic.USER_MESSAGES_QUEUE)
-                            .build())
-                    .payload(Map.of(
-                            "title", title,
-                            "content", content,
-                            "type", notificationType,
-                            "timestamp", LocalDateTime.now()
-                    ))
-                    .build();
-            
-            sendToUser(userId, message);
-            log.info("✅ 用户通知发送完成 - 用户ID: {}, 类型: {}, 标题: {}", userId, notificationType, title);
-            
-        } catch (Exception e) {
-            log.error("发送用户通知失败 - 用户ID: {}, 错误: {}", userId, e.getMessage(), e);
-        }
-    }
+
     
     // ==================== 组织级别消息分发 ====================
+
     
-    /**
-     * 向组织内所有在线用户广播消息
-     * 
-     * @param organizationId 组织ID
-     * @param message STOMP消息对象
-     */
-    public void broadcastToOrganization(Long organizationId, CommonStompMessage message) {
-        try {
-            log.info("开始向组织广播消息 - 组织ID: {}, 消息类型: {}", organizationId, message.getMessageType());
-            
-            // 设置消息基础信息
-            enrichMessage(message);
-            
-            // 使用StompConnectionManager进行组织广播
-            int sentCount = stompConnectionManager.broadcastToOrganization(organizationId, message);
-            
-            log.info("✅ 组织广播消息完成 - 组织ID: {}, 发送用户数: {}, 消息ID: {}", 
-                    organizationId, sentCount, message.getMessageId());
-                    
-        } catch (Exception e) {
-            log.error("组织广播消息时发生异常 - 组织ID: {}, 消息ID: {}, 错误: {}", 
-                    organizationId, message.getMessageId(), e.getMessage(), e);
-        }
-    }
-    
-    /**
-     * 发送组织公告
-     * 
-     * @param organizationId 组织ID
-     * @param title 公告标题
-     * @param content 公告内容
-     * @param priority 优先级
-     */
-    public void sendOrganizationAnnouncement(Long organizationId, String title, String content, String priority) {
-        try {
-            CommonStompMessage message = CommonStompMessage.builder()
-                    .messageType(StompMessageTypes.NOTIFICATION)
-                    .subType_1("ORG")
-                    .subType_2(priority)
-                    .target(CommonStompMessage.Target.builder()
-                            .targetType("ORGANIZATION")
-                            .oid(organizationId)
-                            .destination(StompTopic.buildOrgTopic(organizationId.toString()))
-                            .build())
-                    .payload(Map.of(
-                            "title", title,
-                            "content", content,
-                            "priority", priority,
-                            "publishTime", LocalDateTime.now()
-                    ))
-                    .metadata(CommonStompMessage.Metadata.builder()
-                            .priority(org.nan.cloud.message.api.enums.Priority.valueOf(priority.toUpperCase()))
-                            .persistent(true)
-                            .requireAck(true)
-                            .build())
-                    .build();
-            
-            broadcastToOrganization(organizationId, message);
-            log.info("✅ 组织公告发送完成 - 组织ID: {}, 优先级: {}, 标题: {}", organizationId, priority, title);
-            
-        } catch (Exception e) {
-            log.error("发送组织公告失败 - 组织ID: {}, 错误: {}", organizationId, e.getMessage(), e);
-        }
-    }
+
     
     // ==================== 终端级别消息分发 ====================
     
-    /**
-     * 发送终端状态消息到相关订阅者
-     * 
-     * @param terminalId 终端ID
-     * @param type 终端状态数据类型
-     * @param additionalData 附加数据
-     */
-    public void sendTerminalStatus(String terminalId, String type, Map<String, Object> additionalData) {
-        try {
-            log.debug("发送终端状态消息 - 终端ID: {}, 类型: {}", terminalId, type);
-            
-            CommonStompMessage message = CommonStompMessage.builder()
-                    .messageType(StompMessageTypes.TERMINAL_STATUS_CHANGE)
-                    .subType_1(type)
-                    .source(CommonStompMessage.Source.builder()
-                            .serviceId("terminal-service")
-                            .resourceType("TERMINAL")
-                            .resourceId(terminalId)
-                            .build())
-                    .target(CommonStompMessage.Target.builder()
-                            .targetType("TOPIC")
-                            .resourceTid(Long.valueOf(terminalId))
-                            .destination(StompTopic.buildDeviceTopic(terminalId))
-                            .build())
-                    .payload(Map.of(
-                            "terminalId", terminalId,
-                            "type", type,
-                            "timestamp", LocalDateTime.now(),
-                            "data", additionalData != null ? additionalData : Map.of()
-                    ))
-                    .build();
-            
-            // 向终端状态主题发布消息
-            sendToTopic(message.getTarget().getDestination(), message);
-            log.info("✅ 终端状态消息发送完成 - 终端ID: {}, 类型: {}", terminalId, type);
-            
-        } catch (Exception e) {
-            log.error("发送终端状态消息失败 - 终端ID: {}, 类型: {}, 错误: {}", terminalId, type, e.getMessage(), e);
-        }
-    }
-    
-    /**
-     * 发送终端指令执行结果
-     * 
-     * @param terminalId 终端ID
-     * @param commandId 指令ID
-     * @param result 执行结果
-     * @param executorUserId 执行用户ID
-     */
-    public void sendTerminalCommandResult(String terminalId, String commandId, Map<String, Object> result, String executorUserId) {
-        try {
-            log.debug("发送终端指令结果 - 终端ID: {}, 指令ID: {}, 执行用户: {}", terminalId, commandId, executorUserId);
-            
-            CommonStompMessage message = CommonStompMessage.builder()
-                    .messageType(StompMessageTypes.COMMAND_FEEDBACK)
-                    .subType_1("SINGLE")
-                    .subType_2(commandId)
-                    .source(CommonStompMessage.Source.builder()
-                            .serviceId("terminal-service")
-                            .resourceType("TERMINAL")
-                            .resourceId(terminalId)
-                            .executionId(commandId)
-                            .build())
-                    .target(CommonStompMessage.Target.builder()
-                            .targetType("USER")
-                            .uids(List.of(Long.valueOf(executorUserId)))
-                            .destination(StompTopic.USER_MESSAGES_QUEUE)
-                            .build())
-                    .payload(Map.of(
-                            "terminalId", terminalId,
-                            "commandId", commandId,
-                            "result", result,
-                            "executorUserId", executorUserId,
-                            "timestamp", LocalDateTime.now()
-                    ))
-                    .metadata(CommonStompMessage.Metadata.builder()
-                            .requireAck(true)
-                            .correlationId(commandId)
-                            .build())
-                    .build();
-            
-            // 向执行用户发送指令反馈
-            sendToUser(executorUserId, message);
-            
-            // 同时向终端指令主题发布消息供其他订阅者 - 暂时不需要
-            // String terminalCommandTopic = StompTopic.TERMINAL_COMMAND_TOPIC_TEMPLATE.replace("{terminalId}", terminalId);
-            // sendToTopic(terminalCommandTopic, message);
-            
-            log.info("✅ 终端指令结果发送完成 - 终端ID: {}, 指令ID: {}, 执行用户: {}", terminalId, commandId, executorUserId);
-            
-        } catch (Exception e) {
-            log.error("发送终端指令结果失败 - 终端ID: {}, 指令ID: {}, 错误: {}", terminalId, commandId, e.getMessage(), e);
-        }
-    }
+
     
     // ==================== 批量指令消息分发 ====================
     
-    /**
-     * 发送批量指令进度更新
-     * 
-     * @param taskId 任务ID
-     * @param progress 进度信息
-     * @param targetUserIds 目标用户ID列表
-     */
-    public void sendBatchCommandProgress(String taskId, Map<String, Object> progress, List<String> targetUserIds) {
-        try {
-            log.debug("发送批量指令进度 - 任务ID: {}, 目标用户数: {}", taskId, targetUserIds != null ? targetUserIds.size() : 0);
-            
-            CommonStompMessage message = CommonStompMessage.builder()
-                    .messageType(StompMessageTypes.COMMAND_FEEDBACK)
-                    .subType_1("BATCH")
-                    .subType_2(taskId)
-                    .source(CommonStompMessage.Source.builder()
-                            .serviceId("core-service")
-                            .resourceType("BATCH_COMMAND")
-                            .taskId(taskId)
-                            .build())
-                    .target(CommonStompMessage.Target.builder()
-                            .targetType("BATCH_USERS")
-                            .resourceTaskId(taskId)
-                            .destination(StompTopic.buildTaskTopic(taskId))
-                            .build())
-                    .payload(Map.of(
-                            "taskId", taskId,
-                            "progress", progress,
-                            "timestamp", LocalDateTime.now()
-                    ))
-                    .metadata(CommonStompMessage.Metadata.builder()
-                            .sequenceId(System.currentTimeMillis())
-                            .persistent(false)
-                            .build())
-                    .build();
-            
-            // 向批量指令主题发布进度消息
-            sendToTopic(message.getTarget().getDestination(), message);
-            
-            // 同时向相关用户发送个人进度通知
-            if (targetUserIds != null && !targetUserIds.isEmpty()) {
-                sendToUsers(targetUserIds, message);
-            }
-            
-            log.info("✅ 批量指令进度发送完成 - 任务ID: {}, 目标用户数: {}", taskId, targetUserIds != null ? targetUserIds.size() : 0);
-            
-        } catch (Exception e) {
-            log.error("发送批量指令进度失败 - 任务ID: {}, 错误: {}", taskId, e.getMessage(), e);
-        }
-    }
+
     
     // ==================== 主题级别消息分发 ====================
     
@@ -564,47 +266,7 @@ public class StompMessageDispatcher {
         
         return result;
     }
-    
-    /**
-     * 获取增强Topic统计信息
-     * 
-     * @return Phase 2.4增强Topic统计
-     */
-    public Map<String, Object> getEnhancedTopicStats() {
-        Map<String, Object> stats = new HashMap<>();
-        
-        // 消息聚合统计
-        MessageAggregator.AggregationStats aggregationStats = messageAggregator.getAggregationStats();
-        stats.put("aggregation", Map.of(
-                "totalAggregatedMessages", aggregationStats.getTotalAggregatedMessages(),
-                "totalAggregationEvents", aggregationStats.getTotalAggregationEvents(),
-                "pendingMessageCount", aggregationStats.getPendingMessageCount(),
-                "activeAggregationKeys", aggregationStats.getActiveAggregationKeys()
-        ));
-        
-        // 动态路由统计
-        DynamicRoutingEngine.RoutingStats routingStats = dynamicRoutingEngine.getRoutingStats();
-        stats.put("routing", Map.of(
-                "totalRoutingDecisions", routingStats.getTotalRoutingDecisions(),
-                "successfulRoutings", routingStats.getSuccessfulRoutings(),
-                "failedRoutings", routingStats.getFailedRoutings(),
-                "successRate", routingStats.getSuccessRate(),
-                "activeRoutingRules", routingStats.getActiveRoutingRules()
-        ));
-        
-        // 路由策略统计
-        RoutingStrategyManager.StrategyStats strategyStats = routingStrategyManager.getStrategyStats();
-        stats.put("strategy", Map.of(
-                "totalStrategyExecutions", strategyStats.getTotalStrategyExecutions(),
-                "successfulExecutions", strategyStats.getSuccessfulExecutions(),
-                "failedExecutions", strategyStats.getFailedExecutions(),
-                "successRate", strategyStats.getSuccessRate(),
-                "totalStrategies", strategyStats.getTotalStrategies(),
-                "activeStrategies", strategyStats.getActiveStrategies()
-        ));
-        
-        return stats;
-    }
+
     
     // ==================== 工具方法 ====================
     
@@ -618,7 +280,7 @@ public class StompMessageDispatcher {
             message.setMessageId(UUID.randomUUID().toString());
         }
         if (message.getTimestamp() == null) {
-            message.setTimestamp(LocalDateTime.now());
+            message.setTimestamp(Instant.now().toString());
         }
     }
     

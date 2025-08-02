@@ -2,16 +2,19 @@ package org.nan.cloud.message.infrastructure.websocket.processor.impl;
 
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.nan.cloud.common.basic.exception.BaseException;
+import org.nan.cloud.common.basic.exception.ExceptionEnum;
 import org.nan.cloud.common.basic.utils.JsonUtils;
 import org.nan.cloud.message.api.enums.Priority;
 import org.nan.cloud.message.infrastructure.websocket.dispatcher.DispatchResult;
 import org.nan.cloud.message.infrastructure.websocket.dispatcher.StompMessageDispatcher;
 import org.nan.cloud.message.infrastructure.websocket.processor.BusinessMessageProcessor;
-import org.nan.cloud.message.infrastructure.websocket.stomp.enums.StompMessageTypes;
+import org.nan.cloud.message.api.stomp.StompMessageTypes;
 import org.nan.cloud.message.infrastructure.websocket.stomp.enums.StompTopic;
-import org.nan.cloud.message.infrastructure.websocket.stomp.model.CommonStompMessage;
+import org.nan.cloud.message.api.stomp.CommonStompMessage;
 import org.springframework.stereotype.Component;
 
+import java.time.Instant;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Map;
@@ -63,15 +66,12 @@ public class CommandMessageProcessor implements BusinessMessageProcessor {
         }
         
         // 支持指令相关的消息类型
-        boolean typeSupported = "COMMAND_RESULT".equalsIgnoreCase(messageType) ||
-                               "BATCH_COMMAND_PROGRESS".equalsIgnoreCase(messageType) ||
-                               "COMMAND_ERROR".equalsIgnoreCase(messageType) ||
-                               "COMMAND".equalsIgnoreCase(messageType);
+        boolean typeSupported = "COMMAND_RESULT".equalsIgnoreCase(messageType);
         
         // 支持指令相关的路由键模式
+        // 单独指令和批量指令
         boolean routingSupported = routingKey.startsWith("stomp.command.") ||
-                                 routingKey.startsWith("stomp.batch.progress.") ||
-                                 routingKey.contains(".command.");
+                                 routingKey.startsWith("stomp.batch.progress.");
         
         return typeSupported || routingSupported;
     }
@@ -80,7 +80,12 @@ public class CommandMessageProcessor implements BusinessMessageProcessor {
     public int getPriority() {
         return 10; // 高优先级，因为指令结果需要及时反馈
     }
-    
+
+    /**
+     * @param messagePayload MQ消息载荷（JSON字符串）
+     * @param routingKey MQ路由键
+     * @return
+     */
     @Override
     public BusinessMessageProcessResult process(String messagePayload, String routingKey) {
         try {
@@ -92,14 +97,16 @@ public class CommandMessageProcessor implements BusinessMessageProcessor {
             // 根据路由键确定具体的处理策略
             if (routingKey.startsWith("stomp.command.result.")) {
                 return processCommandResult(messageData, routingKey);
-            } else if (routingKey.startsWith("stomp.batch.progress.")) {
-                return processBatchCommandProgress(messageData, routingKey);
-            } else if (routingKey.contains(".command.error.")) {
-                return processCommandError(messageData, routingKey);
-            } else {
-                return processGenericCommand(messageData, routingKey);
             }
-            
+            else if (routingKey.startsWith("stomp.batch.progress.")) {
+
+                // todo: 待优化
+                return processBatchCommandProgress(messageData, routingKey);
+            }
+            else {
+                // 暂时不兜底，直接抛出异常
+                throw new BaseException(ExceptionEnum.UNKNOW_ROUTING_KEY, "invalid routing key - " + routingKey);
+            }
         } catch (Exception e) {
             String errorMsg = String.format("指令消息处理异常 - 路由键: %s, 错误: %s", 
                     routingKey, e.getMessage());
@@ -122,7 +129,8 @@ public class CommandMessageProcessor implements BusinessMessageProcessor {
             Long tid = getLongValue(messageData, "terminalId");
             Long orgId = getLongValue(messageData, "orgId");
             Long userId = getLongValue(messageData, "userId");
-            String result = (String) messageData.get("result");
+            String status = (String) messageData.get("status");
+            Map<String, Object> command = (Map<String, Object>) messageData.get("originalCommand");
             
             // 验证必要字段
             if (commandId == null || tid == null || userId == null) {
@@ -133,13 +141,13 @@ public class CommandMessageProcessor implements BusinessMessageProcessor {
             
             // 构建STOMP消息
             CommonStompMessage stompMessage = buildCommandResultMessage(
-                    commandId, tid, orgId, userId, result);
+                    commandId, tid, orgId, userId, status, command);
             
             // 分发消息
             DispatchResult dispatchResult = stompDispatcher.smartDispatch(stompMessage);
             
             log.info("✅ 指令结果消息处理完成 - 指令: {}, 设备: {}, 用户: {}, 结果: {}", 
-                    commandId, tid, userId, result);
+                    commandId, tid, userId, status);
             
             return BusinessMessageProcessResult.success(stompMessage.getMessageId(), 
                     dispatchResult, stompMessage);
@@ -200,132 +208,25 @@ public class CommandMessageProcessor implements BusinessMessageProcessor {
             return BusinessMessageProcessResult.failure(null, errorMsg);
         }
     }
-    
-    /**
-     * 处理指令执行错误消息
-     */
-    private BusinessMessageProcessResult processCommandError(Map<String, Object> messageData, 
-                                                           String routingKey) {
-        try {
-            log.debug("处理指令执行错误消息 - 路由键: {}", routingKey);
-            
-            // 提取消息字段
-            String commandId = (String) messageData.get("commandId");
-            String deviceId = (String) messageData.get("deviceId");
-            Long orgId = getLongValue(messageData, "orgId");
-            Long userId = getLongValue(messageData, "userId");
-            String errorCode = (String) messageData.get("errorCode");
-            String errorMessage = (String) messageData.get("errorMessage");
-            String severity = (String) messageData.get("severity");
-            Object errorDetails = messageData.get("errorDetails");
-            
-            // 构建STOMP告警消息
-            CommonStompMessage stompMessage = buildCommandErrorMessage(
-                    commandId, deviceId, orgId, userId, errorCode, errorMessage, severity, errorDetails);
-            
-            // 分发消息
-            DispatchResult dispatchResult = stompDispatcher.smartDispatch(stompMessage);
-            
-            log.info("✅ 指令错误消息处理完成 - 指令: {}, 设备: {}, 错误码: {}", 
-                    commandId, deviceId, errorCode);
-            
-            return BusinessMessageProcessResult.success(stompMessage.getMessageId(), 
-                    dispatchResult, stompMessage);
-            
-        } catch (Exception e) {
-            String errorMsg = String.format("处理指令错误消息异常: %s", e.getMessage());
-            log.error("💥 {}", errorMsg, e);
-            return BusinessMessageProcessResult.failure(null, errorMsg);
-        }
-    }
-    
-    /**
-     * 处理通用指令消息
-     */
-    private BusinessMessageProcessResult processGenericCommand(Map<String, Object> messageData, 
-                                                             String routingKey) {
-        try {
-            log.debug("处理通用指令消息 - 路由键: {}", routingKey);
-            
-            // 构建通用指令消息
-            String messageId = UUID.randomUUID().toString();
-            
-            CommonStompMessage stompMessage = CommonStompMessage.builder()
-                    .messageId(messageId)
-                    .timestamp(LocalDateTime.now())
-                    .messageType(StompMessageTypes.COMMAND_FEEDBACK)
-                    .subType_1("GENERIC")
-                    .source(CommonStompMessage.Source.builder()
-                            .serviceId("message-service")
-                            .resourceType("COMMAND")
-                            .resourceId(routingKey)
-                            .build())
-                    .target(CommonStompMessage.Target.builder()
-                            .targetType("TOPIC")
-                            .destination(StompTopic.USER_MESSAGES_QUEUE)
-                            .build())
-                    .payload(messageData)
-                    .message("通用指令消息: " + routingKey)
-                    .metadata(CommonStompMessage.Metadata.builder()
-                            .priority(Priority.NORMAL)
-                            .persistent(false)
-                            .ttl(60000L)  // 1分钟TTL
-                            .build())
-                    .build();
-            
-            // 分发消息
-            DispatchResult dispatchResult = stompDispatcher.smartDispatch(stompMessage);
-            
-            log.info("✅ 通用指令消息处理完成 - 路由键: {}", routingKey);
-            
-            return BusinessMessageProcessResult.success(messageId, dispatchResult, stompMessage);
-            
-        } catch (Exception e) {
-            String errorMsg = String.format("处理通用指令消息异常: %s", e.getMessage());
-            log.error("💥 {}", errorMsg, e);
-            return BusinessMessageProcessResult.failure(null, errorMsg);
-        }
-    }
-    
+
+
     // ==================== 辅助方法 ====================
     
     /**
      * 构建指令执行结果STOMP消息
      */
     private CommonStompMessage buildCommandResultMessage(String commandId, Long tid,
-                                                        Long orgId, Long userId, String result) {
+                                                        Long orgId, Long userId, String status, Map<String, Object> command) {
         return CommonStompMessage.builder()
                 .messageId(UUID.randomUUID().toString())
-                .timestamp(LocalDateTime.now())
+                .timestamp(Instant.now().toString())
+                .oid(orgId)
                 .messageType(StompMessageTypes.COMMAND_FEEDBACK)
                 .subType_1("SINGLE")
-                .subType_2(result)
-                .source(CommonStompMessage.Source.builder()
-                        .serviceId("terminal-service")
-                        .resourceType("COMMAND")
-                        .executionId(commandId)
-                        .build())
-                .target(CommonStompMessage.Target.builder()
-                        .targetType("USER_AND_TERMINAL")
-                        .uids(List.of(userId))
-                        .oid(orgId)
-                        .destination(StompTopic.USER_MESSAGES_QUEUE + "," +
-                                  StompTopic.buildDeviceTopic(tid.toString()))
-                        .build())
-                .payload(Map.of(
-                        "commandId", commandId,
-                        "deviceId", tid,
-                        "result", result != null ? result : "",
-                        "timestamp", LocalDateTime.now()
-                ))
-                .message(String.format("设备%s指令%s执行结果: %s", tid, commandId, result))
-                .metadata(CommonStompMessage.Metadata.builder()
-                        .priority(Priority.HIGH)
-                        .persistent(true)
-                        .ttl(300000L)  // 5分钟TTL
-                        .requireAck(true)
-                        .correlationId(commandId)
-                        .build())
+                .subType_2(status)
+                .payload(command)
+                .context(CommonStompMessage.Context.commandContext(userId, tid, commandId))
+                .priority(Priority.HIGH)
                 .build();
     }
     
@@ -337,89 +238,47 @@ public class CommandMessageProcessor implements BusinessMessageProcessor {
                                                        Integer totalCount, Integer completedCount,
                                                        Integer successCount, Integer failureCount,
                                                        Object progressData) {
-        return CommonStompMessage.builder()
-                .messageId(UUID.randomUUID().toString())
-                .timestamp(LocalDateTime.now())
-                .messageType(StompMessageTypes.TASK_PROGRESS)
-                .subType_1("BATCH_COMMAND")
-                .subType_2(status != null ? status : "PROGRESS")
-                .source(CommonStompMessage.Source.builder()
-                        .serviceId("core-service")
-                        .resourceType("BATCH_COMMAND")
-                        .resourceId(batchId)
-                        .taskId(taskId != null ? taskId : batchId)
-                        .batchContext("COMMAND_BATCH")
-                        .build())
-                .target(CommonStompMessage.Target.builder()
-                        .targetType("USER_AND_TOPIC")
-                        .uids(List.of(userId))
-                        .oid(orgId)
-                        .destination(StompTopic.buildBatchAggTopic(batchId) + "," +
-                                  StompTopic.USER_MESSAGES_QUEUE)
-                        .build())
-                .payload(Map.of(
-                        "batchId", batchId,
-                        "taskId", taskId != null ? taskId : batchId,
-                        "progress", progress != null ? progress : "",
-                        "status", status != null ? status : "",
-                        "totalCount", totalCount != null ? totalCount : 0,
-                        "completedCount", completedCount != null ? completedCount : 0,
-                        "successCount", successCount != null ? successCount : 0,
-                        "failureCount", failureCount != null ? failureCount : 0,
-                        "progressData", progressData != null ? progressData : Map.of(),
-                        "timestamp", LocalDateTime.now()
-                ))
-                .message(String.format("批量任务%s进度更新: %s/%s", batchId, completedCount, totalCount))
-                .metadata(CommonStompMessage.Metadata.builder()
-                        .priority(Priority.NORMAL)
-                        .persistent(false)
-                        .ttl(180000L)  // 3分钟TTL
-                        .sequenceId(System.currentTimeMillis())
-                        .build())
-                .build();
-    }
-    
-    /**
-     * 构建指令错误STOMP消息
-     */
-    private CommonStompMessage buildCommandErrorMessage(String commandId, String deviceId, 
-                                                      Long orgId, Long userId, String errorCode, 
-                                                      String errorMessage, String severity, 
-                                                      Object errorDetails) {
-        return CommonStompMessage.builder()
-                .messageId(UUID.randomUUID().toString())
-                .timestamp(LocalDateTime.now())
-                .messageType(StompMessageTypes.ALERT)
-                .subType_1("COMMAND_ERROR")
-                .subType_2(severity != null ? severity : "ERROR")
-                .source(CommonStompMessage.Source.builder()
-                        .serviceId("terminal-service")
-                        .resourceType("COMMAND")
-                        .resourceId(commandId)
-                        .build())
-                .target(CommonStompMessage.Target.builder()
-                        .targetType("USER_AND_ORG")
-                        .uids(userId != null ? List.of(userId) : null)
-                        .oid(orgId)
-                        .destination(StompTopic.USER_MESSAGES_QUEUE)
-                        .build())
-                .payload(Map.of(
-                        "commandId", commandId != null ? commandId : "",
-                        "deviceId", deviceId != null ? deviceId : "",
-                        "errorCode", errorCode != null ? errorCode : "",
-                        "errorMessage", errorMessage != null ? errorMessage : "",
-                        "severity", severity != null ? severity : "ERROR",
-                        "errorDetails", errorDetails != null ? errorDetails : Map.of(),
-                        "timestamp", LocalDateTime.now()
-                ))
-                .message(String.format("指令错误告警 - 设备: %s, 错误: %s", deviceId, errorMessage))
-                .metadata(CommonStompMessage.Metadata.builder()
-                        .priority("CRITICAL".equalsIgnoreCase(severity) ? Priority.HIGH : Priority.NORMAL)
-                        .persistent(true)
-                        .ttl(86400000L)  // 24小时TTL
-                        .requireAck(true)
-                        .build())
-                .build();
+//        return CommonStompMessage.builder()
+//                .messageId(UUID.randomUUID().toString())
+//                .timestamp(LocalDateTime.now())
+//                .messageType(StompMessageTypes.TASK_PROGRESS)
+//                .subType_1("BATCH_COMMAND")
+//                .subType_2(status != null ? status : "PROGRESS")
+//                .source(CommonStompMessage.Source.builder()
+//                        .serviceId("core-service")
+//                        .resourceType("BATCH_COMMAND")
+//                        .resourceId(batchId)
+//                        .taskId(taskId != null ? taskId : batchId)
+//                        .batchContext("COMMAND_BATCH")
+//                        .build())
+//                .target(CommonStompMessage.Target.builder()
+//                        .targetType("USER_AND_TOPIC")
+//                        .uids(List.of(userId))
+//                        .oid(orgId)
+//                        .destination(StompTopic.buildBatchAggTopic(batchId) + "," +
+//                                  StompTopic.USER_MESSAGES_QUEUE)
+//                        .build())
+//                .payload(Map.of(
+//                        "batchId", batchId,
+//                        "taskId", taskId != null ? taskId : batchId,
+//                        "progress", progress != null ? progress : "",
+//                        "status", status != null ? status : "",
+//                        "totalCount", totalCount != null ? totalCount : 0,
+//                        "completedCount", completedCount != null ? completedCount : 0,
+//                        "successCount", successCount != null ? successCount : 0,
+//                        "failureCount", failureCount != null ? failureCount : 0,
+//                        "progressData", progressData != null ? progressData : Map.of(),
+//                        "timestamp", LocalDateTime.now()
+//                ))
+//                .message(String.format("批量任务%s进度更新: %s/%s", batchId, completedCount, totalCount))
+//                .metadata(CommonStompMessage.Metadata.builder()
+//                        .priority(Priority.NORMAL)
+//                        .persistent(false)
+//                        .ttl(180000L)  // 3分钟TTL
+//                        .sequenceId(System.currentTimeMillis())
+//                        .build())
+//                .build();
+        return null;
     }
     
     /**

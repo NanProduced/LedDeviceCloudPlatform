@@ -5,9 +5,9 @@ import lombok.extern.slf4j.Slf4j;
 import org.nan.cloud.message.infrastructure.websocket.interceptor.StompPrincipal;
 import org.nan.cloud.message.infrastructure.websocket.manager.StompConnectionManager;
 import org.nan.cloud.message.infrastructure.websocket.security.GatewayUserInfo;
-import org.nan.cloud.message.infrastructure.websocket.stomp.enums.StompMessageTypes;
+import org.nan.cloud.message.api.stomp.StompMessageTypes;
 import org.nan.cloud.message.infrastructure.websocket.stomp.enums.StompTopic;
-import org.nan.cloud.message.infrastructure.websocket.stomp.model.CommonStompMessage;
+import org.nan.cloud.message.api.stomp.CommonStompMessage;
 import org.nan.cloud.message.infrastructure.websocket.subscription.SubscriptionManager;
 import org.springframework.context.event.EventListener;
 import org.springframework.messaging.simp.SimpMessagingTemplate;
@@ -15,6 +15,8 @@ import org.springframework.stereotype.Component;
 import org.springframework.web.socket.messaging.SessionSubscribeEvent;
 
 import java.security.Principal;
+import java.time.Instant;
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -151,17 +153,15 @@ public class UserQueueSubscriptionListener {
                     "/topic/system"
             );
             
-            // 构建欢迎消息内容
-            String welcomeContent = buildWelcomeContent(subscribedTopics, recommendedSubscriptions);
-            
             // 发送欢迎消息
             CommonStompMessage welcomeMessage = CommonStompMessage.builder()
                     .messageType(StompMessageTypes.CONNECTION_STATUS)
-                    .message("连接成功并已订阅个人消息队列")
+                    .timestamp(Instant.now().toString())
+                    .oid(userInfo.getOid())
+                    .title("连接成功并已订阅个人消息队列")
+                    .content("✅ STOMP连接已建立\\n" +
+                            "🔔 个人消息队列订阅成功\\n")
                     .payload(Map.of(
-                            "title", "🎉 欢迎连接到LED设备云平台！",
-                            "content", welcomeContent,
-                            "timestamp", System.currentTimeMillis(),
                             "subscribedTopics", subscribedTopics,
                             "recommendedSubscriptions", recommendedSubscriptions,
                             "sessionId", sessionId
@@ -178,26 +178,6 @@ public class UserQueueSubscriptionListener {
             log.error("发送欢迎消息失败 - 用户: {}, 会话: {}, 错误: {}", 
                     userInfo.getUid(), sessionId, e.getMessage(), e);
         }
-    }
-    
-    /**
-     * 构建欢迎消息内容
-     */
-    private String buildWelcomeContent(Set<String> subscribedTopics, List<String> recommendedSubscriptions) {
-        StringBuilder content = new StringBuilder();
-        content.append("✅ STOMP连接已建立\\n");
-        content.append("🔔 个人消息队列订阅成功\\n\\n");
-        
-        if (!subscribedTopics.isEmpty()) {
-            content.append("📋 您当前已订阅的主题：\\n");
-            subscribedTopics.forEach(topic -> content.append("   • ").append(topic).append("\\n"));
-            content.append("\\n");
-        }
-        
-        content.append("💡 建议订阅以下主题以接收更多消息：\\n");
-        recommendedSubscriptions.forEach(topic -> content.append("   • ").append(topic).append("\\n"));
-        
-        return content.toString();
     }
     
     /**

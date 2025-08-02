@@ -1,4 +1,4 @@
-package org.nan.cloud.message.infrastructure.websocket.stomp.enums;
+package org.nan.cloud.message.api.stomp;
 
 public enum StompTopicType {
 

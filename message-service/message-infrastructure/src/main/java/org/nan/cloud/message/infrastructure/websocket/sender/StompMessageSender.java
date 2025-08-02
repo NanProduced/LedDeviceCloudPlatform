@@ -2,11 +2,12 @@ package org.nan.cloud.message.infrastructure.websocket.sender;
 
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.nan.cloud.message.infrastructure.websocket.stomp.model.CommonStompMessage;
+import org.nan.cloud.message.api.stomp.CommonStompMessage;
 import org.springframework.messaging.simp.SimpMessageHeaderAccessor;
 import org.springframework.messaging.simp.SimpMessagingTemplate;
 import org.springframework.stereotype.Service;
 
+import java.time.Instant;
 import java.time.LocalDateTime;
 
 /**
@@ -123,7 +124,7 @@ public class StompMessageSender {
     private void enrichMessage(CommonStompMessage message) {
         if (message != null) {
             if (message.getTimestamp() == null) {
-                message.setTimestamp(LocalDateTime.now());
+                message.setTimestamp(Instant.now().toString());
             }
             
             // 可以在这里添加其他消息丰富逻辑

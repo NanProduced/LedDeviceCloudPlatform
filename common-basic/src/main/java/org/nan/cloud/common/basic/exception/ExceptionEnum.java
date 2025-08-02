@@ -44,7 +44,11 @@ public enum ExceptionEnum {
     OPERATION_PERMISSION_DENIED(5013, "operation permission failed"),
 
     /* websocket\STOMP 异常 */
-    STOMP_ACCESS_DENIED(6001, "stomp access denied");
+    STOMP_ACCESS_DENIED(6001, "stomp access denied"),
+
+
+    /* RabbitMq异常 */
+    UNKNOW_ROUTING_KEY(6002, "unknown routing key");
 
 
     private final Integer code;

@@ -171,7 +171,7 @@ public class TerminalCommandManager {
             return true;
         } else {
             // 指令不可执行
-            handleCommandRejection(oid, tid, commandId, result);
+            handleCommandRejection(oid, tid, commandId);
             return false;
         }
     }
@@ -210,7 +210,7 @@ public class TerminalCommandManager {
         log.info("指令执行确认: oid={}, tid={}, commandId={}", oid, tid, commandId);
     }
 
-    private void handleCommandRejection(Long oid, Long tid, Integer commandId, String result) {
+    private void handleCommandRejection(Long oid, Long tid, Integer commandId) {
         // 获取指令详情
         String detailKey = String.format(RedisConfig.RedisKeys.COMMAND_DETAIL_PATTERN, oid, tid, commandId);
         String commandJson = stringRedisTemplate.opsForValue().get(detailKey);
@@ -227,9 +227,9 @@ public class TerminalCommandManager {
         if (command != null && command.getUid() != null) {
             try {
                 commandConfirmationMessageService.sendCommandRejectionAsync(
-                        oid, tid, commandId, command, command.getUid(), result);
-                log.info("✅ 指令拒绝消息已发送 - oid: {}, tid: {}, commandId: {}, userId: {}, reason: {}", 
-                        oid, tid, commandId, command.getUid(), result);
+                        oid, tid, commandId, command, command.getUid());
+                log.info("✅ 指令拒绝消息已发送 - oid: {}, tid: {}, commandId: {}, userId: {}",
+                        oid, tid, commandId, command.getUid());
             } catch (Exception e) {
                 log.error("发送指令拒绝消息异常 - oid: {}, tid: {}, commandId: {}, 错误: {}", 
                         oid, tid, commandId, e.getMessage(), e);
@@ -239,7 +239,7 @@ public class TerminalCommandManager {
                     oid, tid, commandId);
         }
         
-        log.info("指令被拒绝: oid={}, tid={}, commandId={}, reason={}", oid, tid, commandId, result);
+        log.info("指令被拒绝: oid={}, tid={}, commandId={}", oid, tid, commandId);
     }
 
     private void updateCommandStatus(Long oid, Long tid, Integer commandId, CommandStatus status) {

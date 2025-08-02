@@ -96,8 +96,8 @@ public class StompHandshakeInterceptor implements HandshakeInterceptor {
             
             // 存储客户端信息用于后续的连接管理
             String userAgent = request.getHeaders().getFirst("User-Agent");
-            String remoteAddress = request.getRemoteAddress() != null ? 
-                    request.getRemoteAddress().getAddress().getHostAddress() : "unknown";
+            request.getRemoteAddress();
+            String remoteAddress = request.getRemoteAddress().getAddress().getHostAddress();
             
             attributes.put("user-agent", userAgent != null ? userAgent : "unknown");
             attributes.put("remote-address", remoteAddress);

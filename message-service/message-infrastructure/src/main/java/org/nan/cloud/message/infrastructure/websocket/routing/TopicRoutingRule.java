@@ -2,7 +2,7 @@ package org.nan.cloud.message.infrastructure.websocket.routing;
 
 import lombok.Builder;
 import lombok.Data;
-import org.nan.cloud.message.infrastructure.websocket.stomp.model.CommonStompMessage;
+import org.nan.cloud.message.api.stomp.CommonStompMessage;
 
 import java.util.List;
 import java.util.function.Function;

@@ -1,26 +1,28 @@
 package org.nan.cloud.message.infrastructure.websocket.subscription;
 
-import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.nan.cloud.core.api.feign.StompPermissionClient;
 import org.nan.cloud.core.api.DTO.req.TopicPermissionRequest;
 import org.nan.cloud.core.api.DTO.res.TopicPermissionResponse;
+import org.nan.cloud.message.api.enums.Priority;
+import org.nan.cloud.message.api.stomp.CommonStompMessage;
+import org.nan.cloud.message.api.stomp.StompMessageLevel;
+import org.nan.cloud.message.api.stomp.StompMessageTypes;
 import org.nan.cloud.message.infrastructure.websocket.routing.SubscriptionLevel;
 import org.nan.cloud.message.infrastructure.websocket.routing.TopicRoutingManager;
 import org.nan.cloud.message.infrastructure.websocket.security.GatewayUserInfo;
 import org.nan.cloud.message.infrastructure.websocket.stomp.enums.StompTopic;
-import org.nan.cloud.message.infrastructure.websocket.stomp.enums.StompTopicType;
-import org.nan.cloud.message.infrastructure.websocket.stomp.model.StompTopicSubscribeFeedbackMsg;
+import org.nan.cloud.message.api.stomp.StompTopicType;
 import org.nan.cloud.message.infrastructure.websocket.sender.StompMessageSender;
+import org.nan.cloud.message.infrastructure.websocket.stomp.payload.SubscribeFeedbackPayload;
 import org.springframework.context.annotation.Lazy;
 import org.springframework.stereotype.Component;
 
+import java.time.Instant;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Set;
-
-// 已废弃：import static org.nan.cloud.message.infrastructure.websocket.stomp.enums.StompTopic.USER_SUBSCRIBE_RESULT_DESTINATION;
-
+import java.util.UUID;
 /**
  * STOMP订阅管理器
  * 
@@ -398,46 +400,29 @@ public class SubscriptionManager {
                                         SubscriptionLevel subscriptionLevel, boolean success, String errorMessage) {
         try {
             String userId = userInfo.getUid().toString();
-            
-            // 创建反馈消息
-            StompTopicSubscribeFeedbackMsg feedbackMsg;
-            
-            if (success) {
-                // 创建成功反馈消息
-                feedbackMsg = StompTopicSubscribeFeedbackMsg.successFeedback(
-                    userInfo.getUid(), 
-                    subscriptionLevel, 
-                    topicPath
-                );
-                
-                log.debug("📤 准备发送订阅成功反馈 - 用户: {}, 主题: {}, 层次: {}", 
-                        userId, topicPath, subscriptionLevel);
-                
-            } else {
-                // 创建失败反馈消息
-                if (errorMessage != null && errorMessage.contains("无权限")) {
-                    // 权限不足的特殊处理
-                    feedbackMsg = StompTopicSubscribeFeedbackMsg.permissionDeniedFeedback(
-                        userInfo.getUid(), 
-                        topicPath, 
-                        "TOPIC_SUBSCRIBE" // 可以根据实际权限需求调整
-                    );
-                } else {
-                    // 一般失败情况
-                    feedbackMsg = StompTopicSubscribeFeedbackMsg.failureFeedback(
-                        userInfo.getUid(), 
-                        subscriptionLevel, 
-                        topicPath, 
-                        errorMessage
-                    );
-                }
-                
-                log.debug("📤 准备发送订阅失败反馈 - 用户: {}, 主题: {}, 错误: {}", 
-                        userId, topicPath, errorMessage);
-            }
+
+            SubscribeFeedbackPayload payload = SubscribeFeedbackPayload.builder()
+                    .uid(userInfo.getUid())
+                    .subscriptionLevel(subscriptionLevel)
+                    .topic(topicPath)
+                    .success(success)
+                    .errorMsg(success ? null : errorMessage)
+                    .operation(SubscribeFeedbackPayload.SubscribeOperation.SUBSCRIBE)
+                    .build();
+
+            CommonStompMessage message = CommonStompMessage.builder()
+                    .messageId(UUID.randomUUID().toString())
+                    .timestamp(Instant.now().toString())
+                    .oid(userInfo.getOid())
+                    .messageType(StompMessageTypes.TOPIC_SUBSCRIBE_FEEDBACK)
+                    .level(StompMessageLevel.IGNORE)
+                    .payload(payload)
+                    .priority(Priority.NORMAL)
+                    .requireAck(false)
+                    .build();
             
             // 发送反馈消息到用户的个人消息队列
-            boolean sent = stompMessageSender.sendToUser(userId, StompTopic.USER_MESSAGES_QUEUE, feedbackMsg);
+            boolean sent = stompMessageSender.sendToUser(userId, StompTopic.USER_MESSAGES_QUEUE, message);
             
             if (sent) {
                 log.debug("✅ 订阅反馈消息发送成功 - 用户: {}, 主题: {}, 成功: {}", 
@@ -464,33 +449,28 @@ public class SubscriptionManager {
                                           boolean success, String errorMessage) {
         try {
             String userId = userInfo.getUid().toString();
-            
-            // 创建取消订阅反馈消息
-            StompTopicSubscribeFeedbackMsg feedbackMsg;
-            
-            if (success) {
-                // 创建取消订阅成功反馈消息
-                feedbackMsg = StompTopicSubscribeFeedbackMsg.unsubscribeSuccessFeedback(
-                    userInfo.getUid(), 
-                    topicPath
-                );
-                
-                log.debug("📤 准备发送取消订阅成功反馈 - 用户: {}, 主题: {}", userId, topicPath);
-                
-            } else {
-                // 创建取消订阅失败反馈消息
-                feedbackMsg = StompTopicSubscribeFeedbackMsg.unsubscribeFailureFeedback(
-                    userInfo.getUid(), 
-                    topicPath, 
-                    errorMessage
-                );
-                
-                log.debug("📤 准备发送取消订阅失败反馈 - 用户: {}, 主题: {}, 错误: {}", 
-                        userId, topicPath, errorMessage);
-            }
+
+            SubscribeFeedbackPayload payload = SubscribeFeedbackPayload.builder()
+                    .uid(userInfo.getUid())
+                    .topic(topicPath)
+                    .success(success)
+                    .errorMsg(success ? null : errorMessage)
+                    .operation(SubscribeFeedbackPayload.SubscribeOperation.UNSUBSCRIBE)
+                    .build();
+
+            CommonStompMessage message = CommonStompMessage.builder()
+                    .messageId(UUID.randomUUID().toString())
+                    .timestamp(Instant.now().toString())
+                    .oid(userInfo.getOid())
+                    .messageType(StompMessageTypes.TOPIC_SUBSCRIBE_FEEDBACK)
+                    .level(StompMessageLevel.IGNORE)
+                    .payload(payload)
+                    .priority(Priority.NORMAL)
+                    .requireAck(false)
+                    .build();
             
             // 发送反馈消息到用户的个人消息队列
-            boolean sent = stompMessageSender.sendToUser(userId, StompTopic.USER_MESSAGES_QUEUE, feedbackMsg);
+            boolean sent = stompMessageSender.sendToUser(userId, StompTopic.USER_MESSAGES_QUEUE, message);
             
             if (sent) {
                 log.debug("✅ 取消订阅反馈消息发送成功 - 用户: {}, 主题: {}, 成功: {}", 

@@ -1,5 +1,6 @@
 package org.nan.cloud.message.infrastructure.websocket.processor;
 
+import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.InitializingBean;
 import org.springframework.stereotype.Component;
@@ -142,7 +143,9 @@ public class BusinessMessageProcessorManager implements InitializingBean {
     /**
      * 处理器信息
      */
+    @Getter
     public static class ProcessorInfo {
+
         private final String className;
         private final String supportedMessageType;
         private final int priority;
@@ -152,10 +155,6 @@ public class BusinessMessageProcessorManager implements InitializingBean {
             this.supportedMessageType = supportedMessageType;
             this.priority = priority;
         }
-        
-        // Getters
-        public String getClassName() { return className; }
-        public String getSupportedMessageType() { return supportedMessageType; }
-        public int getPriority() { return priority; }
+
     }
 }

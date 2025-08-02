@@ -2,9 +2,10 @@ package org.nan.cloud.message.infrastructure.websocket.routing;
 
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.nan.cloud.message.infrastructure.websocket.stomp.enums.StompMessageTypes;
+import org.nan.cloud.message.api.stomp.StompMessageTypes;
+import org.nan.cloud.message.api.stomp.StompResourceType;
 import org.nan.cloud.message.infrastructure.websocket.stomp.enums.StompTopic;
-import org.nan.cloud.message.infrastructure.websocket.stomp.model.CommonStompMessage;
+import org.nan.cloud.message.api.stomp.CommonStompMessage;
 import org.springframework.stereotype.Component;
 
 import java.util.*;
@@ -84,7 +85,7 @@ public class TopicRoutingManager {
                        createOrgNotificationRule());
         
         // 终端状态变更路由规则
-        addRoutingRule(StompMessageTypes.TERMINAL_STATUS_CHANGE,
+        addRoutingRule(StompMessageTypes.TERMINAL_STATUS,
                        createTerminalStatusRule());
         
         // 指令反馈路由规则
@@ -100,8 +101,6 @@ public class TopicRoutingManager {
                        createSystemMessageRule());
         
         // 监控数据路由规则
-        addRoutingRule(StompMessageTypes.MONITOR_DATA,
-                       createMonitorDataRule());
         
         log.info("✅ TopicRoutingManager路由规则初始化完成 - 消息类型数: {}", messageTypeRoutes.size());
     }
@@ -300,6 +299,7 @@ public class TopicRoutingManager {
     
     /**
      * 创建用户通知路由规则
+     * Context中存在Uid
      */
     private TopicRoutingRule createUserNotificationRule() {
         return TopicRoutingRule.builder()
@@ -307,7 +307,7 @@ public class TopicRoutingManager {
                 .priority(1)
                 .matcher(message -> "USER".equals(message.getSubType_1()))
                 .topicGenerator(message -> {
-                    if (message.getTarget() != null && message.getTarget().getUids() != null) {
+                    if (message.getContext() != null && message.getContext().getUid() != null) {
                         return List.of(StompTopic.USER_MESSAGES_QUEUE);
                     }
                     return Collections.emptyList();
@@ -324,8 +324,8 @@ public class TopicRoutingManager {
                 .priority(2)
                 .matcher(message -> "ORG".equals(message.getSubType_1()))
                 .topicGenerator(message -> {
-                    if (message.getTarget() != null && message.getTarget().getOid() != null) {
-                        return List.of(StompTopic.buildOrgTopic(message.getTarget().getOid().toString()));
+                    if (message.getOid() != null) {
+                        return List.of(StompTopic.buildOrgTopic(message.getOid().toString()));
                     }
                     return Collections.emptyList();
                 })
@@ -339,11 +339,10 @@ public class TopicRoutingManager {
         return TopicRoutingRule.builder()
                 .ruleName("TERMINAL_STATUS")
                 .priority(1)
-                .matcher(message -> message.getSource() != null && "TERMINAL".equals(message.getSource().getResourceType()))
+                .matcher(message -> message.getContext().getResourceType().equals(StompResourceType.TERMINAL))
                 .topicGenerator(message -> {
-                    String terminalId = message.getSource().getResourceId();
-                    if (terminalId != null) {
-                        return List.of(StompTopic.buildDeviceTopic(terminalId));
+                    if (message.getContext().getTid() != null) {
+                        return List.of(StompTopic.buildDeviceTopic(message.getContext().getTid().toString()));
                     }
                     return Collections.emptyList();
                 })
@@ -359,7 +358,7 @@ public class TopicRoutingManager {
                 .priority(1)
                 .matcher(message -> true) // 所有指令反馈都匹配
                 .topicGenerator(message -> {
-                    if (message.getTarget() != null && message.getTarget().getUids() != null) {
+                    if (message.getContext() != null && message.getContext().getUid() != null) {
                         return List.of(StompTopic.USER_MESSAGES_QUEUE);
                     }
                     return Collections.emptyList();
@@ -374,9 +373,9 @@ public class TopicRoutingManager {
         return TopicRoutingRule.builder()
                 .ruleName("TASK_PROGRESS")
                 .priority(1)
-                .matcher(message -> message.getSource() != null && message.getSource().getTaskId() != null)
+                .matcher(message -> true)
                 .topicGenerator(message -> {
-                    String taskId = message.getSource().getTaskId();
+                    String taskId = message.getContext().getTaskId();
                     if (taskId != null) {
                         return List.of(StompTopic.buildBatchAggTopic(taskId));
                     }
@@ -398,32 +397,14 @@ public class TopicRoutingManager {
     }
     
     /**
-     * 创建监控数据路由规则
-     */
-    private TopicRoutingRule createMonitorDataRule() {
-        return TopicRoutingRule.builder()
-                .ruleName("MONITOR_DATA")
-                .priority(1)
-                .matcher(message -> message.getTarget() != null && message.getTarget().getOid() != null)
-                .topicGenerator(message -> {
-                    Long orgId = message.getTarget().getOid();
-                    if (orgId != null) {
-                        return List.of(StompTopic.ORG_TOPIC_TEMPLATE);
-                    }
-                    return Collections.emptyList();
-                })
-                .build();
-    }
-    
-    /**
      * 创建回退路由决策
      */
     private TopicRoutingDecision createFallbackRoutingDecision(CommonStompMessage message) {
         List<String> fallbackTopics = new ArrayList<>();
         
         // 如果有明确的目标主题路径，使用它
-        if (message.getTarget() != null && message.getTarget().getDestination() != null) {
-            fallbackTopics.add(message.getTarget().getDestination());
+        if (message.getContext().getUid() != null) {
+            fallbackTopics.add(StompTopic.USER_MESSAGES_QUEUE);
         } else {
             // 否则使用系统默认主题
             fallbackTopics.add(StompTopic.SYSTEM_TOPIC);

@@ -1,14 +1,12 @@
 package org.nan.cloud.message.infrastructure.websocket.manager;
 
-import lombok.*;
 import lombok.extern.slf4j.Slf4j;
 import org.nan.cloud.message.infrastructure.websocket.interceptor.StompPrincipal;
 import org.nan.cloud.message.infrastructure.websocket.security.GatewayUserInfo;
 import org.nan.cloud.message.infrastructure.websocket.listener.UserQueueSubscriptionListener;
 import org.nan.cloud.message.infrastructure.websocket.sender.StompMessageSender;
-import org.nan.cloud.message.infrastructure.websocket.stomp.enums.StompMessageTypes;
 import org.nan.cloud.message.infrastructure.websocket.stomp.enums.StompTopic;
-import org.nan.cloud.message.infrastructure.websocket.stomp.model.CommonStompMessage;
+import org.nan.cloud.message.api.stomp.CommonStompMessage;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.context.annotation.Lazy;
 import org.springframework.stereotype.Component;

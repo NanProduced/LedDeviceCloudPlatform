@@ -1,7 +1,8 @@
 package org.nan.cloud.message.infrastructure.websocket.processor;
 
+import lombok.Getter;
 import org.nan.cloud.message.infrastructure.websocket.dispatcher.DispatchResult;
-import org.nan.cloud.message.infrastructure.websocket.stomp.model.CommonStompMessage;
+import org.nan.cloud.message.api.stomp.CommonStompMessage;
 
 /**
  * 业务消息处理器接口
@@ -65,7 +66,9 @@ public interface BusinessMessageProcessor {
     /**
      * 业务消息处理结果
      */
+    @Getter
     class BusinessMessageProcessResult {
+        // Getters
         private final boolean success;
         private final String messageId;
         private final String errorMessage;
@@ -91,12 +94,6 @@ public interface BusinessMessageProcessor {
         public static BusinessMessageProcessResult failure(String messageId, String errorMessage) {
             return new BusinessMessageProcessResult(false, messageId, errorMessage, null, null);
         }
-        
-        // Getters
-        public boolean isSuccess() { return success; }
-        public String getMessageId() { return messageId; }
-        public String getErrorMessage() { return errorMessage; }
-        public DispatchResult getDispatchResult() { return dispatchResult; }
-        public CommonStompMessage getStompMessage() { return stompMessage; }
+
     }
 }
