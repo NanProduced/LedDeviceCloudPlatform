@@ -35,9 +35,9 @@ public class StompTopicAuthHandler {
 
     // 主题路径正则表达式
     private static final Pattern ORG_TOPIC_PATTERN = Pattern.compile("^/topic/org/(\\d+)");
-    private static final Pattern DEVICE_TOPIC_PATTERN = Pattern.compile("^/topic/device/");
-    private static final Pattern TASK_TOPIC_PATTERN = Pattern.compile("^/topic/task/.*$");
-    private static final Pattern BATCH_TOPIC_PATTERN = Pattern.compile("^/topic/batch/.*$");
+    private static final Pattern DEVICE_TOPIC_PATTERN = Pattern.compile("^/topic/device/(.*)$");
+    private static final Pattern TASK_TOPIC_PATTERN = Pattern.compile("^/topic/task/(.*)$");
+    private static final Pattern BATCH_TOPIC_PATTERN = Pattern.compile("^/topic/batch/(.*)$");
 
 
     /**

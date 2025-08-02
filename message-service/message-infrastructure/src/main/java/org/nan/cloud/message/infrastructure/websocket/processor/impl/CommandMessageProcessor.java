@@ -10,13 +10,10 @@ import org.nan.cloud.message.infrastructure.websocket.dispatcher.DispatchResult;
 import org.nan.cloud.message.infrastructure.websocket.dispatcher.StompMessageDispatcher;
 import org.nan.cloud.message.infrastructure.websocket.processor.BusinessMessageProcessor;
 import org.nan.cloud.message.api.stomp.StompMessageTypes;
-import org.nan.cloud.message.infrastructure.websocket.stomp.enums.StompTopic;
 import org.nan.cloud.message.api.stomp.CommonStompMessage;
 import org.springframework.stereotype.Component;
 
 import java.time.Instant;
-import java.time.LocalDateTime;
-import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 
@@ -105,7 +102,7 @@ public class CommandMessageProcessor implements BusinessMessageProcessor {
             }
             else {
                 // 暂时不兜底，直接抛出异常
-                throw new BaseException(ExceptionEnum.UNKNOW_ROUTING_KEY, "invalid routing key - " + routingKey);
+                throw new BaseException(ExceptionEnum.UNKNOWN_ROUTING_KEY, "invalid routing key - " + routingKey);
             }
         } catch (Exception e) {
             String errorMsg = String.format("指令消息处理异常 - 路由键: %s, 错误: %s", 

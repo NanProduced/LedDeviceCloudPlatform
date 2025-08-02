@@ -48,7 +48,8 @@ public enum ExceptionEnum {
 
 
     /* RabbitMq异常 */
-    UNKNOW_ROUTING_KEY(6002, "unknown routing key");
+    UNKNOWN_ROUTING_KEY(6002, "unknown routing key"),
+    UNKNOWN_MQ_MESSAGE_TYPE(6003, "unknown message type");
 
 
     private final Integer code;

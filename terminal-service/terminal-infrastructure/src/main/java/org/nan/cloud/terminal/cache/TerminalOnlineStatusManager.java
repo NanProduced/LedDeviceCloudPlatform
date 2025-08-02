@@ -6,6 +6,7 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.nan.cloud.terminal.infrastructure.config.RedisConfig;
 import org.nan.cloud.terminal.infrastructure.connection.ConnectionManager;
+import org.nan.cloud.terminal.mq.producer.TerminalOnlineMessageService;
 import org.nan.cloud.terminal.websocket.session.TerminalWebSocketSession;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.data.redis.core.ZSetOperations;
@@ -14,6 +15,7 @@ import org.springframework.stereotype.Component;
 import org.springframework.util.CollectionUtils;
 
 import java.time.Duration;
+import java.time.Instant;
 import java.util.*;
 import java.util.stream.Collectors;
 
@@ -27,6 +29,7 @@ public class TerminalOnlineStatusManager {
 
     private final StringRedisTemplate stringRedisTemplate;
     private final ConnectionManager connectionManager;
+    private final TerminalOnlineMessageService terminalOnlineMessageService;
 
     public void updateTerminalActivity(Long oid, Long tid) {
         long currentTime = System.currentTimeMillis();
@@ -44,6 +47,7 @@ public class TerminalOnlineStatusManager {
             stringRedisTemplate.opsForValue().increment(countKey);
             stringRedisTemplate.expire(countKey, Duration.ofMinutes(ONLINE_COUNT_CACHE_MINUTES)); // 设置过期时间防止堆积
             log.info("终端上线: oid={}, tid={}", oid, tid);
+            terminalOnlineMessageService.sendTerminalOnline(oid, tid, Instant.ofEpochMilli(currentTime).toString());
         }
         log.debug("更新终端活跃: oid={}, tid={}", oid, tid);
     }
@@ -142,6 +146,7 @@ public class TerminalOnlineStatusManager {
             }
 
             log.info("终端离线: oid={}, tid={}", oid, tid);
+            terminalOnlineMessageService.sendTerminalOffline(oid, tid, Instant.now().toString());
         }
     }
 

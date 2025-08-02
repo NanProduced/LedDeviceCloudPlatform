@@ -57,7 +57,7 @@ public class MqStompBridgeListener {
 
             // 优先使用业务消息处理器管理器
             BusinessMessageProcessor.BusinessMessageProcessResult processResult = 
-                    processorManager.processMessage("DEVICE_STATUS", messagePayload, routingKey);
+                    processorManager.processMessage("TERMINAL_STATUS", messagePayload, routingKey);
             
             if (processResult.isSuccess()) {
                 log.info("✅ 设备状态消息处理完成 - 路由键: {}, 消息ID: {}, 分发结果: {}", 
