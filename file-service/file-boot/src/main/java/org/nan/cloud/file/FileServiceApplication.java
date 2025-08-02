@@ -40,7 +40,7 @@ import org.springframework.scheduling.annotation.EnableAsync;
  */
 @Slf4j
 @EnableAsync
-@SpringBootApplication
+@SpringBootApplication(scanBasePackages = "org.nan.cloud")
 @EnableDiscoveryClient
 public class FileServiceApplication {
 

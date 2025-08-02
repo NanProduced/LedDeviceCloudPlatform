@@ -30,6 +30,8 @@ public class PermissionCheckerImpl implements PermissionChecker {
     
     private final UserGroupTerminalGroupBindingRepository bindingRepository;
 
+    private final FolderRepository folderRepository;
+
     /**
      * 检查当前用户组是否对指定的目标用户组拥有权限。
      *
@@ -79,6 +81,20 @@ public class PermissionCheckerImpl implements PermissionChecker {
         return bindingRepository.hasTerminalGroupPermission(ugid, targetTgid);
     }
 
+    /**
+     * 是否对目标文件夹有权限
+     * @param oid
+     * @param ugid
+     * @param targetFid
+     * @return
+     */
+    @Override
+    public boolean ifHasPermissionOnTargetFolder(Long oid, Long ugid, Long targetFid) {
+        if (PermissionCheckSkipContext.isSkip()) return ifTargetFolderTheSameOrg(oid, targetFid);
+        Long folderUgid = folderRepository.getFolderUgidByFid(targetFid);
+        return userRepository.isAncestorOrSiblingByUser(ugid, folderUgid);
+    }
+
     @Override
     public boolean ifRolesExist(List<Long> roles) {
         return roleRepository.allRolesExist(roles);
@@ -102,6 +118,11 @@ public class PermissionCheckerImpl implements PermissionChecker {
     @Override
     public boolean ifTargetTerminalGroupTheSameOrg(Long oid, Long targetTgid) {
         return terminalGroupRepository.ifTheSameOrg(oid, targetTgid);
+    }
+
+    @Override
+    public boolean ifTargetFolderTheSameOrg(Long oid, Long targetFid) {
+        return folderRepository.isTheSameOrg(oid, targetFid);
     }
     
     @Override

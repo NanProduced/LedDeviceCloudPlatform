@@ -42,6 +42,8 @@ public enum ExceptionEnum {
     TERMINAL_GROUP_PERMISSION_DENIED(5012, "terminal group permission denied"),
     CREATE_TERMINAL_ACCOUNT_FAILED(5012, "create terminal account failed"),
     OPERATION_PERMISSION_DENIED(5013, "operation permission failed"),
+    HAS_DUPLICATE_FOLDER_NAME(5014, "There is already a duplicate folder name"),
+    FOLDER_PERMISSION_DENIED(5015, "Folder permission denied"),
 
     /* websocket\STOMP 异常 */
     STOMP_ACCESS_DENIED(6001, "stomp access denied"),
