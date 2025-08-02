@@ -182,13 +182,19 @@ public class SubscriptionManager {
             SubscriptionLevel subscriptionLevel = determineSubscriptionLevel(topicPath);
             
             // 3. 注册订阅到路由管理器
-            topicRoutingManager.registerUserSubscription(userId, topicPath, subscriptionLevel, sessionId);
+            boolean isNewSubscription = topicRoutingManager.registerUserSubscription(userId, topicPath, subscriptionLevel, sessionId);
             
-            log.info("✅ 用户订阅成功 - 用户: {}, 主题: {}, 层次: {}", userId, topicPath, subscriptionLevel);
-
-            // 4. 发送订阅成功反馈消息给客户端
-            if (!topicPath.startsWith("/user/queue/message")) {
-                sendSubscriptionFeedback(userInfo, topicPath, subscriptionLevel, true, null);
+            if (isNewSubscription) {
+                log.info("✅ 用户订阅成功 - 用户: {}, 主题: {}, 层次: {}", userId, topicPath, subscriptionLevel);
+                
+                // 4. 发送订阅成功反馈消息给客户端
+                if (!topicPath.startsWith("/user/queue/message")) {
+                    sendSubscriptionFeedback(userInfo, topicPath, subscriptionLevel, true, null);
+                }
+            } else {
+                log.info("⚠️ 用户重复订阅 - 用户: {}, 主题: {}, 层次: {} (订阅已存在，忽略)", userId, topicPath, subscriptionLevel);
+                
+                // 对于重复订阅，仍然返回成功，但不发送反馈消息，避免客户端收到重复通知
             }
 
             return SubscriptionResult.success(topicPath, subscriptionLevel);

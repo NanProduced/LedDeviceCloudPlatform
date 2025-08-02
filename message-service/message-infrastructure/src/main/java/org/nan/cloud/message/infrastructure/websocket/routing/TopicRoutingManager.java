@@ -158,24 +158,33 @@ public class TopicRoutingManager {
      * @param topic 订阅主题
      * @param subscriptionLevel 订阅层次
      * @param sessionId 会话ID（可选）
+     * @return true表示成功添加新订阅，false表示订阅已存在
      */
-    public void registerUserSubscription(String userId, String topic, SubscriptionLevel subscriptionLevel, String sessionId) {
+    public boolean registerUserSubscription(String userId, String topic, SubscriptionLevel subscriptionLevel, String sessionId) {
         try {
             UserSubscriptionInfo subscriptionInfo = userSubscriptions.computeIfAbsent(userId, 
                     k -> new UserSubscriptionInfo(userId));
             
-            subscriptionInfo.addSubscription(topic, subscriptionLevel, sessionId);
+            boolean added = subscriptionInfo.addSubscription(topic, subscriptionLevel, sessionId);
             
-            // 更新主题订阅统计
-            TopicSubscriptionStats stats = topicStats.computeIfAbsent(topic, 
-                    k -> new TopicSubscriptionStats(topic));
-            stats.incrementSubscriberCount();
+            // 只有在真正添加了新订阅时才更新主题订阅统计
+            if (added) {
+                TopicSubscriptionStats stats = topicStats.computeIfAbsent(topic, 
+                        k -> new TopicSubscriptionStats(topic));
+                stats.incrementSubscriberCount();
+                
+                log.debug("注册用户订阅 - 用户ID: {}, 主题: {}, 层次: {}, 会话: {}", 
+                        userId, topic, subscriptionLevel, sessionId);
+            } else {
+                log.debug("用户订阅已存在 - 用户ID: {}, 主题: {}, 层次: {}, 会话: {}", 
+                        userId, topic, subscriptionLevel, sessionId);
+            }
             
-            log.debug("注册用户订阅 - 用户ID: {}, 主题: {}, 层次: {}, 会话: {}", 
-                    userId, topic, subscriptionLevel, sessionId);
+            return added;
                     
         } catch (Exception e) {
             log.error("注册用户订阅失败 - 用户ID: {}, 主题: {}, 错误: {}", userId, topic, e.getMessage(), e);
+            return false;
         }
     }
     

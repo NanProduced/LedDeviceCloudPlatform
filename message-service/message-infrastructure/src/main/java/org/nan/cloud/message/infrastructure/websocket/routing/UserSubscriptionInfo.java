@@ -70,45 +70,71 @@ public class UserSubscriptionInfo {
      * @param topic 主题路径
      * @param level 订阅层次
      * @param sessionId 会话ID（对于会话级别订阅）
+     * @return true表示成功添加新订阅，false表示订阅已存在
      */
-    public synchronized void addSubscription(String topic, SubscriptionLevel level, String sessionId) {
+    public synchronized boolean addSubscription(String topic, SubscriptionLevel level, String sessionId) {
         try {
+            boolean added = false;
+            
             switch (level) {
                 case PERSISTENT:
                 case GLOBAL:
-                    persistentSubscriptions.add(topic);
-                    log.debug("添加持久订阅 - 用户: {}, 主题: {}", userId, topic);
+                    added = persistentSubscriptions.add(topic);
+                    if (added) {
+                        log.debug("添加持久订阅 - 用户: {}, 主题: {}", userId, topic);
+                    } else {
+                        log.debug("持久订阅已存在 - 用户: {}, 主题: {}", userId, topic);
+                    }
                     break;
                     
                 case SESSION:
                 case PAGE:
                     if (sessionId != null) {
-                        sessionSubscriptions.computeIfAbsent(sessionId, k -> new CopyOnWriteArraySet<>())
-                                           .add(topic);
-                        log.debug("添加会话订阅 - 用户: {}, 会话: {}, 主题: {}", userId, sessionId, topic);
+                        Set<String> sessionTopics = sessionSubscriptions.computeIfAbsent(sessionId, k -> new CopyOnWriteArraySet<>());
+                        added = sessionTopics.add(topic);
+                        if (added) {
+                            log.debug("添加会话订阅 - 用户: {}, 会话: {}, 主题: {}", userId, sessionId, topic);
+                        } else {
+                            log.debug("会话订阅已存在 - 用户: {}, 会话: {}, 主题: {}", userId, sessionId, topic);
+                        }
                     } else {
                         log.warn("会话级别订阅缺少会话ID - 用户: {}, 主题: {}", userId, topic);
+                        return false;
                     }
                     break;
                     
                 case TEMPORARY:
-                    String tempId = generateTemporarySubscriptionId();
-                    temporarySubscriptions.put(tempId, new TemporarySubscription(topic, LocalDateTime.now()));
-                    log.debug("添加临时订阅 - 用户: {}, 主题: {}, 临时ID: {}", userId, topic, tempId);
+                    // 检查是否已有相同主题的临时订阅
+                    boolean alreadyExists = temporarySubscriptions.values().stream()
+                            .anyMatch(temp -> temp.getTopic().equals(topic));
+                    
+                    if (!alreadyExists) {
+                        String tempId = generateTemporarySubscriptionId();
+                        temporarySubscriptions.put(tempId, new TemporarySubscription(topic, LocalDateTime.now()));
+                        added = true;
+                        log.debug("添加临时订阅 - 用户: {}, 主题: {}, 临时ID: {}", userId, topic, tempId);
+                    } else {
+                        log.debug("临时订阅已存在 - 用户: {}, 主题: {}", userId, topic);
+                    }
                     break;
                     
                 default:
                     log.warn("未知的订阅层次 - 用户: {}, 主题: {}, 层次: {}", userId, topic, level);
-                    return;
+                    return false;
             }
             
-            // 更新统计信息
-            updateSubscriptionStats(topic);
-            lastUpdated = LocalDateTime.now();
+            // 只有在真正添加了新订阅时才更新统计信息
+            if (added) {
+                updateSubscriptionStats(topic);
+                lastUpdated = LocalDateTime.now();
+            }
+            
+            return added;
             
         } catch (Exception e) {
             log.error("添加订阅失败 - 用户: {}, 主题: {}, 层次: {}, 错误: {}", 
                     userId, topic, level, e.getMessage(), e);
+            return false;
         }
     }
     
