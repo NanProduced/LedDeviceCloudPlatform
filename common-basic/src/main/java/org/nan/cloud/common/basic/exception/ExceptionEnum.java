@@ -44,6 +44,7 @@ public enum ExceptionEnum {
     OPERATION_PERMISSION_DENIED(5013, "operation permission failed"),
     HAS_DUPLICATE_FOLDER_NAME(5014, "There is already a duplicate folder name"),
     FOLDER_PERMISSION_DENIED(5015, "Folder permission denied"),
+    COMMAND_PARAMS_ERROR(5016, "command parameters error"),
 
     /* websocket\STOMP 异常 */
     STOMP_ACCESS_DENIED(6001, "stomp access denied"),

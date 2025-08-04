@@ -58,6 +58,8 @@ public class TerminalStatusMessageProcessor implements BusinessMessageProcessor 
             switch (processType) {
                 case "ONLINE_STATUS":
                     return processTerminalOnlineStatusChange(payload, routingKey);
+                case "LED_STATUS":
+                    return processLedStatusReport(payload, routingKey);
                 default:
                     throw new BaseException(ExceptionEnum.UNKNOWN_MQ_MESSAGE_TYPE, "invalid message type");
             }
@@ -70,6 +72,12 @@ public class TerminalStatusMessageProcessor implements BusinessMessageProcessor 
         }
     }
 
+    /**
+     * 处理终端在线离线状态变更
+     * @param payload
+     * @param routingKey
+     * @return
+     */
     private BusinessMessageProcessResult processTerminalOnlineStatusChange(Map<String, Object> payload, String routingKey) {
 
         String tid =  (String) payload.get("tid");
@@ -97,5 +105,32 @@ public class TerminalStatusMessageProcessor implements BusinessMessageProcessor 
 
         return BusinessMessageProcessResult.success(stompMessage.getMessageId(), result, stompMessage);
 
+    }
+
+    /**
+     * 处理终端led-status数据上报
+     * @param payload
+     * @param routingKey
+     * @return
+     */
+    private BusinessMessageProcessResult processLedStatusReport(Map<String, Object> payload, String routingKey) {
+        String oid =  (String) payload.get("oid");
+        String tid = (String) payload.get("tid");
+        String report = (String) payload.get("report");
+
+        CommonStompMessage stompMessage = CommonStompMessage.builder()
+                .messageId(UUID.randomUUID().toString())
+                .timestamp(Instant.now().toString())
+                .oid(Long.valueOf(oid))
+                .messageType(StompMessageTypes.TERMINAL_STATUS)
+                .subType_1("LED_STATUS")
+                .context(CommonStompMessage.Context.terminalContext(Long.valueOf(tid)))
+                .payload(Map.of("report", report))
+                .priority(Priority.NORMAL)
+                .build();
+
+        DispatchResult result = stompMessageDispatcher.smartDispatch(stompMessage);
+
+        return BusinessMessageProcessResult.success(stompMessage.getMessageId(), result, stompMessage);
     }
 }

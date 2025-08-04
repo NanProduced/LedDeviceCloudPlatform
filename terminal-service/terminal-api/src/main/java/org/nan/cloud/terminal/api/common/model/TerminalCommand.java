@@ -47,4 +47,80 @@ public class TerminalCommand {
         @Schema(description = "指令对应的json,{}为空")
         private String raw;
     }
+
+    /* ========================== 构造方法 =============================== */
+
+    /**
+     * 亮度指令
+     * @param tid
+     * @param brightness
+     * @return
+     */
+    public static TerminalCommand brightnessCommand(Long tid, Integer brightness) {
+        return TerminalCommand.builder()
+                .post(tid.intValue())
+                .authorUrl("api/brightness")
+                .karma(2)
+                .content(new TerminalCommand.Content("{\"brightness\":" + brightness / 100 * 255 +"}"))
+                .build();
+    }
+
+    /**
+     * 色温指令
+     * @param tid
+     * @param colorTemp
+     * @return
+     */
+    public static TerminalCommand colorTempCommand(Long tid, Integer colorTemp) {
+        return TerminalCommand.builder()
+                .post(tid.intValue())
+                .authorUrl("api/colortemp")
+                .karma(2)
+                .content(new TerminalCommand.Content("{\"colorTemp\":" + colorTemp + "}"))
+                .build();
+    }
+
+    /**
+     * 音量指令
+     * @param tid
+     * @param volume
+     * @return
+     */
+    public static TerminalCommand volumeCommand(Long tid, Integer volume) {
+        return TerminalCommand.builder()
+                .post(tid.intValue())
+                .authorUrl("api/volume")
+                .karma(2)
+                .content(new TerminalCommand.Content("{\"musicvolume\":" + volume + "}"))
+                .build();
+    }
+
+    /**
+     * 休眠指令
+     * @param tid
+     * @return
+     */
+    public static TerminalCommand sleepCommand(Long tid) {
+        return TerminalCommand.builder()
+                .post(tid.intValue())
+                .authorUrl("api/action")
+                .karma(1)
+                .content(new TerminalCommand.Content("{\"command\":\"sleep\"}"))
+                .build();
+    }
+
+    /**
+     * 唤醒指令
+     * @param tid
+     * @return
+     */
+    public static TerminalCommand wakeupCommand(Long tid) {
+        return TerminalCommand.builder()
+                .post(tid.intValue())
+                .authorUrl("api/action")
+                .karma(1)
+                .content(new TerminalCommand.Content("{\"command\":\"wakeup\"}"))
+                .build();
+    }
+
 }

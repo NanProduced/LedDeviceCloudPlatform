@@ -8,11 +8,10 @@ import org.nan.cloud.core.api.DTO.command.BaseCommand;
 
 @EqualsAndHashCode(callSuper = true)
 @Data
-@JsonTypeName("brightness")
-@Schema(description = "亮度指令")
-public class BrightnessCommand extends BaseCommand {
+@JsonTypeName("colorTemp")
+@Schema(description = "色温指令")
+public class ColorTempCommand extends BaseCommand {
 
-    @Schema(description = "亮度")
-    private Integer brightness;
-
+    @Schema(description = "色温")
+    private Integer colorTemp;
 }
