@@ -2,11 +2,13 @@ package org.nan.cloud.core.infrastructure.cache;
 
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.nan.cloud.core.domain.Task;
 import org.nan.cloud.core.enums.CacheType;
 import org.nan.cloud.core.service.BusinessCacheService;
 import org.nan.cloud.core.service.CacheService;
 import org.springframework.stereotype.Service;
 
+import java.time.Duration;
 import java.util.List;
 
 /**
@@ -46,6 +48,33 @@ public class BusinessCacheServiceImpl implements BusinessCacheService {
         String pattern = CacheType.PERMISSION_EXPRESSION.buildOrgPattern(orgId);
         cacheService.evictByPattern(pattern);
         log.debug("清理组织内所有用户组权限缓存: orgId={}", orgId);
+    }
+
+    @Override
+    public void cacheTaskProgress(Long oid, String taskId, Task task, Duration ttl) {
+        String key = CacheType.TASK_PROGRESS.buildTaskKey(oid, taskId);
+        cacheService.putWithCacheTypeConfig(key, task, CacheType.TASK_PROGRESS, ttl);
+    }
+
+    @Override
+    public Task getTaskProgress(Long oid, String taskId) {
+        String key = CacheType.TASK_PROGRESS.buildTaskKey(oid, taskId);
+        return cacheService.getWithCacheTypeConfig(key, CacheType.TASK_PROGRESS, Task.class);
+    }
+
+    @Override
+    public Task getTaskProgress(String taskId) {
+        // 使用通用键格式，不依赖oid
+        String key = CacheType.TASK_PROGRESS.getKeyPrefix() + ":" + taskId;
+        return cacheService.get(key, Task.class);
+    }
+
+    @Override
+    public void evictTaskProgress(String taskId) {
+        // 清理任务缓存，支持模糊匹配
+        String pattern = "*" + CacheType.TASK_PROGRESS.getKeyPrefix() + "*:" + taskId;
+        cacheService.evictByPattern(pattern);
+        log.debug("清理任务进度缓存: taskId={}", taskId);
     }
 
 

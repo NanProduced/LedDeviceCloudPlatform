@@ -11,7 +11,9 @@ public enum StompResourceType {
 
     COMMAND,
 
-    BATCH
+    BATCH,
+    
+    FILE
 
 
 }

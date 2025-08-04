@@ -8,7 +8,9 @@ import lombok.extern.slf4j.Slf4j;
 import org.nan.cloud.common.web.DynamicResponse;
 import org.nan.cloud.file.api.FileUploadApi;
 import org.nan.cloud.file.api.dto.*;
+import org.nan.cloud.file.api.dto.TaskInitResponse;
 import org.nan.cloud.file.application.service.FileUploadService;
+import org.nan.cloud.file.facade.FileUploadFacade;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 
@@ -26,6 +28,8 @@ import org.springframework.web.multipart.MultipartFile;
 @Tag(name = "文件上传", description = "文件上传相关接口")
 public class FileUploadController implements FileUploadApi {
 
+    private final FileUploadFacade fileUploadFacade;
+
     private final FileUploadService fileUploadService;
 
     @Override
@@ -33,13 +37,37 @@ public class FileUploadController implements FileUploadApi {
             @Parameter(description = "上传的文件") @RequestParam("file") MultipartFile file,
             @Parameter(description = "上传参数") @ModelAttribute FileUploadRequest uploadRequest) {
         
-        log.info("接收单文件上传请求 - 文件名: {}, 大小: {}, 组织: {}", 
-                file.getOriginalFilename(), file.getSize(), uploadRequest.getOrganizationId());
+        log.info("接收单文件上传请求 - 文件名: {}, 大小: {}", 
+                file.getOriginalFilename(), file.getSize());
 
-        FileUploadResponse response = fileUploadService.uploadSingle(file, uploadRequest);
+        // 使用同步方式（保持兼容性）
+        FileUploadResponse response = fileUploadFacade.uploadSingle(file, uploadRequest);
         
         log.info("单文件上传成功 - 文件ID: {}, 文件名: {}", 
                 response.getFileId(), response.getOriginalFilename());
+
+        return response;
+    }
+
+    /**
+     * 异步上传单个文件（新接口）
+     * 
+     * @param file 上传的文件
+     * @param uploadRequest 上传参数
+     * @return 任务初始化响应
+     */
+    @Operation(summary = "异步上传单个文件", description = "异步上传单个文件，立即返回任务ID")
+    public TaskInitResponse uploadSingleAsync(
+            @Parameter(description = "上传的文件") @RequestParam("file") MultipartFile file,
+            @Parameter(description = "上传参数") @ModelAttribute FileUploadRequest uploadRequest) {
+        
+        log.info("接收异步单文件上传请求 - 文件名: {}, 大小: {}", 
+                file.getOriginalFilename(), file.getSize());
+
+        TaskInitResponse response = fileUploadFacade.uploadSingleAsync(file, uploadRequest);
+        
+        log.info("异步上传任务创建成功 - 任务ID: {}, 文件名: {}", 
+                response.getTaskId(), response.getFilename());
 
         return response;
     }
@@ -49,8 +77,7 @@ public class FileUploadController implements FileUploadApi {
             @Parameter(description = "上传的文件列表") @RequestParam("files") MultipartFile[] files,
             @Parameter(description = "上传参数") @ModelAttribute FileUploadRequest uploadRequest) {
         
-        log.info("接收批量文件上传请求 - 文件数量: {}, 组织: {}", 
-                files.length, uploadRequest.getOrganizationId());
+        log.info("接收批量文件上传请求 - 文件数量: {}", files.length);
 
         BatchFileUploadResponse response = fileUploadService.uploadBatch(files, uploadRequest);
         

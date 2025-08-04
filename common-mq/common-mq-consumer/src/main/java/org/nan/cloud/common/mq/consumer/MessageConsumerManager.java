@@ -28,7 +28,7 @@ import java.util.concurrent.atomic.AtomicLong;
  * @since 1.0.0
  */
 @Slf4j
-//@Component  示例，具体实现由引用服务自行实现
+//@Component
 @RequiredArgsConstructor
 public class MessageConsumerManager {
     
@@ -73,19 +73,9 @@ public class MessageConsumerManager {
     }
     
     /**
-     * 处理事件消息
-     */
-    @RabbitListener(queues = "${nan.mq.queues.event:event.queue}")
-    @RabbitHandler
-    public void handleEventMessage(Message message, Channel channel,
-                                 @Header(AmqpHeaders.DELIVERY_TAG) long deliveryTag) {
-        handleMessage(message, channel, deliveryTag, "event");
-    }
-    
-    /**
      * 通用消息处理逻辑
      */
-    private void handleMessage(Message message, Channel channel, long deliveryTag, String queueType) {
+    protected void handleMessage(Message message, Channel channel, long deliveryTag, String queueType) {
         long startTime = System.currentTimeMillis();
         totalConsumedCount.incrementAndGet();
         

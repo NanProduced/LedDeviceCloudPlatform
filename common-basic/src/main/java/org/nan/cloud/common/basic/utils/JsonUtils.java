@@ -144,4 +144,8 @@ public class JsonUtils {
         return OBJECT_MAPPER.readerForUpdating(target)
                 .readValue(json);
     }
+
+    public static ObjectMapper getDefaultObjectMapper() {
+        return OBJECT_MAPPER;
+    }
 }

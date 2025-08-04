@@ -5,6 +5,7 @@ import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Positive;
 import lombok.Data;
 import io.swagger.v3.oas.annotations.media.Schema;
+import org.nan.cloud.file.api.enums.FileType;
 
 /**
  * 分块上传初始化请求
@@ -53,7 +54,7 @@ public class ChunkUploadInitRequest {
      * 文件类型枚举
      */
     @Schema(description = "文件类型", example = "VIDEO")
-    private FileUploadRequest.FileType fileType;
+    private FileType fileType;
 
     /**
      * 分块大小 (字节)

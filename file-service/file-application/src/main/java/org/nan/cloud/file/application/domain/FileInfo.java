@@ -53,39 +53,14 @@ public class FileInfo {
     private String storagePath;
 
     /**
-     * 组织ID
+     * 文件扩展名
      */
-    private String organizationId;
-
-    /**
-     * 文件夹ID
-     */
-    private String folderId;
-
-    /**
-     * 文件类型
-     */
-    private String fileType;
-
-    /**
-     * 文件描述
-     */
-    private String description;
-
-    /**
-     * 文件标签
-     */
-    private List<String> tags;
-
-    /**
-     * 是否公开
-     */
-    private Boolean isPublic;
+    private String fileExtension;
 
     /**
      * 存储策略
      */
-    private String storageStrategy;
+    private String storageType;
 
     /**
      * 上传时间
@@ -98,19 +73,14 @@ public class FileInfo {
     private LocalDateTime updateTime;
 
     /**
-     * 访问次数
+     * 引用计数，用于垃圾回收
      */
-    private Long accessCount;
+    private Long refCount;
 
     /**
-     * 最后访问时间
+     * 文件状态（1:已完成, 2:处理中, 3:失败）
      */
-    private LocalDateTime lastAccessTime;
-
-    /**
-     * 文件状态
-     */
-    private FileStatus status;
+    private Integer fileStatus;
 
     /**
      * 缩略图路径
@@ -123,24 +93,9 @@ public class FileInfo {
     private String transcodingTaskId;
 
     /**
-     * 版本号
+     * 文件元数据ID（MongoDB ObjectId）
      */
-    private Integer version;
-
-    /**
-     * 文件扩展信息（JSON格式）
-     */
-    private String metadata;
-
-    /**
-     * 创建者ID
-     */
-    private String createdBy;
-
-    /**
-     * 更新者ID
-     */
-    private String updatedBy;
+    private String metaDataId;
 
     /**
      * 文件状态枚举
@@ -196,26 +151,10 @@ public class FileInfo {
     }
 
     /**
-     * 业务方法：增加访问次数
-     */
-    public void incrementAccessCount() {
-        this.accessCount = this.accessCount == null ? 1L : this.accessCount + 1;
-        this.lastAccessTime = LocalDateTime.now();
-    }
-
-    /**
-     * 业务方法：更新文件状态
-     */
-    public void updateStatus(FileStatus newStatus) {
-        this.status = newStatus;
-        this.updateTime = LocalDateTime.now();
-    }
-
-    /**
      * 业务方法：检查文件是否可以删除
      */
     public boolean canBeDeleted() {
-        return status != FileStatus.UPLOADING && status != FileStatus.PROCESSING;
+        return fileStatus != null && fileStatus != 0 && fileStatus != 2; // 不在上传中或处理中状态
     }
 
     /**

@@ -28,6 +28,15 @@ public interface FileUploadService {
     FileUploadResponse uploadSingle(MultipartFile file, FileUploadRequest request);
 
     /**
+     * 异步单文件上传
+     * 
+     * @param file 上传的文件
+     * @param request 上传请求参数
+     * @return 任务初始化响应
+     */
+    TaskInitResponse uploadSingleAsync(MultipartFile file, FileUploadRequest request);
+
+    /**
      * 批量文件上传
      * 
      * @param files 上传的文件数组

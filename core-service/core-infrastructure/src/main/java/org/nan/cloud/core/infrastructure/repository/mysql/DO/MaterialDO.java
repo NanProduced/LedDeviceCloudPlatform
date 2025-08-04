@@ -22,7 +22,7 @@ public class MaterialDO {
      * 关联的文件ID
      */
     @TableField("file_id")
-    private String file_id;
+    private String fileId;
 
     @TableField("oid")
     private Long oid;
@@ -51,6 +51,12 @@ public class MaterialDO {
 
     @TableField("description")
     private String description;
+
+    /**
+     * 缩略图路径
+     */
+    @TableField("thumbnail_path")
+    private String thumbnailPath;
 
     @TableField("usage_count")
     private Long usageCount;

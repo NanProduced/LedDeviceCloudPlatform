@@ -66,6 +66,9 @@ public class FileUploadResponse {
     @Schema(description = "错误信息")
     private String errorMessage;
 
+    @Schema(description = "是否为秒传（文件已存在）", example = "false")
+    private Boolean instantUpload = false;
+
     /**
      * 上传状态枚举
      */

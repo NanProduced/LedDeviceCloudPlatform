@@ -1,7 +1,9 @@
 package org.nan.cloud.file.application.service;
 
+import lombok.Data;
 import org.nan.cloud.file.api.dto.FileUploadRequest;
 import org.nan.cloud.file.api.dto.SupportedFileTypesResponse;
+import org.nan.cloud.file.api.enums.FileType;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.util.List;
@@ -99,7 +101,7 @@ public interface FileValidationService {
      * @param fileType 文件类型
      * @return 最大尺寸限制（字节）
      */
-    long getMaxFileSizeForType(String fileType);
+    long getMaxFileSizeForType(FileType fileType);
 
     /**
      * 检查文件扩展名是否在黑名单中
@@ -120,6 +122,7 @@ public interface FileValidationService {
     /**
      * 文件验证结果
      */
+    @Data
     class FileValidationResult {
         private boolean valid;
         private String errorMessage;
@@ -154,62 +157,8 @@ public interface FileValidationService {
         public static FileValidationResult failure(String errorMessage, String errorCode) {
             return new FileValidationResult(false, errorMessage, errorCode);
         }
-
-        // Getters and Setters
-        public boolean isValid() { return valid; }
-        public void setValid(boolean valid) { this.valid = valid; }
-
-        public String getErrorMessage() { return errorMessage; }
-        public void setErrorMessage(String errorMessage) { this.errorMessage = errorMessage; }
-
-        public String getErrorCode() { return errorCode; }
-        public void setErrorCode(String errorCode) { this.errorCode = errorCode; }
-
-        public List<String> getWarnings() { return warnings; }
-        public void setWarnings(List<String> warnings) { this.warnings = warnings; }
     }
 
-    /**
-     * 文件类型枚举
-     */
-    enum FileType {
-        IMAGE("image", "图片"),
-        VIDEO("video", "视频"),
-        AUDIO("audio", "音频"),
-        DOCUMENT("document", "文档"),
-        ARCHIVE("archive", "压缩包"),
-        OTHER("other", "其他");
-
-        private final String code;
-        private final String description;
-
-        FileType(String code, String description) {
-            this.code = code;
-            this.description = description;
-        }
-
-        public String getCode() { return code; }
-        public String getDescription() { return description; }
-
-        public static FileType fromMimeType(String mimeType) {
-            if (mimeType == null) return OTHER;
-            
-            if (mimeType.startsWith("image/")) return IMAGE;
-            if (mimeType.startsWith("video/")) return VIDEO;
-            if (mimeType.startsWith("audio/")) return AUDIO;
-            if (mimeType.contains("pdf") || mimeType.contains("document") || 
-                mimeType.contains("word") || mimeType.contains("excel") || 
-                mimeType.contains("powerpoint") || mimeType.contains("text")) {
-                return DOCUMENT;
-            }
-            if (mimeType.contains("zip") || mimeType.contains("rar") || 
-                mimeType.contains("tar") || mimeType.contains("7z")) {
-                return ARCHIVE;
-            }
-            
-            return OTHER;
-        }
-    }
 
     /**
      * 验证错误代码常量

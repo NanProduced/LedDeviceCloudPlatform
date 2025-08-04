@@ -13,10 +13,16 @@ import org.nan.cloud.core.repository.FolderRepository;
 import org.nan.cloud.core.repository.MaterialRepository;
 import org.nan.cloud.core.repository.UserGroupRepository;
 import org.nan.cloud.core.service.MaterialService;
+import org.nan.cloud.core.event.mq.FileUploadEvent;
+import org.nan.cloud.core.repository.MaterialMetadataRepository;
+import org.nan.cloud.core.domain.MaterialMetadata;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
+import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.UUID;
 import java.util.stream.Collectors;
 
 @Slf4j
@@ -27,6 +33,7 @@ public class MaterialServiceImpl implements MaterialService {
     private final MaterialRepository materialRepository;
     private final FolderRepository folderRepository;
     private final UserGroupRepository userGroupRepository;
+    private final MaterialMetadataRepository materialMetadataRepository;
 
     @Override
     public MaterialNodeTreeResponse buildMaterialStructTree(Long oid, Long ugid) {
@@ -315,5 +322,302 @@ public class MaterialServiceImpl implements MaterialService {
         }
         UserGroup userGroup = userGroupRepository.getUserGroupById(ugid);
         return userGroup != null ? userGroup.getName() : null;
+    }
+
+    @Override
+    @Transactional
+    public Long createMaterialFromFileUpload(FileUploadEvent event) {
+        log.info("创建素材 - 文件ID: {}, 任务ID: {}", event.getFileId(), event.getTaskId());
+        
+        try {
+            // 1. 创建MongoDB元数据文档
+            String metadataId = createMaterialMetadata(event);
+            
+            // 2. 创建Material业务实体
+            Material material = buildMaterialFromEvent(event, metadataId);
+            materialRepository.createMaterial(material);
+            
+            log.info("素材创建成功 - 素材ID: {}, 文件ID: {}", material.getMid(), event.getFileId());
+            return material.getMid();
+            
+        } catch (Exception e) {
+            log.error("创建素材失败 - 文件ID: {}, 错误: {}", event.getFileId(), e.getMessage(), e);
+            throw new RuntimeException("创建素材失败", e);
+        }
+    }
+
+    @Override
+    @Transactional
+    public Long createPendingMaterialFromEvent(FileUploadEvent event) {
+        log.info("创建待上传素材占位 - 文件ID: {}, 任务ID: {}", event.getFileId(), event.getTaskId());
+        
+        try {
+            // 1. 创建一个基础的MongoDB元数据文档（待完善）
+            String metadataId = createPendingMaterialMetadata(event);
+            
+            // 2. 创建Material业务实体（状态为PENDING）
+            Material material = buildPendingMaterialFromEvent(event, metadataId);
+            materialRepository.createMaterial(material);
+            
+            log.info("待上传素材占位创建成功 - 素材ID: {}, 文件ID: {}", material.getMid(), event.getFileId());
+            return material.getMid();
+            
+        } catch (Exception e) {
+            log.error("创建待上传素材占位失败 - 文件ID: {}, 错误: {}", event.getFileId(), e.getMessage(), e);
+            throw new RuntimeException("创建待上传素材占位失败", e);
+        }
+    }
+
+    @Override
+    public Material getMaterialByFileId(String fileId) {
+        return materialRepository.getMaterialByFileId(fileId);
+    }
+
+    @Override
+    @Transactional
+    public void updateMaterialFromFileUpload(Long materialId, FileUploadEvent event) {
+        try {
+            Material existingMaterial = materialRepository.getMaterialById(materialId);
+            if (existingMaterial == null) {
+                throw new IllegalArgumentException("素材不存在 - ID: " + materialId);
+            }
+            
+            // 更新素材的基本信息
+            existingMaterial.setUpdateTime(LocalDateTime.now());
+            
+            materialRepository.updateMaterial(existingMaterial);
+            
+            log.info("素材更新成功 - 素材ID: {}, 文件ID: {}", materialId, event.getFileId());
+            
+        } catch (Exception e) {
+            log.error("更新素材失败 - 素材ID: {}, 错误: {}", materialId, e.getMessage(), e);
+            throw new RuntimeException("更新素材失败", e);
+        }
+    }
+
+    @Override
+    @Transactional
+    public void updateMaterialMetadata(String fileId, String metadataId) {
+        try {
+            Material material = materialRepository.getMaterialByFileId(fileId);
+            if (material != null) {
+                material.setMetaDataId(metadataId);
+                material.setUpdateTime(LocalDateTime.now());
+                materialRepository.updateMaterial(material);
+                
+                log.info("素材元数据更新成功 - 素材ID: {}, 元数据ID: {}", material.getMid(), metadataId);
+            }
+        } catch (Exception e) {
+            log.error("更新素材元数据失败 - 文件ID: {}, 错误: {}", fileId, e.getMessage(), e);
+            throw new RuntimeException("更新素材元数据失败", e);
+        }
+    }
+
+    /**
+     * 创建MongoDB元数据文档
+     */
+    private String createMaterialMetadata(FileUploadEvent event) {
+        try {
+            // 构建基础文件信息
+            MaterialMetadata.FileBasicInfo basicInfo = MaterialMetadata.FileBasicInfo.builder()
+                    .fileName(event.getOriginalFilename())
+                    .mimeType(event.getMimeType())
+                    .fileExtension(getFileExtension(event.getOriginalFilename()))
+                    .fileSize(event.getFileSize())
+                    .md5Hash(event.getMd5Hash())
+                    .build();
+
+            MaterialMetadata metadata = MaterialMetadata.builder()
+                    .id(UUID.randomUUID().toString())
+                    .fileId(event.getFileId())
+                    .basicInfo(basicInfo)
+                    .createTime(LocalDateTime.now())
+                    .updateTime(LocalDateTime.now())
+                    .build();
+
+            // 保存到MongoDB
+            String metadataId = materialMetadataRepository.save(metadata);
+            log.info("MongoDB元数据文档创建成功 - ID: {}", metadataId);
+            return metadataId;
+            
+        } catch (Exception e) {
+            log.error("创建MongoDB元数据失败: {}", e.getMessage(), e);
+            throw new RuntimeException("创建MongoDB元数据失败", e);
+        }
+    }
+
+    /**
+     * 创建待上传素材的MongoDB元数据文档（基础版本）
+     */
+    private String createPendingMaterialMetadata(FileUploadEvent event) {
+        try {
+            FileUploadEvent.BusinessContext context = event.getBusinessContext();
+            
+            MaterialMetadata metadata = MaterialMetadata.builder()
+                    // === 基础信息 ===
+                    .taskId(event.getTaskId())
+                    .fileId(event.getFileId())
+                    .fileName(event.getOriginalFilename())
+                    // todo: 其他元数据
+                    // === 时间戳 ===
+                    .createTime(LocalDateTime.now())
+                    .updateTime(LocalDateTime.now())
+                    
+                    // 注意：文件技术属性暂时为空，等文件上传完成后再更新
+                    .build();
+
+            String metadataId = materialMetadataRepository.save(metadata);
+            log.info("待上传素材MongoDB元数据文档创建成功 - ID: {}", metadataId);
+            return metadataId;
+            
+        } catch (Exception e) {
+            log.error("创建待上传素材MongoDB元数据失败: {}", e.getMessage(), e);
+            throw new RuntimeException("创建待上传素材MongoDB元数据失败", e);
+        }
+    }
+
+    /**
+     * 构建待上传Material业务实体
+     */
+    private Material buildPendingMaterialFromEvent(FileUploadEvent event, String metadataId) {
+        FileUploadEvent.BusinessContext context = event.getBusinessContext();
+        
+        // 确保必填字段不为空
+        String fileId = event.getFileId();
+        if (fileId == null || fileId.trim().isEmpty()) {
+            throw new IllegalArgumentException("文件ID不能为空");
+        }
+        
+        // 确保uploadedBy字段有默认值（避免数据库约束违反）
+        Long uploadedBy = (context != null && context.getUploaderId() != null) 
+                ? context.getUploaderId() 
+                : 1L; // 系统默认用户ID
+        
+        return Material.builder()
+                // === 核心业务字段 ===
+                .materialName(determineMaterialName(event))
+                .fileId(fileId)
+                .oid(context != null ? context.getOid() : 1L)
+                .ugid(context != null ? context.getUgid() : null)
+                .fid(context != null ? context.getFid() : null)
+                .materialType(determineMaterialType(event.getFileType()))
+                .description(context != null ? context.getDescription() : null)
+                .usageCount(0L)
+                .uploadedBy(uploadedBy) // 确保非空
+                .createTime(LocalDateTime.now())
+                .updateTime(LocalDateTime.now())
+                // === MongoDB元数据关联 ===
+                .metaDataId(metadataId)
+                .build();
+    }
+
+    /**
+     * 构建Material业务实体
+     * 注意：只设置业务相关字段，不设置文件技术属性（这些属于file-service职责）
+     */
+    private Material buildMaterialFromEvent(FileUploadEvent event, String metadataId) {
+        FileUploadEvent.BusinessContext context = event.getBusinessContext();
+        
+        // 确保必填字段不为空
+        String fileId = event.getFileId();
+        if (fileId == null || fileId.trim().isEmpty()) {
+            throw new IllegalArgumentException("文件ID不能为空");
+        }
+        
+        // 确保uploadedBy字段有默认值（避免数据库约束违反）
+        Long uploadedBy = (context != null && context.getUploaderId() != null) 
+                ? context.getUploaderId() 
+                : 1L; // 系统默认用户ID
+        
+        return Material.builder()
+                // === 核心业务字段 ===
+                .materialName(determineMaterialName(event))
+                .fileId(fileId)
+                .oid(context != null ? context.getOid() : 1L)
+                .ugid(context != null ? context.getUgid() : null)
+                .fid(context != null ? context.getFid() : null)
+                .materialType(determineMaterialType(event.getFileType()))
+                .description(context != null ? context.getDescription() : null)
+                .usageCount(0L)
+                .uploadedBy(uploadedBy) // 确保非空
+                .createTime(LocalDateTime.now())
+                .updateTime(LocalDateTime.now())
+                // === MongoDB元数据关联 ===
+                .metaDataId(metadataId)
+                // 注意：不再设置文件技术属性如md5Hash, originalFileSize, mimeType等
+                // 这些属性应该通过fileId关联到file-service获取
+                .build();
+    }
+
+    /**
+     * 确定素材名称
+     */
+    private String determineMaterialName(FileUploadEvent event) {
+        FileUploadEvent.BusinessContext context = event.getBusinessContext();
+        
+        // 优先使用业务上下文中的素材名称
+        if (context != null && context.getMaterialName() != null && !context.getMaterialName().trim().isEmpty()) {
+            return context.getMaterialName();
+        }
+        
+        // 否则使用原始文件名（去除扩展名）
+        String originalFilename = event.getOriginalFilename();
+        int lastDotIndex = originalFilename.lastIndexOf('.');
+        return lastDotIndex > 0 ? originalFilename.substring(0, lastDotIndex) : originalFilename;
+    }
+
+    /**
+     * 确定素材类型
+     */
+    private String determineMaterialType(String fileType) {
+        if (fileType == null) {
+            return "DOCUMENT";
+        }
+        
+        return switch (fileType.toUpperCase()) {
+            case "IMAGE" -> "IMAGE";
+            case "VIDEO" -> "VIDEO";
+            case "AUDIO" -> "AUDIO";
+            default -> "DOCUMENT";
+        };
+    }
+
+    /**
+     * 获取文件扩展名
+     */
+    private String getFileExtension(String filename) {
+        if (filename == null || filename.isEmpty()) {
+            return "";
+        }
+        
+        int lastDotIndex = filename.lastIndexOf('.');
+        return lastDotIndex > 0 ? filename.substring(lastDotIndex + 1) : "";
+    }
+
+    /**
+     * 验证文件上传事件的必填字段
+     */
+    private void validateFileUploadEvent(FileUploadEvent event) {
+        if (event == null) {
+            throw new IllegalArgumentException("文件上传事件不能为空");
+        }
+        
+        if (event.getFileId() == null || event.getFileId().trim().isEmpty()) {
+            throw new IllegalArgumentException("文件ID不能为空");
+        }
+        
+        if (event.getTaskId() == null || event.getTaskId().trim().isEmpty()) {
+            throw new IllegalArgumentException("任务ID不能为空");
+        }
+        
+        if (event.getOriginalFilename() == null || event.getOriginalFilename().trim().isEmpty()) {
+            throw new IllegalArgumentException("原始文件名不能为空");
+        }
+        
+        // 验证业务上下文
+        FileUploadEvent.BusinessContext context = event.getBusinessContext();
+        if (context != null && context.getOid() == null) {
+            throw new IllegalArgumentException("组织ID不能为空");
+        }
     }
 }

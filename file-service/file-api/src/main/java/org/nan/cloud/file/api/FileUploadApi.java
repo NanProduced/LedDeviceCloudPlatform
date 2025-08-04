@@ -20,9 +20,9 @@ import org.springframework.web.multipart.MultipartFile;
  * @author LedDeviceCloudPlatform Team
  * @since 1.0.0
  */
-@Tag(name = "文件上传", description = "文件上传相关接口")
-@RequestMapping("/file/upload")
 public interface FileUploadApi {
+
+    String prefix = "/file/upload";
 
     /**
      * 单文件上传
@@ -31,12 +31,16 @@ public interface FileUploadApi {
      * @param uploadRequest 上传参数
      * @return 上传结果
      */
-    @Operation(summary = "单文件上传", description = "上传单个文件到服务器")
-    @PostMapping("/single")
+    @PostMapping(prefix + "/single")
     FileUploadResponse uploadSingle(
             @Parameter(description = "上传的文件") @RequestParam("file") MultipartFile file,
             @Parameter(description = "上传参数") @ModelAttribute FileUploadRequest uploadRequest);
 
+
+    @PostMapping(prefix + "/async/single")
+    TaskInitResponse uploadSingleAsync(
+            @Parameter(description = "上传的文件") @RequestParam("file") MultipartFile file,
+            @Parameter(description = "上传参数") @ModelAttribute FileUploadRequest uploadRequest);
     /**
      * 批量文件上传
      * 
@@ -44,8 +48,7 @@ public interface FileUploadApi {
      * @param uploadRequest 上传参数
      * @return 批量上传结果
      */
-    @Operation(summary = "批量文件上传", description = "批量上传多个文件")
-    @PostMapping("/batch")
+    @PostMapping(prefix + "/batch")
     BatchFileUploadResponse uploadBatch(
             @Parameter(description = "上传的文件列表") @RequestParam("files") MultipartFile[] files,
             @Parameter(description = "上传参数") @ModelAttribute FileUploadRequest uploadRequest);
@@ -56,8 +59,7 @@ public interface FileUploadApi {
      * @param request 分片上传初始化请求
      * @return 分片上传初始化结果
      */
-    @Operation(summary = "初始化分片上传", description = "为大文件创建分片上传任务")
-    @PostMapping("/chunk/init")
+    @PostMapping(prefix + "/chunk/init")
     ChunkUploadInitResponse initChunkUpload(
             @RequestBody ChunkUploadInitRequest request);
 
@@ -68,8 +70,7 @@ public interface FileUploadApi {
      * @param request 分片上传请求
      * @return 分片上传结果
      */
-    @Operation(summary = "上传文件分片", description = "上传文件的一个分片")
-    @PostMapping("/chunk/upload")
+    @PostMapping(prefix + "/chunk/upload")
     ChunkUploadResponse uploadChunk(
             @Parameter(description = "文件分片") @RequestParam("chunk") MultipartFile chunk,
             @Parameter(description = "分片信息") @ModelAttribute ChunkUploadRequest request);
@@ -80,8 +81,7 @@ public interface FileUploadApi {
      * @param request 分片上传完成请求
      * @return 上传完成结果
      */
-    @Operation(summary = "完成分片上传", description = "合并所有分片完成文件上传")
-    @PostMapping("/chunk/complete")
+    @PostMapping(prefix + "/chunk/complete")
     FileUploadResponse completeChunkUpload(
             @RequestBody ChunkUploadCompleteRequest request);
 
@@ -91,8 +91,7 @@ public interface FileUploadApi {
      * @param uploadId 上传任务ID
      * @return 取消结果
      */
-    @Operation(summary = "取消分片上传", description = "取消正在进行的分片上传任务")
-    @PostMapping("/chunk/cancel/{uploadId}")
+    @PostMapping(prefix + "/chunk/cancel/{uploadId}")
     void cancelChunkUpload(
             @Parameter(description = "上传任务ID") @PathVariable String uploadId);
 
@@ -102,8 +101,7 @@ public interface FileUploadApi {
      * @param taskId 上传任务ID
      * @return 上传进度信息
      */
-    @Operation(summary = "查询上传进度", description = "查询文件上传任务的进度")
-    @GetMapping("/progress/{taskId}")
+    @GetMapping(prefix + "/progress/{taskId}")
     UploadProgressResponse getUploadProgress(
             @Parameter(description = "上传任务ID") @PathVariable String taskId);
 
@@ -112,7 +110,6 @@ public interface FileUploadApi {
      * 
      * @return 支持的文件类型列表
      */
-    @Operation(summary = "获取支持的文件类型", description = "获取系统支持上传的文件类型")
-    @GetMapping("/supported-types")
+    @GetMapping(prefix + "/supported-types")
     SupportedFileTypesResponse getSupportedFileTypes();
 }

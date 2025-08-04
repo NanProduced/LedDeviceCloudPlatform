@@ -3,14 +3,11 @@ package org.nan.cloud.file.application.service.impl;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.nan.cloud.file.api.dto.*;
-import org.nan.cloud.file.application.service.FileUploadService;
+import org.nan.cloud.file.application.service.*;
 import org.nan.cloud.file.application.domain.FileInfo;
+import org.nan.cloud.file.application.domain.TaskContext;
 import org.nan.cloud.file.application.repository.FileInfoRepository;
-import org.nan.cloud.file.application.service.StorageService;
-import org.nan.cloud.file.application.service.FileValidationService;
-import org.nan.cloud.file.application.service.ProgressTrackingService;
-import org.nan.cloud.file.application.service.ThumbnailService;
-import org.nan.cloud.file.application.service.TranscodingService;
+import org.nan.cloud.file.application.service.FileUploadEventService;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
@@ -54,13 +51,18 @@ public class FileUploadServiceImpl implements FileUploadService {
     
     // TODO: 实现 ThumbnailService 接口，缩略图生成
     private final ThumbnailService thumbnailService;
-    private final TranscodingService transcodingService;
+    
+    // 文件上传事件发布器
+    private final FileUploadEventService eventPublisher;
+    
+    // 任务上下文服务
+    private final TaskContextService taskContextService;
 
     @Override
     @Transactional
     public FileUploadResponse uploadSingle(MultipartFile file, FileUploadRequest request) {
         log.info("开始单文件上传 - 文件名: {}, 大小: {}, 组织: {}", 
-                file.getOriginalFilename(), file.getSize(), request.getOrganizationId());
+                file.getOriginalFilename(), file.getSize(), request.getOid());
 
         try {
             // 1. 文件验证
@@ -72,57 +74,133 @@ public class FileUploadServiceImpl implements FileUploadService {
             // 2. 计算文件MD5
             String md5Hash = calculateMD5(file);
             
-            // 3. 检查文件是否已存在（去重）
-            FileUploadResponse existingFile = checkFileExists(md5Hash, request.getOrganizationId());
-            if (existingFile != null) {
-                log.info("文件已存在，返回已有文件信息 - MD5: {}", md5Hash);
-                return existingFile;
+            // 3. 检查文件是否已存在（秒传逻辑）
+            FileInfo existingFileInfo = checkFileExistsByMd5(md5Hash);
+            if (existingFileInfo != null) {
+                log.info("发现重复文件，执行秒传逻辑 - MD5: {}", md5Hash);
+                return handleInstantUpload(existingFileInfo, file, request);
             }
 
             // 4. 生成文件ID和任务ID
             String fileId = generateFileId();
             String taskId = generateTaskId();
 
-            // 5. 创建上传进度记录
-            progressTrackingService.initializeProgress(taskId, file.getSize());
+            // 5. 创建任务上下文，存储用户信息
+            taskContextService.createTaskContext(taskId, fileId, request.getUid(), request.getOid(), 
+                    file.getOriginalFilename(), file.getSize());
+            
+            // 6. 发布上传开始事件
+            eventPublisher.publishUploadStarted(taskId, request, file.getOriginalFilename(), file.getSize(), request.getOid().toString());
 
-            // 6. 存储文件
+            // 7. 创建上传进度记录
+            progressTrackingService.initializeProgress(taskId, file.getSize());
+            
+            // 8. 更新任务状态为上传中
+            taskContextService.updateTaskStatus(taskId, TaskContext.TaskStatus.UPLOADING);
+
+            // 9. 存储文件（使用本地存储策略，包含组织隔离）
             String storagePath = storageService.store(file, request, fileId);
             
-            // 7. 创建文件信息记录
+            // 10. 创建文件信息记录
             FileInfo fileInfo = createFileInfo(file, request, fileId, md5Hash, storagePath);
             fileInfoRepository.save(fileInfo);
+            
+            // 11. 更新任务状态为已上传
+            taskContextService.updateTaskStatus(taskId, TaskContext.TaskStatus.UPLOADED);
 
-            // 8. 构建响应
+            // 12. 构建响应
             FileUploadResponse response = buildUploadResponse(fileInfo, taskId);
 
-            // 9. 异步处理：生成缩略图
-            if (request.getGenerateThumbnail() && isImageFile(file)) {
+            // 13. 发布上传完成事件
+            eventPublisher.publishUploadCompleted(taskId, response, request.getOid().toString());
+
+            // 14. 异步处理：自动生成缩略图（对图片和视频文件）
+            if (isImageFile(file) || isVideoFile(file)) {
                 asyncGenerateThumbnail(fileInfo);
             }
 
-            // 10. 异步处理：自动转码
-            if (request.getAutoTranscode() && isVideoFile(file)) {
-                String transcodingTaskId = asyncStartTranscoding(fileInfo, request);
-                response.setTranscodingTaskId(transcodingTaskId);
-            }
-
-            // 11. 更新进度为完成
+            // 15. 更新进度为完成
             progressTrackingService.completeProgress(taskId);
+            taskContextService.updateTaskProgress(taskId, 100);
 
             log.info("单文件上传完成 - 文件ID: {}, 任务ID: {}", fileId, taskId);
             return response;
 
         } catch (Exception e) {
             log.error("单文件上传失败 - 文件名: {}", file.getOriginalFilename(), e);
+            
+            // 发布上传失败事件（如果taskId已生成，使用已有的；否则生成新的）
+            String errorTaskId = generateTaskId();
+            taskContextService.createTaskContext(errorTaskId, null, request.getUid(), request.getOid(), 
+                    file.getOriginalFilename(), file.getSize());
+            taskContextService.updateTaskStatus(errorTaskId, TaskContext.TaskStatus.FAILED);
+            
+            eventPublisher.publishUploadFailed(errorTaskId, e.getMessage(), request.getOid().toString());
+            
             throw new RuntimeException("文件上传失败: " + e.getMessage(), e);
         }
     }
 
     @Override
     @Transactional
+    public TaskInitResponse uploadSingleAsync(MultipartFile file, FileUploadRequest request) {
+        log.info("开始异步单文件上传 - 文件名: {}, 大小: {}, 组织: {}", 
+                file.getOriginalFilename(), file.getSize(), request.getOid());
+
+        try {
+            // 1. 文件验证
+            FileValidationService.FileValidationResult validationResult = validateFile(file, request);
+            if (!validationResult.isValid()) {
+                throw new IllegalArgumentException("文件验证失败: " + validationResult.getErrorMessage());
+            }
+
+            // 2. 生成任务ID和文件ID
+            String taskId = generateTaskId();
+            String fileId = generateFileId();
+            
+            // 3. 立即创建任务上下文，状态为PENDING
+            taskContextService.createTaskContext(taskId, fileId, request.getUid(), request.getOid(), 
+                    file.getOriginalFilename(), file.getSize());
+            
+            // 4. 创建进度跟踪记录
+            progressTrackingService.initializeProgress(taskId, file.getSize());
+            
+            // 5. 构建响应对象，立即返回给前端
+            TaskInitResponse response = TaskInitResponse.builder()
+                    .taskId(taskId)
+                    .taskType("MATERIAL_UPLOAD")
+                    .status("PENDING")
+                    .filename(file.getOriginalFilename())
+                    .fileSize(file.getSize())
+                    .organizationId(request.getOid().toString())
+                    .userId(request.getUid().toString())
+                    .estimatedDuration("约30秒-2分钟")
+                    .createTime(LocalDateTime.now())
+                    .progressSubscriptionUrl("/stomp/topic/task/" + taskId) // 见StompTopic.java
+                    .message("任务已创建，正在处理中...")
+                    .build();
+            
+            // 6. 发布文件上传任务消息到core-service处理
+            // 阶段1：创建任务和素材实体
+            eventPublisher.publishUploadTaskCreated(taskId, fileId, request, file.getOriginalFilename(), 
+                    file.getSize(), request.getOid().toString());
+            
+            // 7. 启动异步上传处理
+            performAsyncUploadAsync(taskId, fileId, file, request);
+            
+            log.info("异步单文件上传任务已创建 - taskId: {}, fileId: {}", taskId, fileId);
+            return response;
+
+        } catch (Exception e) {
+            log.error("异步单文件上传初始化失败 - 文件名: {}", file.getOriginalFilename(), e);
+            throw new RuntimeException("异步上传初始化失败: " + e.getMessage(), e);
+        }
+    }
+
+    @Override
+    @Transactional
     public BatchFileUploadResponse uploadBatch(MultipartFile[] files, FileUploadRequest request) {
-        log.info("开始批量文件上传 - 文件数量: {}, 组织: {}", files.length, request.getOrganizationId());
+        log.info("开始批量文件上传 - 文件数量: {}, 组织: {}", files.length, request.getOid());
 
         List<FileUploadResponse> successUploads = new ArrayList<>();
         List<BatchFileUploadResponse.FailedUpload> failedUploads = new ArrayList<>();
@@ -346,6 +424,86 @@ public class FileUploadServiceImpl implements FileUploadService {
                 .orElse(null);
     }
 
+    /**
+     * 根据MD5检查文件是否已存在（不限制组织）
+     */
+    private FileInfo checkFileExistsByMd5(String md5Hash) {
+        return fileInfoRepository.findByMd5Hash(md5Hash).orElse(null);
+    }
+
+    /**
+     * 处理秒传逻辑
+     * 当发现相同MD5的文件时，不重复存储物理文件，但新建一个文件关联记录
+     */
+    private FileUploadResponse handleInstantUpload(FileInfo existingFileInfo, MultipartFile file, FileUploadRequest request) {
+        // 1. 生成新的文件ID和任务ID
+        String newFileId = generateFileId();
+        String taskId = generateTaskId();
+        
+        log.info("执行秒传 - 原文件ID: {}, 新文件ID: {}, 任务ID: {}", 
+                existingFileInfo.getFileId(), newFileId, taskId);
+        
+        try {
+            // 2. 创建任务上下文
+            taskContextService.createTaskContext(taskId, newFileId, request.getUid(), request.getOid(), 
+                    file.getOriginalFilename(), file.getSize());
+            
+            // 3. 发布上传开始事件
+            eventPublisher.publishUploadStarted(taskId, request, file.getOriginalFilename(), file.getSize(), request.getOid().toString());
+            
+            // 4. 创建新的文件信息记录（引用已存在的物理文件）
+            FileInfo newFileInfo = createFileInfoFromExisting(existingFileInfo, newFileId, file, request);
+            fileInfoRepository.save(newFileInfo);
+            
+            // 5. 更新原文件的引用计数
+            existingFileInfo.setRefCount(existingFileInfo.getRefCount() + 1);
+            fileInfoRepository.save(existingFileInfo);
+            
+            // 6. 更新任务状态为已完成（秒传）
+            taskContextService.updateTaskStatus(taskId, TaskContext.TaskStatus.COMPLETED);
+            taskContextService.updateTaskProgress(taskId, 100);
+            
+            // 7. 构建响应
+            FileUploadResponse response = buildUploadResponse(newFileInfo, taskId);
+            response.setInstantUpload(true); // 标记为秒传
+            
+            // 8. 发布上传完成事件
+            eventPublisher.publishUploadCompleted(taskId, response, request.getOid().toString());
+            
+            log.info("秒传完成 - 新文件ID: {}, 任务ID: {}, 引用计数: {}", 
+                    newFileId, taskId, existingFileInfo.getRefCount());
+            
+            return response;
+            
+        } catch (Exception e) {
+            log.error("秒传失败 - 新文件ID: {}, 错误: {}", newFileId, e.getMessage(), e);
+            taskContextService.updateTaskStatus(taskId, TaskContext.TaskStatus.FAILED);
+            eventPublisher.publishUploadFailed(taskId, e.getMessage(), request.getOid().toString());
+            throw new RuntimeException("秒传失败: " + e.getMessage(), e);
+        }
+    }
+    
+    /**
+     * 基于已存在文件创建新的文件信息记录
+     */
+    private FileInfo createFileInfoFromExisting(FileInfo existingFileInfo, String newFileId, 
+                                               MultipartFile file, FileUploadRequest request) {
+        return FileInfo.builder()
+                .fileId(newFileId)
+                .originalFilename(file.getOriginalFilename())
+                .fileSize(existingFileInfo.getFileSize())
+                .mimeType(existingFileInfo.getMimeType())
+                .md5Hash(existingFileInfo.getMd5Hash())
+                .fileExtension(existingFileInfo.getFileExtension())
+                .storagePath(existingFileInfo.getStoragePath()) // 引用相同存储路径
+                .storageType(existingFileInfo.getStorageType())
+                .uploadTime(LocalDateTime.now()) // 新的上传时间
+                .updateTime(LocalDateTime.now())
+                .refCount(1L) // 新关联的引用计数为1
+                .fileStatus(1) // 已完成状态
+                .build();
+    }
+
     // 私有辅助方法
 
     private String generateFileId() {
@@ -368,16 +526,13 @@ public class FileUploadServiceImpl implements FileUploadService {
                 .fileSize(file.getSize())
                 .mimeType(file.getContentType())
                 .md5Hash(md5Hash)
+                .fileExtension(getFileExtension(file.getOriginalFilename()))
                 .storagePath(storagePath)
-                .organizationId(request.getOrganizationId())
-                .folderId(request.getFolderId())
-                .fileType(request.getFileType().toString())
-                .description(request.getDescription())
-                .tags(request.getTags() != null ? 
-                      java.util.Arrays.asList(request.getTags().split(",")) : null)
-                .isPublic(request.getIsPublic())
-                .storageStrategy(request.getStorageStrategy().toString())
+                .storageType("LOCAL") // 开发环境使用本地存储
                 .uploadTime(LocalDateTime.now())
+                .updateTime(LocalDateTime.now())
+                .refCount(1L)
+                .fileStatus(1) // 默认已完成状态
                 .build();
     }
 
@@ -389,11 +544,13 @@ public class FileUploadServiceImpl implements FileUploadService {
                 .fileSize(initRequest.getFileSize())
                 .mimeType(initRequest.getMimeType())
                 .md5Hash(md5Hash)
+                .fileExtension(getFileExtension(initRequest.getFilename()))
                 .storagePath(storagePath)
-                .organizationId(initRequest.getOrganizationId())
-                .folderId(initRequest.getFolderId())
-                .fileType(initRequest.getFileType().toString())
+                .storageType("LOCAL") // 默认本地存储
                 .uploadTime(LocalDateTime.now())
+                .updateTime(LocalDateTime.now())
+                .refCount(1L)
+                .fileStatus(1) // 默认已完成状态
                 .build();
     }
 
@@ -402,7 +559,7 @@ public class FileUploadServiceImpl implements FileUploadService {
                 .fileId(fileInfo.getFileId())
                 .originalFilename(fileInfo.getOriginalFilename())
                 .fileSize(fileInfo.getFileSize())
-                .fileType(fileInfo.getFileType())
+                .fileType(determineFileTypeFromMime(fileInfo.getMimeType()))
                 .mimeType(fileInfo.getMimeType())
                 .md5Hash(fileInfo.getMd5Hash())
                 .storagePath(fileInfo.getStoragePath())
@@ -418,7 +575,7 @@ public class FileUploadServiceImpl implements FileUploadService {
                 .fileId(fileInfo.getFileId())
                 .originalFilename(fileInfo.getOriginalFilename())
                 .fileSize(fileInfo.getFileSize())
-                .fileType(fileInfo.getFileType())
+                .fileType(determineFileTypeFromMime(fileInfo.getMimeType()))
                 .mimeType(fileInfo.getMimeType())
                 .md5Hash(fileInfo.getMd5Hash())
                 .storagePath(fileInfo.getStoragePath())
@@ -436,7 +593,7 @@ public class FileUploadServiceImpl implements FileUploadService {
 
     private String asyncStartTranscoding(FileInfo fileInfo, FileUploadRequest request) {
         // 异步启动转码任务
-        return transcodingService.submitTranscodingTaskAsync(fileInfo, request.getTranscodingPresetId());
+        return null;
     }
 
     private boolean isImageFile(MultipartFile file) {
@@ -473,6 +630,227 @@ public class FileUploadServiceImpl implements FileUploadService {
         // 验证所有分片是否都已上传
         if (!storageService.isAllChunksUploaded(uploadId)) {
             throw new IllegalStateException("还有分片未上传完成");
+        }
+    }
+
+    /**
+     * 获取文件扩展名
+     */
+    private String getFileExtension(String filename) {
+        if (filename == null || filename.isEmpty()) {
+            return "";
+        }
+        
+        int lastDotIndex = filename.lastIndexOf('.');
+        return lastDotIndex > 0 ? filename.substring(lastDotIndex + 1) : "";
+    }
+
+    /**
+     * 根据MIME类型确定文件类型
+     */
+    private String determineFileTypeFromMime(String mimeType) {
+        if (mimeType == null) {
+            return "DOCUMENT";
+        }
+        
+        if (mimeType.startsWith("image/")) {
+            return "IMAGE";
+        } else if (mimeType.startsWith("video/")) {
+            return "VIDEO";
+        } else if (mimeType.startsWith("audio/")) {
+            return "AUDIO";
+        } else {
+            return "DOCUMENT";
+        }
+    }
+
+    // ==================== 异步处理方法 ====================
+
+    /**
+     * 异步执行文件上传处理
+     * 
+     * 使用Spring的@Async注解实现异步处理，在后台线程中执行实际的文件上传操作。
+     * 包含完整的进度跟踪和事件发布流程。
+     * 
+     * @param taskId 任务ID
+     * @param fileId 文件ID 
+     * @param file 上传的文件
+     * @param request 上传请求参数
+     */
+    @org.springframework.scheduling.annotation.Async("fileUploadTaskExecutor")
+    public void performAsyncUploadAsync(String taskId, String fileId, MultipartFile file, FileUploadRequest request) {
+        log.info("开始异步上传处理 - 任务ID: {}, 文件ID: {}, 文件名: {}", 
+                taskId, fileId, file.getOriginalFilename());
+        
+        try {
+            // 1. 更新任务状态为上传中
+            taskContextService.updateTaskStatus(taskId, TaskContext.TaskStatus.UPLOADING);
+            
+            // 2. 发布上传开始事件
+            eventPublisher.publishUploadStarted(taskId, request, file.getOriginalFilename(), 
+                    file.getSize(), request.getOid().toString());
+            
+            // 3. 计算文件MD5
+            String md5Hash = calculateMD5(file);
+            updateProgressByPercent(taskId, 10, "计算文件哈希完成...");
+            
+            // 4. 检查文件是否已存在（异步场景下的秒传处理）
+            FileInfo existingFileInfo = checkFileExistsByMd5(md5Hash);
+            if (existingFileInfo != null) {
+                log.info("异步上传发现重复文件，执行秒传逻辑 - MD5: {}", md5Hash);
+                handleAsyncInstantUpload(taskId, fileId, existingFileInfo, file, request);
+                return;
+            }
+            
+            // 5. 存储文件到物理存储（使用正确的方法签名）
+            updateProgressByPercent(taskId, 20, "开始文件存储...");
+            String storagePath = storageService.store(file, request, fileId);
+            updateProgressByPercent(taskId, 60, "文件存储完成...");
+            
+            // 6. 创建FileInfo对象（使用正确的方法签名）
+            updateProgressByPercent(taskId, 90, "创建文件信息...");
+            FileInfo fileInfo = createFileInfo(file, request, fileId, md5Hash, storagePath);
+            fileInfoRepository.save(fileInfo);
+            
+            // 7. 更新任务状态为已上传
+            taskContextService.updateTaskStatus(taskId, TaskContext.TaskStatus.UPLOADED);
+            
+            // 8. 构建上传响应对象（使用正确的方法签名）
+            FileUploadResponse uploadResponse = buildUploadResponse(fileInfo, taskId);
+            
+            // 9. 发布上传完成事件（包含完整文件信息）
+            eventPublisher.publishUploadCompleted(taskId, uploadResponse, request.getOid().toString());
+            
+            // 10. 异步处理：自动生成缩略图（对图片和视频文件）
+            if (isImageFile(file) || isVideoFile(file)) {
+                asyncGenerateThumbnail(fileInfo);
+            }
+            
+            // 11. 更新进度为完成
+            progressTrackingService.completeProgress(taskId);
+            taskContextService.updateTaskProgress(taskId, 100);
+            updateProgress(taskId, file.getSize(), "文件上传完成");
+            
+            log.info("异步文件上传完成 - 任务ID: {}, 文件ID: {}, 存储路径: {}", 
+                    taskId, fileId, storagePath);
+                    
+        } catch (Exception e) {
+            log.error("异步文件上传失败 - 任务ID: {}, 文件名: {}, 错误: {}", 
+                    taskId, file.getOriginalFilename(), e.getMessage(), e);
+            
+            // 处理上传失败
+            handleAsyncUploadFailure(taskId, e.getMessage(), request.getOid().toString());
+        }
+    }
+    
+    /**
+     * 异步场景下的秒传处理
+     */
+    private void handleAsyncInstantUpload(String taskId, String newFileId, FileInfo existingFileInfo, 
+                                        MultipartFile file, FileUploadRequest request) {
+        try {
+            // 1. 快速更新进度到80%
+            updateProgressByPercent(taskId, 80, "检测到重复文件，执行秒传...");
+            
+            // 2. 创建新的文件信息记录（引用已存在的物理文件）
+            FileInfo newFileInfo = createFileInfoFromExisting(existingFileInfo, newFileId, file, request);
+            fileInfoRepository.save(newFileInfo);
+            
+            // 3. 更新原文件的引用计数
+            existingFileInfo.setRefCount(existingFileInfo.getRefCount() + 1);
+            fileInfoRepository.save(existingFileInfo);
+            
+            // 4. 更新任务状态为已完成（秒传）
+            taskContextService.updateTaskStatus(taskId, TaskContext.TaskStatus.COMPLETED);
+            taskContextService.updateTaskProgress(taskId, 100);
+            
+            // 5. 构建响应对象
+            FileUploadResponse uploadResponse = buildUploadResponse(newFileInfo, taskId);
+            
+            // 6. 发布上传完成事件
+            eventPublisher.publishUploadCompleted(taskId, uploadResponse, request.getOid().toString());
+            
+            // 7. 更新进度为完成
+            progressTrackingService.completeProgress(taskId);
+            updateProgress(taskId, file.getSize(), "秒传完成");
+            
+            log.info("异步秒传完成 - 任务ID: {}, 新文件ID: {}, 原文件ID: {}", 
+                    taskId, newFileId, existingFileInfo.getFileId());
+                    
+        } catch (Exception e) {
+            log.error("异步秒传失败 - 任务ID: {}, 错误: {}", taskId, e.getMessage(), e);
+            handleAsyncUploadFailure(taskId, "秒传失败: " + e.getMessage(), request.getOid().toString());
+        }
+    }
+    
+    /**
+     * 处理异步上传失败
+     */
+    private void handleAsyncUploadFailure(String taskId, String errorMessage, String organizationId) {
+        try {
+            // 1. 更新任务状态为失败
+            TaskContext context = taskContextService.getTaskContext(taskId);
+            if (context != null) {
+                context.markFailed(errorMessage);
+                taskContextService.updateTaskStatus(taskId, TaskContext.TaskStatus.FAILED);
+            }
+            
+            // 2. 发布上传失败事件
+            eventPublisher.publishUploadFailed(taskId, errorMessage, organizationId);
+            
+        } catch (Exception e) {
+            log.error("处理异步上传失败时出错 - 任务ID: {}, 错误: {}", taskId, e.getMessage(), e);
+        }
+    }
+    
+    /**
+     * 更新上传进度 - 统一通过ProgressTrackingService管理
+     * 
+     * @param taskId 任务ID
+     * @param uploadedBytes 已上传字节数（用于计算真实进度和传输速度）
+     * @param status 状态描述
+     */
+    private void updateProgress(String taskId, long uploadedBytes, String status) {
+        try {
+            // 1. 通过ProgressTrackingService更新进度（包含速度计算等）
+            progressTrackingService.updateProgress(taskId, uploadedBytes);
+            
+            // 2. 获取计算后的进度信息
+            UploadProgressResponse progressResponse = progressTrackingService.getProgress(taskId);
+            if (progressResponse != null) {
+                // 3. 更新任务上下文中的进度
+                taskContextService.updateTaskProgress(taskId, progressResponse.getProgress().intValue());
+                
+                // 4. 发布进度事件到前端（包含丰富的进度信息）
+                eventPublisher.publishUploadProgress(taskId, progressResponse.getProgress().intValue(), status,
+                        progressResponse.getUploadSpeed(), progressResponse.getUploadedSize(), progressResponse.getTotalSize());
+            }
+            
+            log.debug("更新上传进度 - 任务ID: {}, 已上传: {}字节, 状态: {}", taskId, uploadedBytes, status);
+            
+        } catch (Exception e) {
+            log.warn("更新上传进度失败 - 任务ID: {}, 错误: {}", taskId, e.getMessage());
+        }
+    }
+    
+    /**
+     * 便捷方法：基于百分比更新进度（兼容现有代码）
+     */
+    private void updateProgressByPercent(String taskId, int progressPercent, String status) {
+        try {
+            // 获取任务上下文中的总文件大小
+            TaskContext context = taskContextService.getTaskContext(taskId);
+            if (context != null && context.getFileSize() != null) {
+                long totalSize = context.getFileSize();
+                long uploadedBytes = (long) (totalSize * progressPercent / 100.0);
+                updateProgress(taskId, uploadedBytes, status);
+            } else {
+                // 如果无法获取文件大小，直接更新任务上下文
+                taskContextService.updateTaskProgress(taskId, progressPercent);
+                eventPublisher.publishUploadProgress(taskId, progressPercent, status);
+            }
+        } catch (Exception e) {
+            log.warn("按百分比更新进度失败 - 任务ID: {}, 错误: {}", taskId, e.getMessage());
         }
     }
 }

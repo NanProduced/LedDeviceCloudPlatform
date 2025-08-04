@@ -29,6 +29,14 @@ public class MaterialMetadata {
      */
     private String fileId;
 
+    private String fileName;
+
+    /**
+     * 上传该文件的任务Id
+     * 或是转码任务的任务Id
+     */
+    private String taskId;
+
     /**
      * 基础文件信息
      */

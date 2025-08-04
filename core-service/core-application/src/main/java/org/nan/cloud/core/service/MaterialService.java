@@ -4,6 +4,7 @@ import org.nan.cloud.core.api.DTO.res.ListMaterialResponse;
 import org.nan.cloud.core.api.DTO.res.ListSharedMaterialResponse;
 import org.nan.cloud.core.api.DTO.res.MaterialNodeTreeResponse;
 import org.nan.cloud.core.domain.Material;
+import org.nan.cloud.core.event.mq.FileUploadEvent;
 
 import java.util.List;
 
@@ -84,4 +85,39 @@ public interface MaterialService {
      * @param mids 素材ID列表
      */
     void deleteMaterials(List<Long> mids);
+
+    /**
+     * 基于文件上传事件创建素材
+     * @param event 文件上传事件
+     * @return 创建的素材ID
+     */
+    Long createMaterialFromFileUpload(FileUploadEvent event);
+
+    /**
+     * 基于异步上传事件创建待上传素材（占位）
+     * @param event 文件上传事件
+     * @return 创建的素材ID
+     */
+    Long createPendingMaterialFromEvent(FileUploadEvent event);
+
+    /**
+     * 根据文件ID查询素材
+     * @param fileId 文件ID
+     * @return 素材信息
+     */
+    Material getMaterialByFileId(String fileId);
+
+    /**
+     * 基于文件上传事件更新素材信息
+     * @param materialId 素材ID
+     * @param event 文件上传事件
+     */
+    void updateMaterialFromFileUpload(Long materialId, FileUploadEvent event);
+
+    /**
+     * 更新素材的元数据ID
+     * @param fileId 文件ID
+     * @param metadataId 元数据ID
+     */
+    void updateMaterialMetadata(String fileId, String metadataId);
 }

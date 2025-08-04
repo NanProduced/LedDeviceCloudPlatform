@@ -105,7 +105,11 @@ public class RedisConfig {
         public static final String TERMINAL_ONLINE_KEY_PATTERN = "terminal:online:org:%d";
         // 组织在线终端数量
         public static final String TERMINAL_ONLINE_COUNT_PATTERN = "terminal:online:count:org:%d";
-        
+
+        /* 任务缓存 */
+        // 任务进度缓存 {oid}.{taskId}
+        public static final String TASK_PROGRESS_PATTERN = "terminal:task:progress:%d:%d";
+
         private RedisKeys() {
             // 工具类，禁止实例化
         }

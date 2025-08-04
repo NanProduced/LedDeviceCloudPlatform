@@ -26,7 +26,10 @@ public enum CacheType {
     TERMINAL_GROUP_PERMISSIONS("terminal:group:permissions", Duration.ofMinutes(30), true, true),
     
     // 系统配置缓存
-    SYSTEM_CONFIG("system:config", Duration.ofHours(12), true, false);
+    SYSTEM_CONFIG("system:config", Duration.ofHours(12), true, false),
+
+    // 任务进度缓存
+    TASK_PROGRESS("terminal:task:progress", Duration.ofMinutes(30), false, true);
 
     private final String keyPrefix;
     private final Duration defaultTtl;
@@ -55,6 +58,10 @@ public enum CacheType {
             return baseKey;
         }
         return baseKey + ":" + String.join(":", keyParts);
+    }
+
+    public String buildTaskKey(Long oid, String taskId) {
+        return keyPrefix + ":" + oid.toString() + ":" + taskId;
     }
     
     /**

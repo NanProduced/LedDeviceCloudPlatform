@@ -52,8 +52,14 @@ public class MaterialFileDO {
     private Integer fileStatus;
 
     /**
+     * 缩略图路径
+     */
+    @TableField("thumbnail_path")
+    private String thumbnailPath;
+
+    /**
      * 文件元数据（分辨率、时长等）
-     * MongoDB报存元数据，这里是MongoDB的objectId
+     * MongoDB存储元数据，这里是MongoDB的objectId
      */
     @TableField("meta_data_id")
     private String metaDataId;

@@ -97,7 +97,32 @@ public class MqStompBridgeListener {
             
         } catch (Exception e) {
             log.error("指令结果消息桥接异常 - 路由键: {}, 错误: {}", routingKey, e.getMessage(), e);
-
+        }
+    }
+    
+    /**
+     * 监听文件上传消息
+     * 队列：stomp.file.upload.queue
+     * 路由键：stomp.file.upload.{orgId}.{userId}
+     */
+    @RabbitListener(queues = MessageServiceRabbitConfig.FILE_UPLOAD_QUEUE)
+    public void handleFileUploadMessage(@Payload Message message,
+                                      @Header(name = "amqp_receivedRoutingKey", required = false) String routingKey) {
+        try {
+            log.debug("收到文件上传消息 - 路由键: {}", routingKey);
+            
+            String messagePayload = JsonUtils.toJson(message.getPayload());
+            BusinessMessageProcessor.BusinessMessageProcessResult processResult = 
+                    processorManager.processMessage(message.getMessageType(), messagePayload, routingKey);
+            
+            if (processResult.isSuccess()) {
+                log.info("✅ 文件上传消息处理完成 - 路由键: {}, 消息ID: {}, 分发结果: {}", 
+                        routingKey, processResult.getMessageId(), 
+                        processResult.getDispatchResult() != null ? processResult.getDispatchResult().isSuccess() : "N/A");
+            }
+            
+        } catch (Exception e) {
+            log.error("文件上传消息桥接异常 - 路由键: {}, 错误: {}", routingKey, e.getMessage(), e);
         }
     }
 

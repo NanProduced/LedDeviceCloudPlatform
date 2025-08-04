@@ -5,6 +5,7 @@ import com.github.benmanes.caffeine.cache.AsyncCache;
 import com.github.benmanes.caffeine.cache.Cache;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.nan.cloud.core.enums.CacheType;
 import org.nan.cloud.core.service.CacheService;
 import org.nan.cloud.core.service.CacheStatistics;
 import org.springframework.data.redis.core.RedisCallback;
@@ -169,8 +170,75 @@ public class CacheServiceImpl implements CacheService {
     }
 
     @Override
+    public <T> T getWithCacheTypeConfig(String key, CacheType cacheType, Class<T> clazz) {
+        try {
+            // 1. 尝试从本地缓存获取
+            if (cacheProperties.getLocal().isEnabled() && cacheType.isUseLocalCache()) {
+                CompletableFuture<Object> localValue = localCache.getIfPresent(key);
+                if (localValue != null) {
+                    try {
+                        Object value = localValue.get();
+                        if (value != null) {
+                            log.debug("Cache with cacheType config hit in local cache for key: {}", key);
+                            return convertValue(value, clazz);
+                        }
+                    } catch (ExecutionException | InterruptedException e) {
+                        log.warn("Error getting from local cache for key: {}", key, e);
+                        return null;
+                    }
+                }
+            }
+
+            // 2. 尝试从Redis获取
+            if (cacheProperties.getRedis().isEnabled() && cacheType.isUseDistributedCache()) {
+                Object redisValue = redisTemplate.opsForValue().get(key);
+                if (redisValue != null) {
+                    log.debug("Cache with cacheType config hit in Redis for key: {}", key);
+                    T value = convertValue(redisValue, clazz);
+
+                    // 回写到本地缓存
+                    if (cacheProperties.getLocal().isEnabled()) {
+                        localCache.put(key, CompletableFuture.completedFuture(value));
+                    }
+                    return value;
+                }
+            }
+        } catch (Exception e) {
+            log.error("Error getting cache for key: {}", key, e);
+            return null;
+        }
+        return null;
+    }
+
+    @Override
     public void put(String key, Object value) {
         put(key, value, cacheProperties.getRedis().getDefaultTtl());
+    }
+
+    @Override
+    public void putWithCacheTypeConfig(String key, Object value, CacheType cacheType, Duration customTtl) {
+        try {
+            Duration ttl = cacheType.getDefaultTtl();
+            if (Objects.nonNull(customTtl)) ttl = customTtl;
+            // 1. 存储到本地缓存
+            if (cacheProperties.getLocal().isEnabled() && cacheType.isUseLocalCache()) {
+                localCache.put(key, CompletableFuture.completedFuture(value));
+            }
+
+            // 2. 存储到Redis
+            if (cacheProperties.getRedis().isEnabled() && cacheType.isUseDistributedCache()) {
+                if (ttl != null && !ttl.isZero() && !ttl.isNegative()) {
+                    redisTemplate.opsForValue().set(key, value, ttl.toMillis(), TimeUnit.MILLISECONDS);
+                } else {
+                    redisTemplate.opsForValue().set(key, value);
+                }
+            }
+
+            log.debug("Cache with CacheType config put for key: {} with TTL: {}", key, ttl);
+
+        } catch (Exception e) {
+            log.error("Error putting cache with CacheType config for key: {}", key, e);
+        }
     }
 
     @Override

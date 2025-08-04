@@ -1,0 +1,24 @@
+package org.nan.cloud.core.repository;
+
+import org.nan.cloud.core.domain.Task;
+import org.nan.cloud.core.enums.TaskStatusEnum;
+
+import java.util.List;
+
+public interface TaskRepository {
+
+    Task getTaskById(String taskId);
+
+    int insertTask(Task task);
+
+    int updateTask(Task task);
+
+    int updateTaskStatus(String taskId, TaskStatusEnum taskStatus);
+
+    int updateTaskError(String taskId, String errorMsg);
+
+    void deleteTask(String taskId);
+
+    void deleteTasks(List<String> taskIds);
+
+}

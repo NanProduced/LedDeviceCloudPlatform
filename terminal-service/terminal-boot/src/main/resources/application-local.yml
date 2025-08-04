@@ -104,3 +104,20 @@ springdoc:
   swagger-ui:
     enabled: true
 
+# 消息队列配置
+nan:
+  mq:
+    enabled: true
+    application-name: ${spring.application.name}
+    default-exchange:
+      name: stomp.push.topic
+      type: topic
+      durable: true
+    producer:
+      confirm-enabled: true
+      returns-enabled: true
+      retry-enabled: true
+      max-retry-attempts: 3
+      retry-interval: 1000ms
+      send-timeout: 5000ms
+

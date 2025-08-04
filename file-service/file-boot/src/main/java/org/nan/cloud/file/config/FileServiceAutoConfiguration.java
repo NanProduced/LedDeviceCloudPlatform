@@ -1,5 +1,6 @@
 package org.nan.cloud.file.config;
 
+import org.nan.cloud.file.application.config.FileStorageProperties;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
 import org.springframework.context.annotation.Configuration;
 
@@ -13,7 +14,7 @@ import org.springframework.context.annotation.Configuration;
  */
 @Configuration
 @EnableConfigurationProperties({
-    FileServiceProperties.class
+    FileStorageProperties.class
 })
 public class FileServiceAutoConfiguration {
     

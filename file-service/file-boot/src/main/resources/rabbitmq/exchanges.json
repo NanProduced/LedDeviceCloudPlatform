@@ -1,0 +1,16 @@
+[
+  {
+    "name": "business.topic",
+    "type": "topic",
+    "durable": true,
+    "autoDelete": false,
+    "description": "业务事件交换器 - 发布文件上传业务事件到core-service"
+  },
+  {
+    "name": "stomp.push.topic",
+    "type": "topic",
+    "durable": true,
+    "autoDelete": false,
+    "description": "STOMP推送交换器 - 发布实时消息到message-service"
+  }
+]

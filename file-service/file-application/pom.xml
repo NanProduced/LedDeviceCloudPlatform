@@ -26,7 +26,6 @@
             <artifactId>file-api</artifactId>
             <version>${project.version}</version>
         </dependency>
-        
         <!-- Spring事务支持 -->
         <dependency>
             <groupId>org.springframework</groupId>

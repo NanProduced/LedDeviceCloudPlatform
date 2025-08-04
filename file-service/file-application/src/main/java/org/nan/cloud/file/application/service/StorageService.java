@@ -1,5 +1,7 @@
 package org.nan.cloud.file.application.service;
 
+import lombok.Getter;
+import lombok.Setter;
 import org.nan.cloud.file.api.dto.ChunkUploadInitRequest;
 import org.nan.cloud.file.api.dto.ChunkUploadRequest;
 import org.nan.cloud.file.api.dto.FileUploadRequest;
@@ -27,6 +29,15 @@ public interface StorageService {
      * @return 存储路径
      */
     String store(MultipartFile file, FileUploadRequest request, String fileId);
+
+    /**
+     * 存储单个文件（简化版本）
+     * 
+     * @param file 上传的文件
+     * @param fileId 文件ID
+     * @return 存储路径
+     */
+    String store(MultipartFile file, String fileId);
 
     /**
      * 初始化分片上传
@@ -203,7 +214,10 @@ public interface StorageService {
     /**
      * 存储统计信息
      */
+    @Setter
+    @Getter
     class StorageStatistics {
+        // Getters and Setters
         private long totalFiles;
         private long totalSize;
         private long usedSpace;
@@ -220,20 +234,5 @@ public interface StorageService {
             this.usageRate = availableSpace > 0 ? (double) usedSpace / (usedSpace + availableSpace) : 0.0;
         }
 
-        // Getters and Setters
-        public long getTotalFiles() { return totalFiles; }
-        public void setTotalFiles(long totalFiles) { this.totalFiles = totalFiles; }
-
-        public long getTotalSize() { return totalSize; }
-        public void setTotalSize(long totalSize) { this.totalSize = totalSize; }
-
-        public long getUsedSpace() { return usedSpace; }
-        public void setUsedSpace(long usedSpace) { this.usedSpace = usedSpace; }
-
-        public long getAvailableSpace() { return availableSpace; }
-        public void setAvailableSpace(long availableSpace) { this.availableSpace = availableSpace; }
-
-        public double getUsageRate() { return usageRate; }
-        public void setUsageRate(double usageRate) { this.usageRate = usageRate; }
     }
 }

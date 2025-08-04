@@ -41,13 +41,22 @@ public class MessageServiceRabbitConfig {
     public static final String STOMP_BRIDGE_EXCHANGE = "stomp.bridge.topic";
     public static final String STOMP_DLX_EXCHANGE = "stomp.dlx.topic";
     
+    // 服务间业务通信交换器
+    public static final String BUSINESS_EXCHANGE = "business.topic";
+    
     // ==================== 队列名称常量 ====================
     
     public static final String DEVICE_STATUS_QUEUE = "stomp.device.status.queue";
     public static final String COMMAND_RESULT_QUEUE = "stomp.command.result.queue";
     public static final String SYSTEM_NOTIFICATION_QUEUE = "stomp.system.notification.queue";
     public static final String BATCH_PROGRESS_QUEUE = "stomp.batch.progress.queue";
+    public static final String FILE_UPLOAD_QUEUE = "stomp.file.upload.queue";
     public static final String BRIDGE_DLQ = "stomp.bridge.dlq";
+    
+    // 服务间业务通信队列
+    public static final String BUSINESS_CORE_QUEUE = "business.core.queue";
+    public static final String BUSINESS_MESSAGE_QUEUE = "business.message.queue";
+    public static final String TASK_PROGRESS_QUEUE = "business.task.progress.queue";
     
     // ==================== 路由键常量 ====================
     
@@ -55,6 +64,12 @@ public class MessageServiceRabbitConfig {
     public static final String COMMAND_RESULT_ROUTING_KEY = "stomp.command.result.*.*";
     public static final String SYSTEM_NOTIFICATION_ROUTING_KEY = "stomp.system.notification.*.*";
     public static final String BATCH_PROGRESS_ROUTING_KEY = "stomp.batch.progress.*.*";
+    public static final String FILE_UPLOAD_ROUTING_KEY = "stomp.file.upload.*.*";
+    
+    // 服务间业务通信路由键
+    public static final String BUSINESS_CORE_ROUTING_KEY = "file.upload.*.*.*";
+    public static final String BUSINESS_MESSAGE_ROUTING_KEY = "task.progress.*.*.*";
+    public static final String TASK_PROGRESS_ROUTING_KEY = "task.progress.*.*";
 
     
     /**
@@ -167,6 +182,17 @@ public class MessageServiceRabbitConfig {
                 .build();
     }
     
+    /**
+     * 业务通信交换器 - 服务间业务消息通信
+     */
+    @Bean
+    public TopicExchange businessExchange() {
+        return ExchangeBuilder
+                .topicExchange(BUSINESS_EXCHANGE)
+                .durable(true)
+                .build();
+    }
+    
     // ==================== 队列配置 ====================
     
     /**
@@ -222,6 +248,19 @@ public class MessageServiceRabbitConfig {
     }
     
     /**
+     * 文件上传队列 - 文件上传进度和结果推送
+     */
+    @Bean
+    public Queue fileUploadQueue() {
+        return QueueBuilder
+                .durable(FILE_UPLOAD_QUEUE)
+                .withArgument("x-dead-letter-exchange", STOMP_DLX_EXCHANGE)
+                .withArgument("x-dead-letter-routing-key", "file.upload.dlq")
+                .withArgument("x-message-ttl", 300000) // 5分钟TTL - 文件处理可能需要较长时间
+                .build();
+    }
+    
+    /**
      * 统一死信队列 - 简化的死信处理
      */
     @Bean
@@ -229,6 +268,45 @@ public class MessageServiceRabbitConfig {
         return QueueBuilder
                 .durable(BRIDGE_DLQ)
                 .withArgument("x-message-ttl", 86400000) // 24小时TTL
+                .build();
+    }
+    
+    /**
+     * 核心服务业务队列 - core-service专用
+     */
+    @Bean
+    public Queue businessCoreQueue() {
+        return QueueBuilder
+                .durable(BUSINESS_CORE_QUEUE)
+                .withArgument("x-dead-letter-exchange", STOMP_DLX_EXCHANGE)
+                .withArgument("x-dead-letter-routing-key", "business.core.dlq")
+                .withArgument("x-message-ttl", 600000) // 10分钟TTL - 业务处理可能需要较长时间
+                .build();
+    }
+    
+    /**
+     * 消息服务业务队列 - message-service专用(任务进度推送)
+     */
+    @Bean
+    public Queue businessMessageQueue() {
+        return QueueBuilder
+                .durable(BUSINESS_MESSAGE_QUEUE)
+                .withArgument("x-dead-letter-exchange", STOMP_DLX_EXCHANGE)
+                .withArgument("x-dead-letter-routing-key", "business.message.dlq")
+                .withArgument("x-message-ttl", 120000) // 2分钟TTL - 进度消息时效性高
+                .build();
+    }
+    
+    /**
+     * 任务进度队列 - 统一任务进度管理
+     */
+    @Bean
+    public Queue taskProgressQueue() {
+        return QueueBuilder
+                .durable(TASK_PROGRESS_QUEUE)
+                .withArgument("x-dead-letter-exchange", STOMP_DLX_EXCHANGE)
+                .withArgument("x-dead-letter-routing-key", "task.progress.dlq")
+                .withArgument("x-message-ttl", 180000) // 3分钟TTL - 进度消息时效性要求高
                 .build();
     }
     
@@ -283,6 +361,18 @@ public class MessageServiceRabbitConfig {
     }
     
     /**
+     * 文件上传队列绑定
+     * 路由键：stomp.file.upload.{orgId}.{userId}
+     */
+    @Bean
+    public Binding fileUploadBinding() {
+        return BindingBuilder
+                .bind(fileUploadQueue())
+                .to(stompPushExchange())
+                .with(FILE_UPLOAD_ROUTING_KEY);
+    }
+    
+    /**
      * 死信队列绑定 - 统一处理所有死信消息
      */
     @Bean
@@ -291,6 +381,42 @@ public class MessageServiceRabbitConfig {
                 .bind(bridgeDlq())
                 .to(stompDlxExchange())
                 .with("*.dlq");
+    }
+    
+    /**
+     * 核心服务业务队列绑定
+     * 路由键：file.upload.{eventType}.{orgId}.{fileId}
+     */
+    @Bean
+    public Binding businessCoreBinding() {
+        return BindingBuilder
+                .bind(businessCoreQueue())
+                .to(businessExchange())
+                .with(BUSINESS_CORE_ROUTING_KEY);
+    }
+    
+    /**
+     * 消息服务业务队列绑定
+     * 路由键：task.progress.{eventType}.{orgId}.{taskId}
+     */
+    @Bean
+    public Binding businessMessageBinding() {
+        return BindingBuilder
+                .bind(businessMessageQueue())
+                .to(businessExchange())
+                .with(BUSINESS_MESSAGE_ROUTING_KEY);
+    }
+    
+    /**
+     * 任务进度队列绑定
+     * 路由键：task.progress.{orgId}.{taskId}
+     */
+    @Bean
+    public Binding taskProgressBinding() {
+        return BindingBuilder
+                .bind(taskProgressQueue())
+                .to(businessExchange())
+                .with(TASK_PROGRESS_ROUTING_KEY);
     }
     
     // ==================== 配置加载日志 ====================
@@ -302,18 +428,24 @@ public class MessageServiceRabbitConfig {
     public String logQueueConfiguration() {
         log.info("🚀 Message-Service RabbitMQ配置加载完成");
         log.info("📊 队列架构总览：");
-        log.info("  ├─ 实时推送队列 (4个)：");
+        log.info("  ├─ 实时推送队列 (5个)：");
         log.info("  │  ├─ {} - 设备状态推送", DEVICE_STATUS_QUEUE);
         log.info("  │  ├─ {} - 指令结果推送", COMMAND_RESULT_QUEUE);
         log.info("  │  ├─ {} - 系统通知推送", SYSTEM_NOTIFICATION_QUEUE);
-        log.info("  │  └─ {} - 批量进度推送", BATCH_PROGRESS_QUEUE);
+        log.info("  │  ├─ {} - 批量进度推送", BATCH_PROGRESS_QUEUE);
+        log.info("  │  └─ {} - 文件上传推送", FILE_UPLOAD_QUEUE);
+        log.info("  ├─ 服务间业务队列 (3个)：");
+        log.info("  │  ├─ {} - 核心服务业务处理", BUSINESS_CORE_QUEUE);
+        log.info("  │  ├─ {} - 消息服务业务处理", BUSINESS_MESSAGE_QUEUE);
+        log.info("  │  └─ {} - 任务进度处理", TASK_PROGRESS_QUEUE);
         log.info("  └─ 死信队列 (1个)：");
         log.info("     └─ {} - 统一死信处理", BRIDGE_DLQ);
         log.info("🔀 交换器配置：");
         log.info("  ├─ {} - 主推送交换器", STOMP_PUSH_EXCHANGE);
         log.info("  ├─ {} - 桥接交换器", STOMP_BRIDGE_EXCHANGE);
+        log.info("  ├─ {} - 业务通信交换器", BUSINESS_EXCHANGE);
         log.info("  └─ {} - 死信交换器", STOMP_DLX_EXCHANGE);
-        log.info("✅ Message-Service专注实时推送，架构简化完成");
+        log.info("✅ Message-Service支持实时推送和服务间业务通信");
         
         return "MessageService RabbitMQ Configuration Loaded";
     }

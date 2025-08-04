@@ -243,6 +243,20 @@ public class CommonStompMessage {
                     .build();
         }
 
+        /**
+         * 文件上传上下文
+         * @param uid 用户Id
+         * @param taskId 任务Id
+         * @return
+         */
+        public static Context fileContext(Long uid, String taskId) {
+            return Context.builder()
+                    .resourceType(StompResourceType.FILE)
+                    .uid(uid)
+                    .taskId(taskId)
+                    .build();
+        }
+
     }
 
     /**

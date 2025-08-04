@@ -1,0 +1,30 @@
+[
+  {
+    "name": "business.core.queue",
+    "durable": true,
+    "exclusive": false,
+    "autoDelete": false,
+    "ttl": 600000,
+    "deadLetterExchange": "business.dlx.topic",
+    "deadLetterRoutingKey": "core.business.dlq",
+    "description": "核心业务队列 - 处理文件上传等业务事件，对应@Bean: coreBusinessQueue()"
+  },
+  {
+    "name": "business.task.progress.queue",
+    "durable": true,
+    "exclusive": false,
+    "autoDelete": false,
+    "ttl": 300000,
+    "deadLetterExchange": "business.dlx.topic",
+    "deadLetterRoutingKey": "task.progress.dlq",
+    "description": "任务进度队列 - 处理任务进度更新事件，对应@Bean: taskProgressQueue()"
+  },
+  {
+    "name": "business.core.dlq",
+    "durable": true,
+    "exclusive": false,
+    "autoDelete": false,
+    "ttl": 86400000,
+    "description": "核心业务死信队列 - 处理失败的业务消息，对应@Bean: coreBusinessDlq()"
+  }
+]

@@ -95,7 +95,6 @@ nan:
       notification: example.notification.queue
       system: example.system.queue
       user: example.user.queue
-      event: example.event.queue
 
 # Actuator配置
 management:

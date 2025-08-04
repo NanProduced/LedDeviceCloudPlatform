@@ -35,189 +35,233 @@ spring:
         refresh-enabled: true
         file-extension: yml
 
-  # 文件上传配置
-  servlet:
-    multipart:
-      enabled: true
-      max-file-size: 1GB
-      max-request-size: 1GB
-      file-size-threshold: 10MB
-      location: /tmp/file-uploads
-
-  # 数据源配置
-  datasource:
-    url: jdbc:mysql://192.168.1.185:3306/nan_test?zeroDateTimeBehavior=convertToNull&characterEncoding=utf-8&allowPublicKeyRetrieval=true
-    username: root
-    password: Nan12091209
-    hikari:
-      maximum-pool-size: 20
-      minimum-idle: 5
-      connection-timeout: 30000
-      idle-timeout: 600000
-      max-lifetime: 1800000
-  data:
-    redis:
-      host: 192.168.1.185
-      port: 6379
-      database: 1
-      password: Nan12091209
-      timeout: 3000
-      lettuce:
-        pool:
-          max-active: 50
-          max-idle: 48
-          min-idle: 0
-          max-wait: 5s
-    mongodb:
-      host: 192.168.1.185
-      port: 27017
-      database: nan_test
-      username: root
-      password: Nan12091209
-      authentication-database: admin
-      auto-index-creation: true
-
-  # MyBatis Plus配置
-mybatis-plus:
-  mapper-locations: classpath*:/mapper/**/*.xml
-  type-aliases-package: org.nan.cloud.file.infrastructure.repository.mysql.DO
-  configuration:
-    map-underscore-to-camel-case: true
-    log-impl: org.apache.ibatis.logging.stdout.StdOutImpl
-  global-config:
-    db-config:
-      logic-delete-field: deleted
-      logic-delete-value: 1
-      logic-not-delete-value: 0
-
   # RabbitMQ配置
   rabbitmq:
     host: 192.168.1.185
     port: 5672
     username: admin
-    password: Nan12091209
+    password: Nan12092109
     virtual-host: /led-platform-dev
+    connection-timeout: 15000
+    publisher-confirm-type: correlated
+    publisher-returns: true
+    template:
+      mandatory: true
+      retry:
+        enabled: true
+        initial-interval: 1000
+        max-attempts: 3
+        max-interval: 10000
+        multiplier: 1.0
 
-# 文件服务配置
-file:
-  # 存储配置
+  # 数据源配置
+  datasource:
+    driver-class-name: com.mysql.cj.jdbc.Driver
+    url: jdbc:mysql://192.168.1.185:3306/led_platform_dev?useUnicode=true&characterEncoding=utf-8&useSSL=false&serverTimezone=Asia/Shanghai&allowPublicKeyRetrieval=true
+    username: root
+    password: Nan12091209
+    hikari:
+      minimum-idle: 5
+      maximum-pool-size: 20
+      auto-commit: true
+      idle-timeout: 30000
+      pool-name: FileServiceHikariCP
+      max-lifetime: 1800000
+      connection-timeout: 30000
+
+  # Redis配置
+  data:
+    redis:
+      host: 192.168.1.185
+      port: 6379
+      database: 1  # file-service专用数据库
+      timeout: 3000ms
+      password: 
+      lettuce:
+        pool:
+          max-active: 20
+          max-wait: -1ms
+          max-idle: 10
+          min-idle: 0
+    
+    # MongoDB配置 - 文件元数据存储
+    mongodb:
+      host: 192.168.1.185
+      port: 27017
+      database: led-platform-files-dev
+      username: 
+      password: 
+
+  # 异步任务配置
+  task:
+    execution:
+      pool:
+        core-size: 10
+        max-size: 50
+        queue-capacity: 200
+        keep-alive: 60s
+      thread-name-prefix: file-upload-
+
+  # 文件上传配置
+  servlet:
+    multipart:
+      max-file-size: 500MB
+      max-request-size: 500MB
+      enabled: true
+
+# MyBatis Plus配置
+mybatis-plus:
+  configuration:
+    map-underscore-to-camel-case: true
+    cache-enabled: false
+    log-impl: org.apache.ibatis.logging.slf4j.Slf4jImpl
+  global-config:
+    db-config:
+      id-type: auto
+      logic-delete-field: deleted
+      logic-delete-value: 1
+      logic-not-delete-value: 0
+  mapper-locations: classpath*:mapper/**/*.xml
+
+# 文件存储配置
+file:  
   storage:
-    # 默认存储策略 (LOCAL/OSS/AUTO)
-    default-strategy: AUTO
+    default-strategy: LOCAL
     # 本地存储配置
     local:
-      base-path: /data/files
-      temp-path: /data/temp
-      url-prefix: http://localhost:8085/files
-    # 阿里云OSS配置
+      base-path: C:/Users/nanpr/javaProject/filePath
+      temp-path: C:/Users/nanpr/javaProject/filePath/temp
+      thumbnail-base-path: C:/Users/nanpr/javaProject/filePath/thumbnails
+      url-prefix: http://localhost:8086/files
+      max-file-size: 5368709120  # 5GB
+      
+    # 云存储配置 (阿里云OSS)
     oss:
-      endpoint: oss-cn-hangzhou.aliyuncs.com
-      access-key-id: ${ALI_OSS_ACCESS_KEY:your-access-key}
-      access-key-secret: ${ALI_OSS_ACCESS_SECRET:your-access-secret}
-      bucket-name: led-device-files
-      url-prefix: https://led-device-files.oss-cn-hangzhou.aliyuncs.com
-
+      endpoint: https://oss-cn-hangzhou.aliyuncs.com
+      access-key-id: 
+      access-key-secret: 
+      bucket-name: led-platform-files
+      url-prefix: https://led-platform-files.oss-cn-hangzhou.aliyuncs.com
+      
+  # 缩略图配置
+  thumbnail:
+    enabled: true
+    sizes:
+      - "150x150"
+      - "300x300" 
+      - "600x600"
+    quality: 0.8
+    format: jpg
+    # 视频缩略图配置
+    video:
+      enabled: true
+      frame-rate: 1.0
+      gpu-acceleration: true
+      
   # 转码配置
   transcoding:
-    # FFmpeg路径
-    ffmpeg:
-      path: /usr/local/bin/ffmpeg
-      threads: 8
-      timeout: 3600
-      enable-gpu: true
-    # 临时目录
-    temp:
-      dir: /data/transcoding
-    # 队列配置
-    queue:
-      max-concurrent-tasks: 3
-      max-queue-size: 100
-      priority-enabled: true
-    # 预设配置
+    enabled: false
+    output-formats:
+      - mp4
+      - webm
+    default-preset: "medium"
     presets:
-      - id: preset_sd
-        name: 标清
-        video-codec: libx264
-        audio-codec: aac
-        width: 720
-        height: 480
+      fast:
         video-bitrate: 1000
         audio-bitrate: 128
         crf: 28
-        preset: fast
-      - id: preset_hd
-        name: 高清
-        video-codec: libx264
-        audio-codec: aac
-        width: 1280
-        height: 720
-        video-bitrate: 2500
-        audio-bitrate: 128
-        crf: 23
-        preset: fast
-      - id: preset_fullhd
-        name: 全高清
-        video-codec: libx264
-        audio-codec: aac
-        width: 1920
-        height: 1080
-        video-bitrate: 5000
+        preset: "fast"
+      medium:
+        video-bitrate: 2000
         audio-bitrate: 192
         crf: 23
-        preset: medium
-
+        preset: "medium"
+      high:
+        video-bitrate: 4000
+        audio-bitrate: 256
+        crf: 18
+        preset: "slow"
+        
   # 文件验证配置
   validation:
     # 支持的文件类型
     supported-types:
-      video: [mp4, avi, mov, mkv, flv, webm, wmv, m4v, ts]
-      image: [jpg, jpeg, png, gif, bmp, webp, svg, tiff]
-      audio: [mp3, wav, flac, aac, ogg, m4a, wma]
-      document: [pdf, doc, docx, xls, xlsx, ppt, pptx, txt]
+      image: 
+        - jpg
+        - jpeg
+        - png
+        - gif
+        - bmp
+        - webp
+        - svg
+      video: 
+        - mp4
+        - avi
+        - mov
+        - wmv
+        - flv
+        - mkv
+        - webm
+      audio: 
+        - mp3
+        - wav
+        - aac
+        - flac
+        - ogg
+      document: 
+        - pdf
+        - doc
+        - docx
+        - xls
+        - xlsx
+        - ppt
+        - pptx
+        - txt
+      archive: 
+        - zip
+        - rar
+        - 7z
+        - tar
+        - gz
+      
     # 文件大小限制 (字节)
     max-file-size:
-      video: 5368709120  # 5GB
-      image: 104857600   # 100MB  
-      audio: 524288000   # 500MB
-      document: 104857600 # 100MB
-      default: 1073741824 # 1GB
+      image: 10485760      # 10MB
+      video: 524288000     # 500MB  
+      audio: 52428800      # 50MB
+      document: 20971520   # 20MB
+      archive: 104857600   # 100MB
+      default: 52428800    # 50MB
 
-  # 缩略图配置
-  thumbnail:
-    enabled: true
-    sizes: [150x150, 300x300, 600x600]
-    quality: 0.8
-    format: jpg
+# Common-MQ配置
+mq:
+  enabled: true
+  auto-startup: true
+  exchanges:
+    config-location: classpath:rabbitmq/exchanges.json
+  producers:
+    default:
+      retry-times: 3
+      retry-interval: 1000
+      timeout: 5000
+      confirm-callback: true
+      return-callback: true
 
-  # 进度推送配置
-  progress:
-    websocket:
-      enabled: true
-      endpoint: /file/progress
-    redis:
-      key-prefix: file:progress
-      expire-seconds: 3600
+# 日志配置
+logging:
+  level:
+    org.nan.cloud.file: DEBUG
+    org.nan.cloud.common.mq: INFO
+    org.springframework.amqp: INFO
+    org.springframework.web.multipart: DEBUG
+    com.baomidou.mybatisplus: DEBUG
 
 # 监控配置
 management:
   endpoints:
     web:
       exposure:
-        include: health,info,metrics,prometheus
+        include: health,info,metrics,prometheus,loggers
   endpoint:
     health:
       show-details: always
-  prometheus:
-    metrics:
-      export:
-        enabled: true
-
-# 日志配置
-logging:
-  level:
-    org.nan.cloud.file: DEBUG
-    org.springframework.web.multipart: DEBUG
-    org.hibernate.SQL: INFO
-    org.springframework.data.mongodb: INFO
-    org.springframework.data.redis: INFO
-    root: INFO

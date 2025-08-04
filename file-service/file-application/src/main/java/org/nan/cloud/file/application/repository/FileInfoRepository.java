@@ -42,6 +42,14 @@ public interface FileInfoRepository {
     Optional<FileInfo> findByMd5HashAndOrganizationId(String md5Hash, String organizationId);
 
     /**
+     * 根据MD5查找文件（不限制组织，用于秒传检测）
+     * 
+     * @param md5Hash MD5哈希值
+     * @return 文件信息，如果不存在返回空
+     */
+    Optional<FileInfo> findByMd5Hash(String md5Hash);
+
+    /**
      * 根据组织ID分页查询文件列表
      * 
      * @param organizationId 组织ID

@@ -25,10 +25,8 @@ public interface MaterialConverter {
     List<FolderDO> toFolderDOs(List<FolderDO> folderDOS);
 
     // === Material 转换 ===
-    @Mapping(target = "fileId", source = "file_id")
     Material toMaterial(MaterialDO materialDO);
 
-    @Mapping(target = "file_id", source = "fileId")
     MaterialDO toMaterialDO(Material material);
 
     List<Material> toMaterials(List<MaterialDO> materialDOS);

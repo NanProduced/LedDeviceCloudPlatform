@@ -1,5 +1,7 @@
 package org.nan.cloud.core.service;
 
+import org.nan.cloud.core.enums.CacheType;
+
 import java.time.Duration;
 import java.util.Collection;
 import java.util.Map;
@@ -47,6 +49,17 @@ public interface CacheService {
      * @return key-value映射
      */
     <T> Map<String, T> multiGet(Collection<String> keys, Class<T> clazz);
+
+
+    /**
+     * 使用cacheType配置获取缓存
+     * @param key
+     * @param cacheType
+     * @param clazz
+     * @return
+     * @param <T>
+     */
+    <T> T getWithCacheTypeConfig(String key, CacheType cacheType, Class<T> clazz);
     
     /**
      * 设置缓存值
@@ -54,6 +67,15 @@ public interface CacheService {
      * @param value 缓存值
      */
     void put(String key, Object value);
+
+    /**
+     * 根据CacheType配置缓存
+     * @param key
+     * @param value
+     * @param cacheType
+     * @param customTtl
+     */
+    void putWithCacheTypeConfig(String key, Object value, CacheType cacheType, Duration customTtl);
     
     /**
      * 设置缓存值，指定TTL

@@ -84,20 +84,6 @@
             <version>${aliyun.oss.version}</version>
         </dependency>
         
-        <!-- Apache Tika - 文件类型检测 -->
-        <dependency>
-            <groupId>org.apache.tika</groupId>
-            <artifactId>tika-core</artifactId>
-            <version>${tika.version}</version>
-        </dependency>
-        
-        <!-- Thumbnailator - 图片缩略图生成 -->
-        <dependency>
-            <groupId>net.coobird</groupId>
-            <artifactId>thumbnailator</artifactId>
-            <version>${thumbnailator.version}</version>
-        </dependency>
-        
         <!-- 通用模块依赖 -->
         <dependency>
             <groupId>org.nan</groupId>
@@ -109,10 +95,14 @@
             <artifactId>common-web</artifactId>
         </dependency>
         
-        <!-- 通用MQ模块 -->
+        <!-- 通用MQ模块 - 完整依赖 -->
         <dependency>
             <groupId>org.nan</groupId>
             <artifactId>common-mq-core</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>org.nan</groupId>
+            <artifactId>common-mq-producer</artifactId>
         </dependency>
         
         <!-- SpringDoc OpenAPI -->

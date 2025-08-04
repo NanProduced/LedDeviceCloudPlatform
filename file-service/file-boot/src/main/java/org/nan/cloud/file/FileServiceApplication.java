@@ -56,14 +56,14 @@ public class FileServiceApplication {
         try {
             SpringApplication.run(FileServiceApplication.class, args);
             
-            log.info("🚀 文件服务 (File Service) 启动成功! 端口: 8085");
-            log.info("📁 文件上传接口: http://localhost:8085/file/upload");
-            log.info("🎬 视频转码接口: http://localhost:8085/file/transcoding");
-            log.info("📂 文件管理接口: http://localhost:8085/file/management");
-            log.info("📋 管理端点: http://localhost:8085/actuator");
-            log.info("📊 健康检查: http://localhost:8085/actuator/health");
-            log.info("📚 API文档: http://localhost:8085/swagger-ui.html");
-            log.info("⚡ 转码监控: http://localhost:8085/transcoding/monitor");
+            log.info("🚀 文件服务 (File Service) 启动成功! 端口: 8086");
+            log.info("📁 文件上传接口: http://localhost:8086/file/upload");
+            log.info("🎬 视频转码接口: http://localhost:8086/file/transcoding");
+            log.info("📂 文件管理接口: http://localhost:8086/file/management");
+            log.info("📋 管理端点: http://localhost:8086/actuator");
+            log.info("📊 健康检查: http://localhost:8086/actuator/health");
+            log.info("📚 API文档: http://localhost:8086/swagger-ui.html");
+            log.info("⚡ 转码监控: http://localhost:8086/transcoding/monitor");
             log.info("========== 文件服务启动完成 ==========");
             
         } catch (Exception e) {

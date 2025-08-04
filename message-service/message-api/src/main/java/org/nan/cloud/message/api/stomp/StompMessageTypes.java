@@ -23,7 +23,7 @@ public enum StompMessageTypes {
 
     /* 任务执行进度 */
     /**
-     * subType_1: DOWNLOAD, TRANSCODE, EXPORT
+     * subType_1: MATERIAL_UPLOAD, DOWNLOAD, TRANSCODE, EXPORT
      * subType_2: PROGRESS, COMPLETE, FAILED, TIMEOUT
      */
     TASK_PROGRESS,
@@ -55,5 +55,5 @@ public enum StompMessageTypes {
 
     HEARTBEAT,                   // 心跳消息
 
-    TOPIC_SUBSCRIBE_FEEDBACK;   // 主题订阅反馈
+    TOPIC_SUBSCRIBE_FEEDBACK,   // 主题订阅反馈
 }
