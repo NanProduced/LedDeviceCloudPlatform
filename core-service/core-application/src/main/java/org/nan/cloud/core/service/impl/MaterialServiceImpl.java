@@ -361,16 +361,23 @@ public class MaterialServiceImpl implements MaterialService {
                 throw new IllegalArgumentException("素材不存在 - ID: " + materialId);
             }
             
-            // 更新素材的基本信息
+            // 只更新Material表中的业务相关字段
+            if (event.getFileType() != null) {
+                existingMaterial.setMaterialType(determineMaterialType(event.getFileType()));
+            }
+            
+            // 设置上传完成时间和更新时间
+            existingMaterial.setUploadTime(LocalDateTime.now());
             existingMaterial.setUpdateTime(LocalDateTime.now());
             
             materialRepository.updateMaterial(existingMaterial);
             
-            log.info("素材更新成功 - 素材ID: {}, 文件ID: {}", materialId, event.getFileId());
+            log.info("素材业务信息更新成功 - 素材ID: {}, 文件ID: {}, 类型: {}", 
+                    materialId, event.getFileId(), existingMaterial.getMaterialType());
             
         } catch (Exception e) {
-            log.error("更新素材失败 - 素材ID: {}, 错误: {}", materialId, e.getMessage(), e);
-            throw new RuntimeException("更新素材失败", e);
+            log.error("更新素材业务信息失败 - 素材ID: {}, 错误: {}", materialId, e.getMessage(), e);
+            throw new RuntimeException("更新素材业务信息失败", e);
         }
     }
 

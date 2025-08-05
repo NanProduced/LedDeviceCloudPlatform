@@ -106,11 +106,6 @@ public class Material {
     private String storageType;
 
     /**
-     * 存储路径
-     */
-    private String storagePath;
-
-    /**
      * 首次上传时间
      */
     private LocalDateTime uploadTime;

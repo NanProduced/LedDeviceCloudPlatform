@@ -586,9 +586,33 @@ public class FileUploadServiceImpl implements FileUploadService {
     }
 
     private void asyncGenerateThumbnail(FileInfo fileInfo) {
-        // 异步生成缩略图
-        // 这里应该使用 @Async 或消息队列来异步处理
-        thumbnailService.generateThumbnailAsync(fileInfo);
+        // 异步生成缩略图，带回调机制
+        thumbnailService.generateThumbnailAsync(fileInfo, (fileId, result) -> {
+            if (result.isSuccess() && result.getThumbnails() != null && !result.getThumbnails().isEmpty()) {
+                // 获取主缩略图路径（300x300优先，否则选择第一个）
+                String primaryThumbnailPath = null;
+                for (ThumbnailService.ThumbnailInfo thumbnail : result.getThumbnails()) {
+                    if (thumbnail.getWidth() == 300 && thumbnail.getHeight() == 300) {
+                        primaryThumbnailPath = thumbnail.getThumbnailPath();
+                        break;
+                    }
+                }
+                
+                // 如果没有300x300的，选择第一个作为主缩略图
+                if (primaryThumbnailPath == null) {
+                    primaryThumbnailPath = result.getThumbnails().get(0).getThumbnailPath();
+                }
+                
+                // 发布缩略图生成完成事件，通知core-service更新MaterialFile表
+                String organizationId = "default"; // 从fileInfo或其他地方获取organizationId
+                eventPublisher.publishThumbnailGenerated(fileId, primaryThumbnailPath, organizationId);
+                
+                log.info("缩略图生成回调成功 - 文件ID: {}, 主缩略图: {}", fileId, primaryThumbnailPath);
+            } else {
+                log.warn("缩略图生成失败 - 文件ID: {}, 错误: {}", fileId, 
+                        result.getErrorMessage() != null ? result.getErrorMessage() : "未知错误");
+            }
+        });
     }
 
     private String asyncStartTranscoding(FileInfo fileInfo, FileUploadRequest request) {

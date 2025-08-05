@@ -43,6 +43,14 @@ public interface ThumbnailService {
     void generateThumbnailAsync(FileInfo fileInfo);
 
     /**
+     * 异步生成缩略图（带回调）
+     * 
+     * @param fileInfo 文件信息
+     * @param callback 缩略图生成完成后的回调
+     */
+    void generateThumbnailAsync(FileInfo fileInfo, ThumbnailCallback callback);
+
+    /**
      * 批量生成缩略图
      * 
      * @param fileInfos 文件信息列表
@@ -258,6 +266,20 @@ public interface ThumbnailService {
 
         public java.time.LocalDateTime getCreateTime() { return createTime; }
         public void setCreateTime(java.time.LocalDateTime createTime) { this.createTime = createTime; }
+    }
+
+    /**
+     * 缩略图生成完成回调接口
+     */
+    @FunctionalInterface
+    interface ThumbnailCallback {
+        /**
+         * 缩略图生成完成回调
+         * 
+         * @param fileId 文件ID
+         * @param result 生成结果
+         */
+        void onThumbnailGenerated(String fileId, ThumbnailResult result);
     }
 
     /**

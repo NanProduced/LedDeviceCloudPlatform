@@ -52,12 +52,6 @@ public class MaterialDO {
     @TableField("description")
     private String description;
 
-    /**
-     * 缩略图路径
-     */
-    @TableField("thumbnail_path")
-    private String thumbnailPath;
-
     @TableField("usage_count")
     private Long usageCount;
 

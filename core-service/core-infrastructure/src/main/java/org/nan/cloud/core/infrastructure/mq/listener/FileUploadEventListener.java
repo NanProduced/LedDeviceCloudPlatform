@@ -9,9 +9,12 @@ import org.nan.cloud.common.mq.core.message.Message;
 import org.nan.cloud.core.event.mq.FileUploadEvent;
 import org.nan.cloud.core.infrastructure.task.TaskStatusHandler;
 import org.nan.cloud.core.service.MaterialService;
+import org.nan.cloud.core.service.MaterialFileService;
 import org.nan.cloud.core.domain.Material;
 import org.nan.cloud.core.enums.TaskStatusEnum;
 import org.springframework.stereotype.Component;
+
+import java.util.Map;
 
 /**
  * 文件上传事件监听器
@@ -31,6 +34,7 @@ import org.springframework.stereotype.Component;
 public class FileUploadEventListener implements MessageConsumer {
 
     private final MaterialService materialService;
+    private final MaterialFileService materialFileService;
     private final TaskStatusHandler taskStatusHandler;
 
     // * ============ ⚠️注意 ============= *//
@@ -54,6 +58,7 @@ public class FileUploadEventListener implements MessageConsumer {
                 case "FILE_UPLOAD_FAILED" -> handleUploadFailed(message);
                 case "FILE_PROCESSING_STARTED" -> handleProcessingStarted(message);
                 case "FILE_PROCESSING_COMPLETED" -> handleProcessingCompleted(message);
+                case "THUMBNAIL_GENERATED" -> handleThumbnailGenerated(message);
                 default -> {
                     log.warn("⚠️ 未知的文件上传事件类型: {}", message.getMessageType());
                     return ConsumeResult.failure(message.getMessageId(), getConsumerId(), 
@@ -87,7 +92,8 @@ public class FileUploadEventListener implements MessageConsumer {
             "FILE_UPLOAD_COMPLETED",
             "FILE_UPLOAD_FAILED",
             "FILE_PROCESSING_STARTED",
-            "FILE_PROCESSING_COMPLETED"
+            "FILE_PROCESSING_COMPLETED",
+            "THUMBNAIL_GENERATED"
         };
     }
 
@@ -167,17 +173,26 @@ public class FileUploadEventListener implements MessageConsumer {
                 event.getTaskId(), event.getFileId());
         
         try {
-            // 检查是否已存在Material（避免重复创建）
+            // 1. 创建或更新MaterialFile（文件实体信息）
+            boolean fileCreated = materialFileService.createMaterialFile(event);
+            if (!fileCreated) {
+                log.error("创建MaterialFile失败 - 文件ID: {}", event.getFileId());
+                taskStatusHandler.failTask(event.getTaskId(), "创建文件记录失败");
+                return;
+            }
+
+            // 2. 检查是否已存在Material（避免重复创建）
             Material existingMaterial = materialService.getMaterialByFileId(event.getFileId());
             Long materialId;
             
             if (existingMaterial != null) {
-                // 更新现有Material的状态和信息
+                // 更新现有Material的业务信息
                 materialService.updateMaterialFromFileUpload(existingMaterial.getMid(), event);
                 materialId = existingMaterial.getMid();
-                log.info("✅ 素材更新完成 - 素材ID: {}, 文件ID: {}", materialId, event.getFileId());
+                log.info("✅ 素材业务信息更新完成 - 素材ID: {}, 文件ID: {}", materialId, event.getFileId());
             }
-            // 完成任务
+            
+            // 3. 完成任务
             taskStatusHandler.completeTask(event.getTaskId(), event.getThumbnailUrl());
             
         } catch (Exception e) {
@@ -263,6 +278,31 @@ public class FileUploadEventListener implements MessageConsumer {
             log.error("❌ 解析文件上传事件失败 - 消息类型: {}, 消息载荷: {}, 错误: {}", 
                     message.getMessageType(), message.getPayload(), e.getMessage(), e);
             throw new RuntimeException("解析文件上传事件失败: " + e.getMessage(), e);
+        }
+    }
+
+    /**
+     * 处理缩略图生成完成事件
+     */
+    private void handleThumbnailGenerated(Message message) {
+        try {
+            // 从消息载荷中提取信息
+            Map<String, Object> payload = (Map<String, Object>) message.getPayload();
+            String fileId = (String) payload.get("fileId");
+            String primaryThumbnailPath = (String) payload.get("primaryThumbnailPath");
+            
+            log.info("🖼️ 缩略图生成完成 - 文件ID: {}, 主缩略图路径: {}", fileId, primaryThumbnailPath);
+            
+            // 更新MaterialFile表中的thumbnail_path字段
+            boolean updated = materialFileService.updateThumbnailPath(fileId, primaryThumbnailPath);
+            if (updated) {
+                log.info("✅ 缩略图路径更新成功 - 文件ID: {}", fileId);
+            } else {
+                log.warn("⚠️ 缩略图路径更新失败 - 文件ID: {}", fileId);
+            }
+            
+        } catch (Exception e) {
+            log.error("❌ 处理缩略图生成完成事件失败 - 错误: {}", e.getMessage(), e);
         }
     }
 

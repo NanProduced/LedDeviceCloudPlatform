@@ -353,6 +353,12 @@ public class ThumbnailServiceImpl implements ThumbnailService {
     @Override
     @Async
     public void generateThumbnailAsync(FileInfo fileInfo) {
+        generateThumbnailAsync(fileInfo, null);
+    }
+
+    @Override
+    @Async
+    public void generateThumbnailAsync(FileInfo fileInfo, ThumbnailCallback callback) {
         log.debug("异步生成缩略图开始 - 文件ID: {}", fileInfo.getFileId());
         
         try {
@@ -368,7 +374,7 @@ public class ThumbnailServiceImpl implements ThumbnailService {
             } else {
                 log.warn("不支持的文件类型 - 文件ID: {}, MIME类型: {}", 
                         fileInfo.getFileId(), fileInfo.getMimeType());
-                return;
+                result = ThumbnailResult.failure("不支持的文件类型: " + fileInfo.getMimeType());
             }
             
             if (result.isSuccess()) {
@@ -378,8 +384,18 @@ public class ThumbnailServiceImpl implements ThumbnailService {
                 log.warn("异步缩略图生成失败 - 文件ID: {}, 错误: {}", 
                         fileInfo.getFileId(), result.getErrorMessage());
             }
+            
+            // 调用回调函数
+            if (callback != null) {
+                callback.onThumbnailGenerated(fileInfo.getFileId(), result);
+            }
+            
         } catch (Exception e) {
             log.error("异步缩略图生成异常 - 文件ID: {}", fileInfo.getFileId(), e);
+            ThumbnailResult errorResult = ThumbnailResult.failure("缩略图生成异常: " + e.getMessage());
+            if (callback != null) {
+                callback.onThumbnailGenerated(fileInfo.getFileId(), errorResult);
+            }
         }
     }
 
@@ -540,6 +556,29 @@ public class ThumbnailServiceImpl implements ThumbnailService {
         
         // 通过StorageService生成访问URL
         return storageService.generateAccessUrl(thumbnailPath);
+    }
+
+    /**
+     * 获取主缩略图路径（选择300x300作为主缩略图）
+     * 
+     * @param fileId 文件ID
+     * @return 主缩略图路径，如果没有则返回null
+     */
+    public String getPrimaryThumbnailPath(String fileId) {
+        List<ThumbnailInfo> thumbnails = getThumbnails(fileId);
+        if (thumbnails == null || thumbnails.isEmpty()) {
+            return null;
+        }
+        
+        // 优先选择300x300的缩略图作为主缩略图
+        for (ThumbnailInfo thumbnail : thumbnails) {
+            if (thumbnail.getWidth() == 300 && thumbnail.getHeight() == 300) {
+                return thumbnail.getThumbnailPath();
+            }
+        }
+        
+        // 如果没有300x300的，选择第一个作为主缩略图
+        return thumbnails.get(0).getThumbnailPath();
     }
 
     @Override

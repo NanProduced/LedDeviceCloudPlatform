@@ -7,8 +7,8 @@ import org.nan.cloud.common.web.context.RequestUserInfo;
 import org.nan.cloud.file.api.dto.FileUploadRequest;
 import org.nan.cloud.file.api.dto.FileUploadResponse;
 import org.nan.cloud.file.api.dto.TaskInitResponse;
-import org.nan.cloud.file.application.config.FileStorageProperties;
 import org.nan.cloud.file.application.service.FileUploadService;
+import org.nan.cloud.file.application.service.FileValidationService;
 import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
 
@@ -29,9 +29,8 @@ import org.springframework.web.multipart.MultipartFile;
 @RequiredArgsConstructor
 public class FileUploadFacade {
 
-    private final FileStorageProperties fileStorageProperties;
-
     private final FileUploadService fileUploadService;
+    private final FileValidationService fileValidationService;
 
     /**
      * 单文件上传门面方法
@@ -88,37 +87,21 @@ public class FileUploadFacade {
      * @param uploadRequest 上传请求
      */
     private void validateUploadRequest(MultipartFile file, FileUploadRequest uploadRequest) {
-        if (file == null || file.isEmpty()) {
-            throw new IllegalArgumentException("上传文件不能为空");
-        }
-        
+        // 基础业务参数验证
         if (uploadRequest.getOid() == null) {
             throw new IllegalArgumentException("无法获取用户组织信息");
         }
         
-        // 文件大小限制（100MB）
-        long maxFileSize = 100 * 1024 * 1024L;
-        if (file.getSize() > maxFileSize) {
-            throw new IllegalArgumentException("文件大小不能超过100MB");
-        }
+        // 使用统一的文件验证服务进行详细验证
+        FileValidationService.FileValidationResult validationResult = 
+                fileValidationService.validate(file, uploadRequest);
         
-        // 文件名验证
-        String filename = file.getOriginalFilename();
-        if (filename == null || filename.trim().isEmpty()) {
-            throw new IllegalArgumentException("文件名不能为空");
-        }
-        
-        // 危险文件扩展名检查
-        String[] dangerousExtensions = {".exe", ".bat", ".cmd", ".scr", ".pif", ".com"};
-        String lowerFilename = filename.toLowerCase();
-        for (String ext : dangerousExtensions) {
-            if (lowerFilename.endsWith(ext)) {
-                throw new IllegalArgumentException("不支持的文件类型: " + ext);
-            }
+        if (!validationResult.isValid()) {
+            throw new IllegalArgumentException(validationResult.getErrorMessage());
         }
         
         log.debug("上传请求参数验证通过 - 文件名: {}, 大小: {}, 组织: {}", 
-                filename, file.getSize(), uploadRequest.getOid());
+                file.getOriginalFilename(), file.getSize(), uploadRequest.getOid());
     }
 
     /**

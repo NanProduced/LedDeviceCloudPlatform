@@ -202,7 +202,9 @@ public class FileUploadEventPublisher implements FileUploadEventService {
             payload.put("fileType", uploadResponse.getFileType());
             payload.put("mimeType", uploadResponse.getMimeType());
             payload.put("md5Hash", uploadResponse.getMd5Hash());
+            payload.put("storagePath", uploadResponse.getStoragePath());
             payload.put("accessUrl", uploadResponse.getAccessUrl());
+            payload.put("thumbnailUrl", uploadResponse.getThumbnailUrl());
             payload.put("progress", 100);
             payload.put("uploadStatus", "SUCCESS");
             payload.put("timestamp", LocalDateTime.now());
@@ -223,6 +225,28 @@ public class FileUploadEventPublisher implements FileUploadEventService {
             
         } catch (Exception e) {
             log.error("❌ 发布文件上传完成事件失败 - 任务ID: {}, 错误: {}", taskId, e.getMessage(), e);
+        }
+    }
+
+    /**
+     * 发布缩略图生成完成事件
+     */
+    @Override
+    public void publishThumbnailGenerated(String fileId, String primaryThumbnailPath, String organizationId) {
+        try {
+            Map<String, Object> payload = new HashMap<>();
+            payload.put("eventType", "THUMBNAIL_GENERATED");
+            payload.put("fileId", fileId);
+            payload.put("primaryThumbnailPath", primaryThumbnailPath);
+            payload.put("timestamp", LocalDateTime.now());
+
+            // 发送到core-service用于更新Material表的thumbnail_path字段
+            publishBusinessMessage("THUMBNAIL_GENERATED", payload, organizationId, fileId, "缩略图生成完成");
+            
+            log.info("✅ 缩略图生成完成事件已发布 - 文件ID: {}, 主缩略图路径: {}", fileId, primaryThumbnailPath);
+            
+        } catch (Exception e) {
+            log.error("❌ 发布缩略图生成完成事件失败 - 文件ID: {}, 错误: {}", fileId, e.getMessage(), e);
         }
     }
 
