@@ -44,10 +44,22 @@ public class FileUploadEvent {
     private String organizationId;
 
     /**
+     * 上传素材请求中用户给的素材名称
+     */
+    private String materialName;
+
+    /**
+     * 上传素材请求中用户给的文件描述
+     */
+    private String description;
+
+    /**
      * 创建任务的用户
      * 如果是系统行为，则为null
      */
     private String userId;
+
+    private String userGroupId;
 
     /**
      * 文件上传任务ID
@@ -58,6 +70,11 @@ public class FileUploadEvent {
      * 文件ID (上传完成后生成)
      */
     private String fileId;
+
+    /**
+     * 目标文件夹ID
+     */
+    private String folderId;
 
     /**
      * 原始文件名
@@ -129,19 +146,9 @@ public class FileUploadEvent {
     private String errorMessage;
 
     /**
-     * 转码任务ID
-     */
-    private String transcodingTaskId;
-
-    /**
      * 文件基础元数据
      */
     private FileMetadata metadata;
-
-    /**
-     * 业务上下文信息
-     */
-    private BusinessContext businessContext;
 
     /**
      * 事件时间戳
@@ -184,78 +191,4 @@ public class FileUploadEvent {
         private String colorSpace;
     }
 
-    /**
-     * 业务上下文信息
-     */
-    @Data
-    @AllArgsConstructor
-    @NoArgsConstructor
-    @Builder
-    public static class BusinessContext {
-        
-        /**
-         * 组织ID
-         */
-        private Long oid;
-        
-        /**
-         * 用户组ID
-         */
-        private Long ugid;
-        
-        /**
-         * 目标文件夹ID
-         */
-        private Long fid;
-        
-        /**
-         * 上传者用户ID
-         */
-        private Long uploaderId;
-        
-        /**
-         * 素材名称
-         */
-        private String materialName;
-        
-        /**
-         * 素材描述
-         */
-        private String description;
-        
-        /**
-         * 素材标签
-         */
-        private String tags;
-        
-        /**
-         * 是否公开
-         */
-        private Boolean isPublic;
-        
-        /**
-         * 存储策略
-         */
-        private String storageStrategy;
-        
-        /**
-         * 是否自动转码
-         */
-        private Boolean autoTranscode;
-        
-        /**
-         * 转码预设ID
-         */
-        private String transcodingPresetId;
-        
-        /**
-         * 是否生成缩略图
-         */
-        private Boolean generateThumbnail;
-        
-        /**
-         * 自定义元数据JSON
-         */
-        private String customMetadata;
-    }
 }

@@ -60,8 +60,8 @@ public enum CacheType {
         return baseKey + ":" + String.join(":", keyParts);
     }
 
-    public String buildTaskKey(Long oid, String taskId) {
-        return keyPrefix + ":" + oid.toString() + ":" + taskId;
+    public String buildTaskKey(String taskId) {
+        return keyPrefix + ":" + taskId;
     }
     
     /**

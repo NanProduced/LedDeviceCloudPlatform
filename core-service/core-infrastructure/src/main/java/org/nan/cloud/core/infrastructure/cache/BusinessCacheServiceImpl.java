@@ -51,15 +51,9 @@ public class BusinessCacheServiceImpl implements BusinessCacheService {
     }
 
     @Override
-    public void cacheTaskProgress(Long oid, String taskId, Task task, Duration ttl) {
-        String key = CacheType.TASK_PROGRESS.buildTaskKey(oid, taskId);
+    public void cacheTaskProgress(String taskId, Task task, Duration ttl) {
+        String key = CacheType.TASK_PROGRESS.buildTaskKey(taskId);
         cacheService.putWithCacheTypeConfig(key, task, CacheType.TASK_PROGRESS, ttl);
-    }
-
-    @Override
-    public Task getTaskProgress(Long oid, String taskId) {
-        String key = CacheType.TASK_PROGRESS.buildTaskKey(oid, taskId);
-        return cacheService.getWithCacheTypeConfig(key, CacheType.TASK_PROGRESS, Task.class);
     }
 
     @Override

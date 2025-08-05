@@ -9,6 +9,7 @@ import org.nan.cloud.message.api.stomp.StompMessageTypes;
 import org.nan.cloud.message.infrastructure.websocket.dispatcher.DispatchResult;
 import org.nan.cloud.message.infrastructure.websocket.dispatcher.StompMessageDispatcher;
 import org.nan.cloud.message.infrastructure.websocket.processor.BusinessMessageProcessor;
+import org.nan.cloud.message.infrastructure.websocket.stomp.enums.StompTopic;
 import org.springframework.stereotype.Component;
 
 import java.time.LocalDateTime;
@@ -136,19 +137,30 @@ public class FileUploadMessageProcessor implements BusinessMessageProcessor {
                 log.warn("⚠️ {}", errorMsg);
                 return BusinessMessageProcessResult.failure(null, errorMsg);
             }
-            
-            // 分发消息到用户队列
-            try {
-                stompMessageDispatcher.sendToUser(userId, stompMessage);
-                log.info("✅ 文件上传消息处理成功 - 事件: {}, 用户: {}, 消息ID: {}", 
-                        eventType, userId, stompMessage.getMessageId());
-                return BusinessMessageProcessResult.success(stompMessage.getMessageId(), null, stompMessage);
-            } catch (Exception e) {
-                String errorMsg = "STOMP消息分发失败: " + e.getMessage();
-                log.error("❌ {} - 事件: {}, 用户: {}, 消息ID: {}", 
-                        errorMsg, eventType, userId, stompMessage.getMessageId(), e);
-                return BusinessMessageProcessResult.failure(stompMessage.getMessageId(), errorMsg);
+
+            String taskId = (String) messageData.get("taskId");
+            String taskTopic = StompTopic.buildTaskTopic(taskId);
+
+            stompMessageDispatcher.sendToTopic(taskTopic, stompMessage);
+            log.debug("✅ 文件上传消息处理成功 - 事件: {}, 主题: {}, 消息ID: {}", eventType, taskTopic, stompMessage.getMessageId());
+
+            //  上传完成消息需要额外通知到上传文件的用户
+            if (eventType.equals("COMPLETED")) {
+                // 分发消息到用户队列
+                try {
+                    stompMessageDispatcher.sendToUser(userId, stompMessage);
+                    log.info("✅ 文件上传消息处理成功 - 事件: {}, 用户: {}, 消息ID: {}",
+                            eventType, userId, stompMessage.getMessageId());
+                    return BusinessMessageProcessResult.success(stompMessage.getMessageId(), null, stompMessage);
+                } catch (Exception e) {
+                    String errorMsg = "STOMP消息分发失败: " + e.getMessage();
+                    log.error("❌ {} - 事件: {}, 用户: {}, 消息ID: {}",
+                            errorMsg, eventType, userId, stompMessage.getMessageId(), e);
+                    return BusinessMessageProcessResult.failure(stompMessage.getMessageId(), errorMsg);
+                }
             }
+
+            return BusinessMessageProcessResult.success(stompMessage.getMessageId(), null, stompMessage);
             
         } catch (Exception e) {
             String errorMsg = "文件上传消息处理异常: " + e.getMessage();

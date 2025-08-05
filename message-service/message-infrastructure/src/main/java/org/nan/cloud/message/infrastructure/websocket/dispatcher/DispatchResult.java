@@ -1,6 +1,7 @@
 package org.nan.cloud.message.infrastructure.websocket.dispatcher;
 
 import lombok.Getter;
+import lombok.Setter;
 
 import java.time.LocalDateTime;
 import java.util.ArrayList;
@@ -73,21 +74,41 @@ public class DispatchResult {
     
     /**
      * 聚合消息数量（当消息被聚合时）
+     * -- GETTER --
+     *  获取聚合消息数量
+
      */
     private int aggregatedMessageCount = 0;
     
     /**
      * 分发类型
+     * -- SETTER --
+     *  设置分发类型
+     * -- GETTER --
+     *  获取分发类型
+
+
      */
+    @Setter
     private DispatchType dispatchType = DispatchType.NORMAL;
     
     /**
      * 使用的路由策略
+     * -- SETTER --
+     *  设置路由策略
+     * -- GETTER --
+     *  获取路由策略
+
+
      */
+    @Setter
     private String routingStrategy;
     
     /**
      * 是否使用了回退路由
+     * -- GETTER --
+     *  是否使用了回退路由
+
      */
     private boolean usedFallbackRouting = false;
     
@@ -165,56 +186,14 @@ public class DispatchResult {
             this.dispatchType = DispatchType.AGGREGATED;
         }
     }
-    
-    /**
-     * 设置分发类型
-     */
-    public void setDispatchType(DispatchType dispatchType) {
-        this.dispatchType = dispatchType;
-    }
-    
-    /**
-     * 设置路由策略
-     */
-    public void setRoutingStrategy(String routingStrategy) {
-        this.routingStrategy = routingStrategy;
-    }
-    
+
     /**
      * 标记使用了回退路由
      */
     public void markUsedFallbackRouting() {
         this.usedFallbackRouting = true;
     }
-    
-    /**
-     * 获取聚合消息数量
-     */
-    public int getAggregatedMessageCount() {
-        return aggregatedMessageCount;
-    }
-    
-    /**
-     * 获取分发类型
-     */
-    public DispatchType getDispatchType() {
-        return dispatchType;
-    }
-    
-    /**
-     * 获取路由策略
-     */
-    public String getRoutingStrategy() {
-        return routingStrategy;
-    }
-    
-    /**
-     * 是否使用了回退路由
-     */
-    public boolean isUsedFallbackRouting() {
-        return usedFallbackRouting;
-    }
-    
+
     // ==================== 静态工厂方法 ====================
     
     /**
@@ -239,17 +218,7 @@ public class DispatchResult {
         result.markCompleted();
         return result;
     }
-    
-    /**
-     * 创建排队结果（Phase 2.4 - 消息聚合）
-     */
-    public static DispatchResult queued(String messageId) {
-        DispatchResult result = new DispatchResult(messageId);
-        result.dispatchType = DispatchType.QUEUED;
-        result.success = true; // 排队也算成功
-        result.markCompleted();
-        return result;
-    }
+
     
     /**
      * 分发类型枚举

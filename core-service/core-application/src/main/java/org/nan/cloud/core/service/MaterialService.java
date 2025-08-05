@@ -87,13 +87,6 @@ public interface MaterialService {
     void deleteMaterials(List<Long> mids);
 
     /**
-     * 基于文件上传事件创建素材
-     * @param event 文件上传事件
-     * @return 创建的素材ID
-     */
-    Long createMaterialFromFileUpload(FileUploadEvent event);
-
-    /**
      * 基于异步上传事件创建待上传素材（占位）
      * @param event 文件上传事件
      * @return 创建的素材ID

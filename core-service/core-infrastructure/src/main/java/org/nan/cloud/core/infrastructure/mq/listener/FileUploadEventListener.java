@@ -176,12 +176,7 @@ public class FileUploadEventListener implements MessageConsumer {
                 materialService.updateMaterialFromFileUpload(existingMaterial.getMid(), event);
                 materialId = existingMaterial.getMid();
                 log.info("✅ 素材更新完成 - 素材ID: {}, 文件ID: {}", materialId, event.getFileId());
-            } else {
-                // 创建新的Material业务数据
-                materialId = materialService.createMaterialFromFileUpload(event);
-                log.info("✅ 素材创建完成 - 素材ID: {}, 文件ID: {}", materialId, event.getFileId());
             }
-            
             // 完成任务
             taskStatusHandler.completeTask(event.getTaskId(), event.getThumbnailUrl());
             

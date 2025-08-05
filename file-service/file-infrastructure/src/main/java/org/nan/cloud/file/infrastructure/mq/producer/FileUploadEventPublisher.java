@@ -72,7 +72,7 @@ public class FileUploadEventPublisher implements FileUploadEventService {
 
             // 发送到core-service构造相关数据
             // 这里需要和core-service中FileUploadEventListener实现一致
-            publishBusinessMessage("FILE_UPLOAD_TASK_CREATED", payload, organizationId, userId, "文件上传开始");
+            publishBusinessMessage("FILE_UPLOAD_STARTED", payload, organizationId, userId, "文件上传开始");
 
             log.info("📤 文件上传开始事件已发布 - 任务ID: {}, 文件名: {}", taskId, originalFilename);
             
@@ -91,16 +91,20 @@ public class FileUploadEventPublisher implements FileUploadEventService {
             String userId = uploadRequest.getUid().toString();
 
             // payload需要符合core-service中FileUploadEvent类字段
+            // todo: 后续优化
             Map<String, Object> payload = new HashMap<>();
             payload.put("eventType", "CREATED");
             payload.put("uploadType", "MATERIAL");
             payload.put("taskId", taskId);
             payload.put("fileId", fileId);
+            payload.put("materialName", uploadRequest.getMaterialName());
+            payload.put("folderId", uploadRequest.getFolderId());
             payload.put("originalFilename", originalFilename);
             payload.put("fileSize", fileSize);
             payload.put("progress", 0);
             payload.put("userId", userId);
             payload.put("organizationId", organizationId);
+            payload.put("userGroupId", uploadRequest.getUgid().toString());
             payload.put("uploadStatus", "UPLOADING");
             payload.put("timestamp", LocalDateTime.now());
 

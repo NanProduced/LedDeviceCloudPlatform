@@ -17,8 +17,7 @@ public interface BusinessCacheService {
     void evictUserGroupPermissionStatus(Long ugid, Long orgId);
     void evictAllUserGroupPermissions(Long orgId); // 清理组织内所有用户组权限缓存
     // 任务进度缓存
-    void cacheTaskProgress(Long oid, String taskId, Task task, Duration ttl);
-    Task getTaskProgress(Long oid, String taskId);
+    void cacheTaskProgress(String taskId, Task task, Duration ttl);
     Task getTaskProgress(String taskId);
     void evictTaskProgress(String taskId);
 

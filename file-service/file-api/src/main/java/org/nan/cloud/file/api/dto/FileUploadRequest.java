@@ -6,7 +6,7 @@ import lombok.Data;
 import jakarta.validation.constraints.Size;
 
 /**
- * 文件上传请求DTO - 简化版本
+ * 文件上传请求DTO
  * 组织ID通过InvocationContextHolder获取
  * 文件类型根据MIME类型自动检测
  * 缩略图对图片/视频文件自动生成

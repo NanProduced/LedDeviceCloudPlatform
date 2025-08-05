@@ -22,6 +22,7 @@ import org.springframework.transaction.annotation.Transactional;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Objects;
 import java.util.UUID;
 import java.util.stream.Collectors;
 
@@ -326,28 +327,6 @@ public class MaterialServiceImpl implements MaterialService {
 
     @Override
     @Transactional
-    public Long createMaterialFromFileUpload(FileUploadEvent event) {
-        log.info("创建素材 - 文件ID: {}, 任务ID: {}", event.getFileId(), event.getTaskId());
-        
-        try {
-            // 1. 创建MongoDB元数据文档
-            String metadataId = createMaterialMetadata(event);
-            
-            // 2. 创建Material业务实体
-            Material material = buildMaterialFromEvent(event, metadataId);
-            materialRepository.createMaterial(material);
-            
-            log.info("素材创建成功 - 素材ID: {}, 文件ID: {}", material.getMid(), event.getFileId());
-            return material.getMid();
-            
-        } catch (Exception e) {
-            log.error("创建素材失败 - 文件ID: {}, 错误: {}", event.getFileId(), e.getMessage(), e);
-            throw new RuntimeException("创建素材失败", e);
-        }
-    }
-
-    @Override
-    @Transactional
     public Long createPendingMaterialFromEvent(FileUploadEvent event) {
         log.info("创建待上传素材占位 - 文件ID: {}, 任务ID: {}", event.getFileId(), event.getTaskId());
         
@@ -451,8 +430,6 @@ public class MaterialServiceImpl implements MaterialService {
      */
     private String createPendingMaterialMetadata(FileUploadEvent event) {
         try {
-            FileUploadEvent.BusinessContext context = event.getBusinessContext();
-            
             MaterialMetadata metadata = MaterialMetadata.builder()
                     // === 基础信息 ===
                     .taskId(event.getTaskId())
@@ -480,7 +457,6 @@ public class MaterialServiceImpl implements MaterialService {
      * 构建待上传Material业务实体
      */
     private Material buildPendingMaterialFromEvent(FileUploadEvent event, String metadataId) {
-        FileUploadEvent.BusinessContext context = event.getBusinessContext();
         
         // 确保必填字段不为空
         String fileId = event.getFileId();
@@ -489,19 +465,17 @@ public class MaterialServiceImpl implements MaterialService {
         }
         
         // 确保uploadedBy字段有默认值（避免数据库约束违反）
-        Long uploadedBy = (context != null && context.getUploaderId() != null) 
-                ? context.getUploaderId() 
-                : 1L; // 系统默认用户ID
+        Long uploadedBy = Long.valueOf(event.getUserId());
         
         return Material.builder()
                 // === 核心业务字段 ===
-                .materialName(determineMaterialName(event))
+                .materialName(event.getMaterialName())
                 .fileId(fileId)
-                .oid(context != null ? context.getOid() : 1L)
-                .ugid(context != null ? context.getUgid() : null)
-                .fid(context != null ? context.getFid() : null)
+                .oid(Long.valueOf(event.getOrganizationId()))
+                .ugid(Long.valueOf(event.getUserGroupId()))
+                .fid(Objects.nonNull(event.getFolderId()) ? Long.valueOf(event.getFolderId()) : null)
                 .materialType(determineMaterialType(event.getFileType()))
-                .description(context != null ? context.getDescription() : null)
+                .description(event.getDescription())
                 .usageCount(0L)
                 .uploadedBy(uploadedBy) // 确保非空
                 .createTime(LocalDateTime.now())
@@ -509,61 +483,6 @@ public class MaterialServiceImpl implements MaterialService {
                 // === MongoDB元数据关联 ===
                 .metaDataId(metadataId)
                 .build();
-    }
-
-    /**
-     * 构建Material业务实体
-     * 注意：只设置业务相关字段，不设置文件技术属性（这些属于file-service职责）
-     */
-    private Material buildMaterialFromEvent(FileUploadEvent event, String metadataId) {
-        FileUploadEvent.BusinessContext context = event.getBusinessContext();
-        
-        // 确保必填字段不为空
-        String fileId = event.getFileId();
-        if (fileId == null || fileId.trim().isEmpty()) {
-            throw new IllegalArgumentException("文件ID不能为空");
-        }
-        
-        // 确保uploadedBy字段有默认值（避免数据库约束违反）
-        Long uploadedBy = (context != null && context.getUploaderId() != null) 
-                ? context.getUploaderId() 
-                : 1L; // 系统默认用户ID
-        
-        return Material.builder()
-                // === 核心业务字段 ===
-                .materialName(determineMaterialName(event))
-                .fileId(fileId)
-                .oid(context != null ? context.getOid() : 1L)
-                .ugid(context != null ? context.getUgid() : null)
-                .fid(context != null ? context.getFid() : null)
-                .materialType(determineMaterialType(event.getFileType()))
-                .description(context != null ? context.getDescription() : null)
-                .usageCount(0L)
-                .uploadedBy(uploadedBy) // 确保非空
-                .createTime(LocalDateTime.now())
-                .updateTime(LocalDateTime.now())
-                // === MongoDB元数据关联 ===
-                .metaDataId(metadataId)
-                // 注意：不再设置文件技术属性如md5Hash, originalFileSize, mimeType等
-                // 这些属性应该通过fileId关联到file-service获取
-                .build();
-    }
-
-    /**
-     * 确定素材名称
-     */
-    private String determineMaterialName(FileUploadEvent event) {
-        FileUploadEvent.BusinessContext context = event.getBusinessContext();
-        
-        // 优先使用业务上下文中的素材名称
-        if (context != null && context.getMaterialName() != null && !context.getMaterialName().trim().isEmpty()) {
-            return context.getMaterialName();
-        }
-        
-        // 否则使用原始文件名（去除扩展名）
-        String originalFilename = event.getOriginalFilename();
-        int lastDotIndex = originalFilename.lastIndexOf('.');
-        return lastDotIndex > 0 ? originalFilename.substring(0, lastDotIndex) : originalFilename;
     }
 
     /**
@@ -571,7 +490,7 @@ public class MaterialServiceImpl implements MaterialService {
      */
     private String determineMaterialType(String fileType) {
         if (fileType == null) {
-            return "DOCUMENT";
+            return "UNKNOWN";
         }
         
         return switch (fileType.toUpperCase()) {
@@ -592,32 +511,5 @@ public class MaterialServiceImpl implements MaterialService {
         
         int lastDotIndex = filename.lastIndexOf('.');
         return lastDotIndex > 0 ? filename.substring(lastDotIndex + 1) : "";
-    }
-
-    /**
-     * 验证文件上传事件的必填字段
-     */
-    private void validateFileUploadEvent(FileUploadEvent event) {
-        if (event == null) {
-            throw new IllegalArgumentException("文件上传事件不能为空");
-        }
-        
-        if (event.getFileId() == null || event.getFileId().trim().isEmpty()) {
-            throw new IllegalArgumentException("文件ID不能为空");
-        }
-        
-        if (event.getTaskId() == null || event.getTaskId().trim().isEmpty()) {
-            throw new IllegalArgumentException("任务ID不能为空");
-        }
-        
-        if (event.getOriginalFilename() == null || event.getOriginalFilename().trim().isEmpty()) {
-            throw new IllegalArgumentException("原始文件名不能为空");
-        }
-        
-        // 验证业务上下文
-        FileUploadEvent.BusinessContext context = event.getBusinessContext();
-        if (context != null && context.getOid() == null) {
-            throw new IllegalArgumentException("组织ID不能为空");
-        }
     }
 }

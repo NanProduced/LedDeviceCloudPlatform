@@ -7,6 +7,7 @@ import org.nan.cloud.common.web.context.RequestUserInfo;
 import org.nan.cloud.file.api.dto.FileUploadRequest;
 import org.nan.cloud.file.api.dto.FileUploadResponse;
 import org.nan.cloud.file.api.dto.TaskInitResponse;
+import org.nan.cloud.file.application.config.FileStorageProperties;
 import org.nan.cloud.file.application.service.FileUploadService;
 import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
@@ -27,6 +28,8 @@ import org.springframework.web.multipart.MultipartFile;
 @Service
 @RequiredArgsConstructor
 public class FileUploadFacade {
+
+    private final FileStorageProperties fileStorageProperties;
 
     private final FileUploadService fileUploadService;
 
@@ -73,6 +76,7 @@ public class FileUploadFacade {
         RequestUserInfo requestUser = InvocationContextHolder.getContext().getRequestUser();
         uploadRequest.setOid(requestUser.getOid());
         uploadRequest.setUid(requestUser.getUid());
+        uploadRequest.setUgid(requestUser.getUgid());
         
         log.debug("填充上传请求上下文 - 组织ID: {} , 用户ID: {}", requestUser.getOid(), requestUser.getUid());
     }

@@ -38,7 +38,7 @@ public class TaskServiceImpl implements TaskService {
         Task task = taskRepository.getTaskById(taskId);
         
         // 缓存任务信息
-        businessCacheService.cacheTaskProgress(task.getOid(), taskId, task, null);
+        businessCacheService.cacheTaskProgress(taskId, task, null);
         
         return task;
     }
@@ -69,7 +69,7 @@ public class TaskServiceImpl implements TaskService {
                     task.getTaskId(), task.getTaskType(), task.getOid());
             
             // 缓存任务
-            businessCacheService.cacheTaskProgress(task.getOid(), task.getTaskId(), task, null);
+            businessCacheService.cacheTaskProgress(task.getTaskId(), task, null);
             
             return task;
         } else {
@@ -93,7 +93,7 @@ public class TaskServiceImpl implements TaskService {
                 if (status == TaskStatusEnum.COMPLETED) {
                     cachedTask.setCompleteTime(LocalDateTime.now());
                 }
-                businessCacheService.cacheTaskProgress(cachedTask.getOid(), taskId, cachedTask, null);
+                businessCacheService.cacheTaskProgress(taskId, cachedTask, null);
             }
         }
     }
@@ -105,7 +105,7 @@ public class TaskServiceImpl implements TaskService {
         Task cachedTask = businessCacheService.getTaskProgress(taskId);
         if (cachedTask != null) {
             cachedTask.setProgress(progress);
-            businessCacheService.cacheTaskProgress(cachedTask.getOid(), taskId, cachedTask, null);
+            businessCacheService.cacheTaskProgress(taskId, cachedTask, null);
             log.debug("📊 任务进度更新: taskId={}, progress={}%", taskId, progress);
         } else {
             log.warn("⚠️ 更新任务进度失败，任务不存在: taskId={}", taskId);
@@ -127,7 +127,7 @@ public class TaskServiceImpl implements TaskService {
                 cachedTask.setErrorMessage(errorMessage);
                 cachedTask.setTaskStatus(TaskStatusEnum.FAILED);
                 cachedTask.setCompleteTime(LocalDateTime.now());
-                businessCacheService.cacheTaskProgress(cachedTask.getOid(), taskId, cachedTask, null);
+                businessCacheService.cacheTaskProgress(taskId, cachedTask, null);
             }
         }
     }
@@ -165,7 +165,7 @@ public class TaskServiceImpl implements TaskService {
                 if (thumbnailUrl != null) {
                     cachedTask.setThumbnailUrl(thumbnailUrl);
                 }
-                businessCacheService.cacheTaskProgress(cachedTask.getOid(), taskId, cachedTask, null);
+                businessCacheService.cacheTaskProgress(taskId, cachedTask, null);
             }
         }
     }
