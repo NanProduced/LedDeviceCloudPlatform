@@ -36,5 +36,14 @@ public interface FileUploadEventService {
      */
     void publishThumbnailGenerated(String fileId, String primaryThumbnailPath, String organizationId);
 
+    /**
+     * 发布文件处理完成事件
+     * @param taskId 任务ID
+     * @param fileId 文件ID
+     * @param metadataId 元数据ID
+     * @param organizationId 组织ID
+     */
+    void publishProcessingCompleted(String taskId, String fileId, String metadataId, String organizationId);
+
     void publishUploadFailed(String taskId, String errorMessage, String organizationId);
 }

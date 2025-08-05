@@ -116,6 +116,14 @@ public class FileInfoRepositoryImpl implements FileInfoRepository {
     }
 
     @Override
+    public void updateFileMetadata(String fileId, String metadataId) {
+        MaterialFileDO materialFileDO = new MaterialFileDO();
+        materialFileDO.setFileId(fileId);
+        materialFileDO.setFileId(metadataId);
+        materialFileMapper.updateById(materialFileDO);
+    }
+
+    @Override
     public Optional<FileInfo> findByMd5Hash(String md5Hash) {
         log.debug("根据MD5查找文件 - MD5: {}", md5Hash);
         

@@ -91,6 +91,8 @@ public class FileUploadEvent {
      */
     private String fileType;
 
+    private String metadataId;
+
     /**
      * MIME类型
      */
@@ -146,11 +148,6 @@ public class FileUploadEvent {
     private String errorMessage;
 
     /**
-     * 文件基础元数据
-     */
-    private FileMetadata metadata;
-
-    /**
      * 事件时间戳
      */
     private LocalDateTime timestamp;
@@ -169,26 +166,6 @@ public class FileUploadEvent {
         MATERIAL,
         // 升级包上传
         ZIP;
-    }
-
-    /**
-     * 文件基础元数据
-     */
-    @Data
-    @AllArgsConstructor
-    @NoArgsConstructor
-    @Builder
-    public static class FileMetadata {
-        private Integer width;
-        private Integer height;
-        private Integer duration;
-        private Double frameRate;
-        private Long bitrate;
-        private String codec;
-        private Integer sampleRate;
-        private Integer channels;
-        private Integer dpi;
-        private String colorSpace;
     }
 
 }

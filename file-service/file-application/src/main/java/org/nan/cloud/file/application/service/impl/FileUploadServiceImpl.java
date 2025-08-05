@@ -7,7 +7,9 @@ import org.nan.cloud.file.application.service.*;
 import org.nan.cloud.file.application.domain.FileInfo;
 import org.nan.cloud.file.application.domain.TaskContext;
 import org.nan.cloud.file.application.repository.FileInfoRepository;
+import org.nan.cloud.file.application.repository.MaterialMetadataRepository;
 import org.nan.cloud.file.application.service.FileUploadEventService;
+import org.nan.cloud.file.application.domain.MaterialMetadata;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
@@ -51,6 +53,12 @@ public class FileUploadServiceImpl implements FileUploadService {
     
     // TODO: 实现 ThumbnailService 接口，缩略图生成
     private final ThumbnailService thumbnailService;
+    
+    // 元数据分析服务
+    private final MetadataAnalysisService metadataAnalysisService;
+    
+    // 元数据存储库
+    private final MaterialMetadataRepository materialMetadataRepository;
     
     // 文件上传事件发布器
     private final FileUploadEventService eventPublisher;
@@ -114,12 +122,21 @@ public class FileUploadServiceImpl implements FileUploadService {
             // 13. 发布上传完成事件
             eventPublisher.publishUploadCompleted(taskId, response, request.getOid().toString());
 
-            // 14. 异步处理：自动生成缩略图（对图片和视频文件）
+            // 14. 异步处理：分析和存储文件元数据
+            String metadataId = asyncAnalyzeAndStoreMetadata(fileInfo, taskId);
+            
+            // 15. 异步处理：自动生成缩略图（对图片和视频文件）
             if (isImageFile(file) || isVideoFile(file)) {
                 asyncGenerateThumbnail(fileInfo);
             }
 
-            // 15. 更新进度为完成
+            // 16. 发布文件处理完成事件（包含元数据ID）
+            if (metadataId != null) {
+                fileInfoRepository.updateFileMetadata(fileId, metadataId);
+                eventPublisher.publishProcessingCompleted(taskId, fileId, metadataId, request.getOid().toString());
+            }
+
+            // 17. 更新进度为完成
             progressTrackingService.completeProgress(taskId);
             taskContextService.updateTaskProgress(taskId, 100);
 
@@ -613,6 +630,45 @@ public class FileUploadServiceImpl implements FileUploadService {
                         result.getErrorMessage() != null ? result.getErrorMessage() : "未知错误");
             }
         });
+    }
+
+    /**
+     * 异步分析和存储文件元数据
+     * 
+     * @param fileInfo 文件信息
+     * @param taskId 任务ID
+     * @return 元数据ID
+     */
+    private String asyncAnalyzeAndStoreMetadata(FileInfo fileInfo, String taskId) {
+        try {
+            log.info("开始分析文件元数据 - 文件ID: {}, 任务ID: {}", fileInfo.getFileId(), taskId);
+            
+            // 检查是否支持元数据分析
+            if (!metadataAnalysisService.isSupported(fileInfo.getMimeType())) {
+                log.debug("文件类型不支持元数据分析 - 文件ID: {}, MIME: {}", 
+                        fileInfo.getFileId(), fileInfo.getMimeType());
+                return null;
+            }
+
+            // 分析元数据
+            MaterialMetadata metadata = metadataAnalysisService.analyzeMetadata(fileInfo, taskId);
+            if (metadata == null) {
+                log.warn("元数据分析失败 - 文件ID: {}", fileInfo.getFileId());
+                return null;
+            }
+
+            // 存储到MongoDB
+            String metadataId = materialMetadataRepository.save(metadata);
+            
+            log.info("文件元数据分析和存储完成 - 文件ID: {}, 元数据ID: {}", 
+                    fileInfo.getFileId(), metadataId);
+            return metadataId;
+            
+        } catch (Exception e) {
+            log.error("分析和存储文件元数据失败 - 文件ID: {}, 错误: {}", 
+                    fileInfo.getFileId(), e.getMessage(), e);
+            return null;
+        }
     }
 
     private String asyncStartTranscoding(FileInfo fileInfo, FileUploadRequest request) {

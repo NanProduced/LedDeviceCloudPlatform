@@ -496,6 +496,17 @@ public class LocalStorageServiceImpl implements StorageService {
         }
     }
 
+    @Override
+    public String getAbsolutePath(String storagePath) {
+        try {
+            Path path = Paths.get(storageProperties.getStorage().getLocal().getBasePath(), storagePath);
+            return path.toAbsolutePath().toString();
+        } catch (Exception e) {
+            log.error("获取绝对路径失败 - 存储路径: {}, 错误: {}", storagePath, e.getMessage(), e);
+            return null;
+        }
+    }
+
     // 私有辅助方法
 
     /**

@@ -33,6 +33,13 @@ public interface FileInfoRepository {
     Optional<FileInfo> findByFileId(String fileId);
 
     /**
+     * 更新元数据关系
+     * @param fileId
+     * @param metadataId
+     */
+    void updateFileMetadata(String fileId, String metadataId);
+
+    /**
      * 根据MD5和组织ID查找文件（用于去重）
      * 
      * @param md5Hash MD5哈希值

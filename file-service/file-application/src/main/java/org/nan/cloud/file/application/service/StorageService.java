@@ -193,6 +193,14 @@ public interface StorageService {
     boolean healthCheck();
 
     /**
+     * 获取文件的绝对路径
+     * 
+     * @param storagePath 存储路径
+     * @return 文件的绝对路径
+     */
+    String getAbsolutePath(String storagePath);
+
+    /**
      * 存储策略枚举
      */
     enum StorageStrategy {

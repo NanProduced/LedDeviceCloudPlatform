@@ -14,8 +14,6 @@ import org.nan.cloud.core.repository.MaterialRepository;
 import org.nan.cloud.core.repository.UserGroupRepository;
 import org.nan.cloud.core.service.MaterialService;
 import org.nan.cloud.core.event.mq.FileUploadEvent;
-import org.nan.cloud.core.repository.MaterialMetadataRepository;
-import org.nan.cloud.core.domain.MaterialMetadata;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -34,7 +32,6 @@ public class MaterialServiceImpl implements MaterialService {
     private final MaterialRepository materialRepository;
     private final FolderRepository folderRepository;
     private final UserGroupRepository userGroupRepository;
-    private final MaterialMetadataRepository materialMetadataRepository;
 
     @Override
     public MaterialNodeTreeResponse buildMaterialStructTree(Long oid, Long ugid) {
@@ -331,11 +328,9 @@ public class MaterialServiceImpl implements MaterialService {
         log.info("创建待上传素材占位 - 文件ID: {}, 任务ID: {}", event.getFileId(), event.getTaskId());
         
         try {
-            // 1. 创建一个基础的MongoDB元数据文档（待完善）
-            String metadataId = createPendingMaterialMetadata(event);
-            
-            // 2. 创建Material业务实体（状态为PENDING）
-            Material material = buildPendingMaterialFromEvent(event, metadataId);
+            // 创建Material业务实体（状态为PENDING，metadataId暂时为null）
+            // 等待file-service的FILE_PROCESSING_COMPLETED事件来更新metadataId
+            Material material = buildPendingMaterialFromEvent(event, null);
             materialRepository.createMaterial(material);
             
             log.info("待上传素材占位创建成功 - 素材ID: {}, 文件ID: {}", material.getMid(), event.getFileId());
@@ -360,6 +355,9 @@ public class MaterialServiceImpl implements MaterialService {
             if (existingMaterial == null) {
                 throw new IllegalArgumentException("素材不存在 - ID: " + materialId);
             }
+
+            // 更新元数据引用
+            existingMaterial.setMetaDataId(event.getMetadataId());
             
             // 只更新Material表中的业务相关字段
             if (event.getFileType() != null) {
@@ -368,7 +366,6 @@ public class MaterialServiceImpl implements MaterialService {
             
             // 设置上传完成时间和更新时间
             existingMaterial.setUploadTime(LocalDateTime.now());
-            existingMaterial.setUpdateTime(LocalDateTime.now());
             
             materialRepository.updateMaterial(existingMaterial);
             
@@ -399,66 +396,7 @@ public class MaterialServiceImpl implements MaterialService {
         }
     }
 
-    /**
-     * 创建MongoDB元数据文档
-     */
-    private String createMaterialMetadata(FileUploadEvent event) {
-        try {
-            // 构建基础文件信息
-            MaterialMetadata.FileBasicInfo basicInfo = MaterialMetadata.FileBasicInfo.builder()
-                    .fileName(event.getOriginalFilename())
-                    .mimeType(event.getMimeType())
-                    .fileExtension(getFileExtension(event.getOriginalFilename()))
-                    .fileSize(event.getFileSize())
-                    .md5Hash(event.getMd5Hash())
-                    .build();
 
-            MaterialMetadata metadata = MaterialMetadata.builder()
-                    .id(UUID.randomUUID().toString())
-                    .fileId(event.getFileId())
-                    .basicInfo(basicInfo)
-                    .createTime(LocalDateTime.now())
-                    .updateTime(LocalDateTime.now())
-                    .build();
-
-            // 保存到MongoDB
-            String metadataId = materialMetadataRepository.save(metadata);
-            log.info("MongoDB元数据文档创建成功 - ID: {}", metadataId);
-            return metadataId;
-            
-        } catch (Exception e) {
-            log.error("创建MongoDB元数据失败: {}", e.getMessage(), e);
-            throw new RuntimeException("创建MongoDB元数据失败", e);
-        }
-    }
-
-    /**
-     * 创建待上传素材的MongoDB元数据文档（基础版本）
-     */
-    private String createPendingMaterialMetadata(FileUploadEvent event) {
-        try {
-            MaterialMetadata metadata = MaterialMetadata.builder()
-                    // === 基础信息 ===
-                    .taskId(event.getTaskId())
-                    .fileId(event.getFileId())
-                    .fileName(event.getOriginalFilename())
-                    // todo: 其他元数据
-                    // === 时间戳 ===
-                    .createTime(LocalDateTime.now())
-                    .updateTime(LocalDateTime.now())
-                    
-                    // 注意：文件技术属性暂时为空，等文件上传完成后再更新
-                    .build();
-
-            String metadataId = materialMetadataRepository.save(metadata);
-            log.info("待上传素材MongoDB元数据文档创建成功 - ID: {}", metadataId);
-            return metadataId;
-            
-        } catch (Exception e) {
-            log.error("创建待上传素材MongoDB元数据失败: {}", e.getMessage(), e);
-            throw new RuntimeException("创建待上传素材MongoDB元数据失败", e);
-        }
-    }
 
     /**
      * 构建待上传Material业务实体

@@ -251,6 +251,29 @@ public class FileUploadEventPublisher implements FileUploadEventService {
     }
 
     /**
+     * 发布文件处理完成事件
+     */
+    @Override
+    public void publishProcessingCompleted(String taskId, String fileId, String metadataId, String organizationId) {
+        try {
+            Map<String, Object> payload = new HashMap<>();
+            payload.put("eventType", "PROCESSING_COMPLETED");
+            payload.put("taskId", taskId);
+            payload.put("fileId", fileId);
+            payload.put("metadataId", metadataId);
+            payload.put("timestamp", LocalDateTime.now());
+
+            // 发送到core-service用于更新MaterialFile表的meta_data_id字段
+            publishBusinessMessage("FILE_PROCESSING_COMPLETED", payload, organizationId, fileId, "文件处理完成");
+            
+            log.info("✅ 文件处理完成事件已发布 - 任务ID: {}, 文件ID: {}, 元数据ID: {}", taskId, fileId, metadataId);
+            
+        } catch (Exception e) {
+            log.error("❌ 发布文件处理完成事件失败 - 任务ID: {}, 错误: {}", taskId, e.getMessage(), e);
+        }
+    }
+
+    /**
      * 发布文件上传失败事件
      */
     @Override

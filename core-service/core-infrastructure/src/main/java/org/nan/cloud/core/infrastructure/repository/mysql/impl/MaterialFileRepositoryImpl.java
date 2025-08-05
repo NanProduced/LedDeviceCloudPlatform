@@ -34,6 +34,7 @@ public class MaterialFileRepositoryImpl implements MaterialFileRepository {
                 .storageType("LOCAL") // 默认本地存储，可以从配置或事件中获取
                 .storagePath(event.getStoragePath())
                 .uploadTime(LocalDateTime.now())
+                .metaDataId(event.getMetadataId())
                 .refCount(1L) // 初始引用计数为1
                 .fileStatus(1) // 1表示已完成
                 .createTime(LocalDateTime.now())
