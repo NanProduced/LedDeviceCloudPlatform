@@ -2,6 +2,7 @@ package org.nan.cloud.core.infrastructure.repository.mysql.impl;
 
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import lombok.RequiredArgsConstructor;
+import org.apache.commons.lang3.StringUtils;
 import org.nan.cloud.core.domain.Folder;
 import org.nan.cloud.core.infrastructure.repository.mysql.DO.FolderDO;
 import org.nan.cloud.core.infrastructure.repository.mysql.converter.MaterialConverter;
@@ -36,7 +37,7 @@ public class FolderRepositoryImpl implements FolderRepository {
                 .updateTime(now)
                 .build();
         folderMapper.insert(folderDO);
-        String path = folderDO.getPath().isBlank() ? String.valueOf(folderDO.getFid()) : folderDO.getPath() + "|" + folderDO.getFid();
+        String path = StringUtils.isBlank(folderDO.getPath()) ? String.valueOf(folderDO.getFid()) : folderDO.getPath() + "|" + folderDO.getFid();
         folderDO.setPath(path);
         folderMapper.updateById(folderDO);
     }
@@ -70,14 +71,14 @@ public class FolderRepositoryImpl implements FolderRepository {
     public boolean ifHasSameFolderNameInUserGroup(Long targetUgid, String folderName) {
         return folderMapper.exists(new LambdaQueryWrapper<FolderDO>()
                 .eq(FolderDO::getUgid, targetUgid)
-                .eq(FolderDO::getParent, null)
+                .isNull(FolderDO::getParent)
                 .eq(FolderDO::getFolderName, folderName));
     }
 
     @Override
     public List<Folder> getRootFoldersByUserGroup(Long ugid) {
         LambdaQueryWrapper<FolderDO> queryWrapper = new LambdaQueryWrapper<FolderDO>()
-                .eq(FolderDO::getParent, null)
+                .isNull(FolderDO::getParent)
                 .orderByAsc(FolderDO::getFolderName);
         
         if (ugid == null) {

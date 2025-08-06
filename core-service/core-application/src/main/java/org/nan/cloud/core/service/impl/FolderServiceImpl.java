@@ -25,6 +25,7 @@ public class FolderServiceImpl implements FolderService {
                 .ugid(parent.getUgid())
                 .parent(parent.getFid())
                 .path(parent.getPath())
+                .creatorId(dto.getUid())
                 .build();
         folderRepository.createFolder(folder);
     }
@@ -37,6 +38,7 @@ public class FolderServiceImpl implements FolderService {
                 .description(dto.getDescription())
                 .oid(dto.getOid())
                 .ugid(dto.getTargetUgid())
+                .creatorId(dto.getUid())
                 .build();
         folderRepository.createFolder(folder);
     }
