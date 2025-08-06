@@ -17,6 +17,7 @@
         <module>common-basic</module>
         <module>common-web</module>
         <module>common-mq</module>
+        <module>program-domain</module>
     </modules>
     <packaging>pom</packaging>
 

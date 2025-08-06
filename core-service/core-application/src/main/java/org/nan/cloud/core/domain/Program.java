@@ -1,8 +1,8 @@
 package org.nan.cloud.core.domain;
 
 import lombok.Data;
-import org.nan.cloud.core.enums.ProgramApprovalStatusEnum;
-import org.nan.cloud.core.enums.ProgramStatusEnum;
+import org.nan.cloud.program.enums.ProgramApprovalStatusEnum;
+import org.nan.cloud.program.enums.ProgramStatusEnum;
 
 import java.time.LocalDateTime;
 import java.util.Set;
