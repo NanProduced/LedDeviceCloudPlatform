@@ -355,9 +355,6 @@ public class MaterialServiceImpl implements MaterialService {
             if (existingMaterial == null) {
                 throw new IllegalArgumentException("素材不存在 - ID: " + materialId);
             }
-
-            // 更新元数据引用
-            existingMaterial.setMetaDataId(event.getMetadataId());
             
             // 只更新Material表中的业务相关字段
             if (event.getFileType() != null) {

@@ -33,6 +33,13 @@ public class FileUploadEvent {
     private String eventType;
 
     /**
+     * 明确是哪一种文件处理
+     * example:
+     * METADATA ->  元数据解析
+     */
+    private String processType;
+
+    /**
      * 明确是哪一种文件上传
      * example:
      * MATERIAL -> 素材文件

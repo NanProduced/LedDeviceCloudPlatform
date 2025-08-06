@@ -5,7 +5,6 @@ import lombok.extern.slf4j.Slf4j;
 import org.nan.cloud.common.web.context.InvocationContextHolder;
 import org.nan.cloud.common.web.context.RequestUserInfo;
 import org.nan.cloud.file.api.dto.FileUploadRequest;
-import org.nan.cloud.file.api.dto.FileUploadResponse;
 import org.nan.cloud.file.api.dto.TaskInitResponse;
 import org.nan.cloud.file.application.service.FileUploadService;
 import org.nan.cloud.file.application.service.FileValidationService;
@@ -31,39 +30,6 @@ public class FileUploadFacade {
 
     private final FileUploadService fileUploadService;
     private final FileValidationService fileValidationService;
-
-    /**
-     * 单文件上传门面方法
-     * 
-     * @param file 上传的文件
-     * @param uploadRequest 上传请求参数
-     * @return 上传响应
-     */
-    public FileUploadResponse uploadSingle(MultipartFile file, FileUploadRequest uploadRequest) {
-        log.info("门面层处理单文件上传 - 文件名: {}, 大小: {}", 
-                file.getOriginalFilename(), file.getSize());
-
-        try {
-            // 1. 填充上下文信息
-            enrichUploadRequest(uploadRequest);
-            
-            // 2. 参数验证
-            validateUploadRequest(file, uploadRequest);
-            
-            // 3. 调用应用服务执行上传
-            FileUploadResponse response = fileUploadService.uploadSingle(file, uploadRequest);
-            
-            log.info("门面层单文件上传完成 - 文件ID: {}, 任务ID: {}", 
-                    response.getFileId(), response.getTaskId());
-            
-            return response;
-            
-        } catch (Exception e) {
-            log.error("门面层单文件上传失败 - 文件名: {}, 错误: {}", 
-                    file.getOriginalFilename(), e.getMessage(), e);
-            throw e;
-        }
-    }
 
     /**
      * 填充上传请求的上下文信息

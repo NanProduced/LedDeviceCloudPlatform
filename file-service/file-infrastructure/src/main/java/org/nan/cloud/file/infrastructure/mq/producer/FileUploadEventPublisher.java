@@ -229,35 +229,15 @@ public class FileUploadEventPublisher implements FileUploadEventService {
     }
 
     /**
-     * 发布缩略图生成完成事件
-     */
-    @Override
-    public void publishThumbnailGenerated(String fileId, String primaryThumbnailPath, String organizationId) {
-        try {
-            Map<String, Object> payload = new HashMap<>();
-            payload.put("eventType", "THUMBNAIL_GENERATED");
-            payload.put("fileId", fileId);
-            payload.put("primaryThumbnailPath", primaryThumbnailPath);
-            payload.put("timestamp", LocalDateTime.now());
-
-            // 发送到core-service用于更新Material表的thumbnail_path字段
-            publishBusinessMessage("THUMBNAIL_GENERATED", payload, organizationId, fileId, "缩略图生成完成");
-            
-            log.info("✅ 缩略图生成完成事件已发布 - 文件ID: {}, 主缩略图路径: {}", fileId, primaryThumbnailPath);
-            
-        } catch (Exception e) {
-            log.error("❌ 发布缩略图生成完成事件失败 - 文件ID: {}, 错误: {}", fileId, e.getMessage(), e);
-        }
-    }
-
-    /**
      * 发布文件处理完成事件
+     * 1.文件元数据解析事件
      */
     @Override
     public void publishProcessingCompleted(String taskId, String fileId, String metadataId, String organizationId) {
         try {
             Map<String, Object> payload = new HashMap<>();
             payload.put("eventType", "PROCESSING_COMPLETED");
+            payload.put("processType", "METADATA");
             payload.put("taskId", taskId);
             payload.put("fileId", fileId);
             payload.put("metadataId", metadataId);
@@ -348,8 +328,6 @@ public class FileUploadEventPublisher implements FileUploadEventService {
                     .messageType(messageType)
                     .subject(subject)
                     .payload(payload)
-                    .senderId("file-service")
-                    .receiverId("core-service")
                     .organizationId(organizationId)
                     .exchange(BUSINESS_EXCHANGE)
                     .routingKey(routingKey)

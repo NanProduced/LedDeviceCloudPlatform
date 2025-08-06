@@ -94,7 +94,7 @@ public class MaterialFileDO {
      * 文件元数据ID（MongoDB ObjectId）
      */
     @TableField("meta_data_id")
-    private String metaDataId;
+    private String metadataId;
 
     /**
      * 创建时间

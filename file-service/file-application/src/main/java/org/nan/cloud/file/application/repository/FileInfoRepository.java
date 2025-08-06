@@ -40,6 +40,13 @@ public interface FileInfoRepository {
     void updateFileMetadata(String fileId, String metadataId);
 
     /**
+     * 更新文件缩略图关系
+     * @param fileId
+     * @param thumbnailPath
+     */
+    void updateFileThumbnail(String fileId, String thumbnailPath);
+
+    /**
      * 根据MD5和组织ID查找文件（用于去重）
      * 
      * @param md5Hash MD5哈希值

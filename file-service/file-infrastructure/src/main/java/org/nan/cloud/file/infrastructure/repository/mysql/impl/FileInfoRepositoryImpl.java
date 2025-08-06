@@ -119,7 +119,15 @@ public class FileInfoRepositoryImpl implements FileInfoRepository {
     public void updateFileMetadata(String fileId, String metadataId) {
         MaterialFileDO materialFileDO = new MaterialFileDO();
         materialFileDO.setFileId(fileId);
-        materialFileDO.setFileId(metadataId);
+        materialFileDO.setMetadataId(metadataId);
+        materialFileMapper.updateById(materialFileDO);
+    }
+
+    @Override
+    public void updateFileThumbnail(String fileId, String thumbnailPath) {
+        MaterialFileDO materialFileDO = new MaterialFileDO();
+        materialFileDO.setFileId(fileId);
+        materialFileDO.setThumbnailPath(thumbnailPath);
         materialFileMapper.updateById(materialFileDO);
     }
 
@@ -425,7 +433,7 @@ public class FileInfoRepositoryImpl implements FileInfoRepository {
                 .refCount(fileInfo.getRefCount())
                 .fileStatus(fileInfo.getFileStatus())
                 .thumbnailPath(fileInfo.getThumbnailPath())
-                .metaDataId(fileInfo.getMetaDataId())
+                .metadataId(fileInfo.getMetaDataId())
                 .updateTime(fileInfo.getUpdateTime())
                 .build();
     }
@@ -447,7 +455,7 @@ public class FileInfoRepositoryImpl implements FileInfoRepository {
                 .refCount(materialFileDO.getRefCount())
                 .fileStatus(materialFileDO.getFileStatus())
                 .thumbnailPath(materialFileDO.getThumbnailPath())
-                .metaDataId(materialFileDO.getMetaDataId())
+                .metaDataId(materialFileDO.getMetadataId())
                 .build();
     }
 

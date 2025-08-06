@@ -24,33 +24,9 @@ public interface FileUploadApi {
 
     String prefix = "/file/upload";
 
-    /**
-     * 单文件上传
-     * 
-     * @param file 上传的文件
-     * @param uploadRequest 上传参数
-     * @return 上传结果
-     */
     @PostMapping(prefix + "/single")
-    FileUploadResponse uploadSingle(
-            @Parameter(description = "上传的文件") @RequestParam("file") MultipartFile file,
-            @Parameter(description = "上传参数") @ModelAttribute FileUploadRequest uploadRequest);
-
-
-    @PostMapping(prefix + "/async/single")
     TaskInitResponse uploadSingleAsync(
             @Parameter(description = "上传的文件") @RequestParam("file") MultipartFile file,
-            @Parameter(description = "上传参数") @ModelAttribute FileUploadRequest uploadRequest);
-    /**
-     * 批量文件上传
-     * 
-     * @param files 上传的文件列表
-     * @param uploadRequest 上传参数
-     * @return 批量上传结果
-     */
-    @PostMapping(prefix + "/batch")
-    BatchFileUploadResponse uploadBatch(
-            @Parameter(description = "上传的文件列表") @RequestParam("files") MultipartFile[] files,
             @Parameter(description = "上传参数") @ModelAttribute FileUploadRequest uploadRequest);
 
     /**

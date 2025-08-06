@@ -16,8 +16,6 @@ import org.springframework.web.multipart.MultipartFile;
 
 import java.security.MessageDigest;
 import java.time.LocalDateTime;
-import java.util.ArrayList;
-import java.util.List;
 import java.util.UUID;
 
 /**
@@ -39,19 +37,18 @@ import java.util.UUID;
 @RequiredArgsConstructor
 public class FileUploadServiceImpl implements FileUploadService {
 
-    // TODO: 实现 FileInfoRepository 接口和对应的实体类
     private final FileInfoRepository fileInfoRepository;
     
-    // TODO: 实现 StorageService 接口，支持多种存储策略
+    // 支持多种存储策略
     private final StorageService storageService;
     
-    // TODO: 实现 FileValidationService 接口，文件格式和安全验证
+    // 文件格式和安全验证
     private final FileValidationService fileValidationService;
     
-    // TODO: 实现 ProgressTrackingService 接口，上传进度跟踪
+    // 上传进度跟踪
     private final ProgressTrackingService progressTrackingService;
     
-    // TODO: 实现 ThumbnailService 接口，缩略图生成
+    // 缩略图生成
     private final ThumbnailService thumbnailService;
     
     // 元数据分析服务
@@ -66,97 +63,6 @@ public class FileUploadServiceImpl implements FileUploadService {
     // 任务上下文服务
     private final TaskContextService taskContextService;
 
-    @Override
-    @Transactional
-    public FileUploadResponse uploadSingle(MultipartFile file, FileUploadRequest request) {
-        log.info("开始单文件上传 - 文件名: {}, 大小: {}, 组织: {}", 
-                file.getOriginalFilename(), file.getSize(), request.getOid());
-
-        try {
-            // 1. 文件验证
-            FileValidationService.FileValidationResult validationResult = validateFile(file, request);
-            if (!validationResult.isValid()) {
-                throw new IllegalArgumentException("文件验证失败: " + validationResult.getErrorMessage());
-            }
-
-            // 2. 计算文件MD5
-            String md5Hash = calculateMD5(file);
-            
-            // 3. 检查文件是否已存在（秒传逻辑）
-            FileInfo existingFileInfo = checkFileExistsByMd5(md5Hash);
-            if (existingFileInfo != null) {
-                log.info("发现重复文件，执行秒传逻辑 - MD5: {}", md5Hash);
-                return handleInstantUpload(existingFileInfo, file, request);
-            }
-
-            // 4. 生成文件ID和任务ID
-            String fileId = generateFileId();
-            String taskId = generateTaskId();
-
-            // 5. 创建任务上下文，存储用户信息
-            taskContextService.createTaskContext(taskId, fileId, request.getUid(), request.getOid(), 
-                    file.getOriginalFilename(), file.getSize());
-            
-            // 6. 发布上传开始事件
-            eventPublisher.publishUploadStarted(taskId, request, file.getOriginalFilename(), file.getSize(), request.getOid().toString());
-
-            // 7. 创建上传进度记录
-            progressTrackingService.initializeProgress(taskId, file.getSize());
-            
-            // 8. 更新任务状态为上传中
-            taskContextService.updateTaskStatus(taskId, TaskContext.TaskStatus.UPLOADING);
-
-            // 9. 存储文件（使用本地存储策略，包含组织隔离）
-            String storagePath = storageService.store(file, request, fileId);
-            
-            // 10. 创建文件信息记录
-            FileInfo fileInfo = createFileInfo(file, request, fileId, md5Hash, storagePath);
-            fileInfoRepository.save(fileInfo);
-            
-            // 11. 更新任务状态为已上传
-            taskContextService.updateTaskStatus(taskId, TaskContext.TaskStatus.UPLOADED);
-
-            // 12. 构建响应
-            FileUploadResponse response = buildUploadResponse(fileInfo, taskId);
-
-            // 13. 发布上传完成事件
-            eventPublisher.publishUploadCompleted(taskId, response, request.getOid().toString());
-
-            // 14. 异步处理：分析和存储文件元数据
-            String metadataId = asyncAnalyzeAndStoreMetadata(fileInfo, taskId);
-            
-            // 15. 异步处理：自动生成缩略图（对图片和视频文件）
-            if (isImageFile(file) || isVideoFile(file)) {
-                asyncGenerateThumbnail(fileInfo);
-            }
-
-            // 16. 发布文件处理完成事件（包含元数据ID）
-            if (metadataId != null) {
-                fileInfoRepository.updateFileMetadata(fileId, metadataId);
-                eventPublisher.publishProcessingCompleted(taskId, fileId, metadataId, request.getOid().toString());
-            }
-
-            // 17. 更新进度为完成
-            progressTrackingService.completeProgress(taskId);
-            taskContextService.updateTaskProgress(taskId, 100);
-
-            log.info("单文件上传完成 - 文件ID: {}, 任务ID: {}", fileId, taskId);
-            return response;
-
-        } catch (Exception e) {
-            log.error("单文件上传失败 - 文件名: {}", file.getOriginalFilename(), e);
-            
-            // 发布上传失败事件（如果taskId已生成，使用已有的；否则生成新的）
-            String errorTaskId = generateTaskId();
-            taskContextService.createTaskContext(errorTaskId, null, request.getUid(), request.getOid(), 
-                    file.getOriginalFilename(), file.getSize());
-            taskContextService.updateTaskStatus(errorTaskId, TaskContext.TaskStatus.FAILED);
-            
-            eventPublisher.publishUploadFailed(errorTaskId, e.getMessage(), request.getOid().toString());
-            
-            throw new RuntimeException("文件上传失败: " + e.getMessage(), e);
-        }
-    }
 
     @Override
     @Transactional
@@ -214,47 +120,6 @@ public class FileUploadServiceImpl implements FileUploadService {
         }
     }
 
-    @Override
-    @Transactional
-    public BatchFileUploadResponse uploadBatch(MultipartFile[] files, FileUploadRequest request) {
-        log.info("开始批量文件上传 - 文件数量: {}, 组织: {}", files.length, request.getOid());
-
-        List<FileUploadResponse> successUploads = new ArrayList<>();
-        List<BatchFileUploadResponse.FailedUpload> failedUploads = new ArrayList<>();
-
-        for (int i = 0; i < files.length; i++) {
-            MultipartFile file = files[i];
-            try {
-                FileUploadResponse response = uploadSingle(file, request);
-                successUploads.add(response);
-                
-                log.debug("批量上传成功 - 文件 {}/{}: {}", i + 1, files.length, file.getOriginalFilename());
-            } catch (Exception e) {
-                log.error("批量上传失败 - 文件 {}/{}: {}", i + 1, files.length, file.getOriginalFilename(), e);
-                
-                BatchFileUploadResponse.FailedUpload failedUpload = BatchFileUploadResponse.FailedUpload.builder()
-                        .filename(file.getOriginalFilename())
-                        .fileSize(file.getSize())
-                        .errorMessage(e.getMessage())
-                        .build();
-                failedUploads.add(failedUpload);
-            }
-        }
-
-        BatchFileUploadResponse response = BatchFileUploadResponse.builder()
-                .totalFiles(files.length)
-                .successCount(successUploads.size())
-                .failedCount(failedUploads.size())
-                .successUploads(successUploads)
-                .failedUploads(failedUploads)
-                .uploadTime(LocalDateTime.now())
-                .build();
-
-        log.info("批量文件上传完成 - 总数: {}, 成功: {}, 失败: {}", 
-                files.length, successUploads.size(), failedUploads.size());
-
-        return response;
-    }
 
     @Override
     public ChunkUploadInitResponse initChunkUpload(ChunkUploadInitRequest request) {
@@ -447,58 +312,6 @@ public class FileUploadServiceImpl implements FileUploadService {
     private FileInfo checkFileExistsByMd5(String md5Hash) {
         return fileInfoRepository.findByMd5Hash(md5Hash).orElse(null);
     }
-
-    /**
-     * 处理秒传逻辑
-     * 当发现相同MD5的文件时，不重复存储物理文件，但新建一个文件关联记录
-     */
-    private FileUploadResponse handleInstantUpload(FileInfo existingFileInfo, MultipartFile file, FileUploadRequest request) {
-        // 1. 生成新的文件ID和任务ID
-        String newFileId = generateFileId();
-        String taskId = generateTaskId();
-        
-        log.info("执行秒传 - 原文件ID: {}, 新文件ID: {}, 任务ID: {}", 
-                existingFileInfo.getFileId(), newFileId, taskId);
-        
-        try {
-            // 2. 创建任务上下文
-            taskContextService.createTaskContext(taskId, newFileId, request.getUid(), request.getOid(), 
-                    file.getOriginalFilename(), file.getSize());
-            
-            // 3. 发布上传开始事件
-            eventPublisher.publishUploadStarted(taskId, request, file.getOriginalFilename(), file.getSize(), request.getOid().toString());
-            
-            // 4. 创建新的文件信息记录（引用已存在的物理文件）
-            FileInfo newFileInfo = createFileInfoFromExisting(existingFileInfo, newFileId, file, request);
-            fileInfoRepository.save(newFileInfo);
-            
-            // 5. 更新原文件的引用计数
-            existingFileInfo.setRefCount(existingFileInfo.getRefCount() + 1);
-            fileInfoRepository.save(existingFileInfo);
-            
-            // 6. 更新任务状态为已完成（秒传）
-            taskContextService.updateTaskStatus(taskId, TaskContext.TaskStatus.COMPLETED);
-            taskContextService.updateTaskProgress(taskId, 100);
-            
-            // 7. 构建响应
-            FileUploadResponse response = buildUploadResponse(newFileInfo, taskId);
-            response.setInstantUpload(true); // 标记为秒传
-            
-            // 8. 发布上传完成事件
-            eventPublisher.publishUploadCompleted(taskId, response, request.getOid().toString());
-            
-            log.info("秒传完成 - 新文件ID: {}, 任务ID: {}, 引用计数: {}", 
-                    newFileId, taskId, existingFileInfo.getRefCount());
-            
-            return response;
-            
-        } catch (Exception e) {
-            log.error("秒传失败 - 新文件ID: {}, 错误: {}", newFileId, e.getMessage(), e);
-            taskContextService.updateTaskStatus(taskId, TaskContext.TaskStatus.FAILED);
-            eventPublisher.publishUploadFailed(taskId, e.getMessage(), request.getOid().toString());
-            throw new RuntimeException("秒传失败: " + e.getMessage(), e);
-        }
-    }
     
     /**
      * 基于已存在文件创建新的文件信息记录
@@ -606,30 +419,39 @@ public class FileUploadServiceImpl implements FileUploadService {
         // 异步生成缩略图，带回调机制
         thumbnailService.generateThumbnailAsync(fileInfo, (fileId, result) -> {
             if (result.isSuccess() && result.getThumbnails() != null && !result.getThumbnails().isEmpty()) {
-                // 获取主缩略图路径（300x300优先，否则选择第一个）
-                String primaryThumbnailPath = null;
-                for (ThumbnailService.ThumbnailInfo thumbnail : result.getThumbnails()) {
-                    if (thumbnail.getWidth() == 300 && thumbnail.getHeight() == 300) {
-                        primaryThumbnailPath = thumbnail.getThumbnailPath();
-                        break;
-                    }
-                }
-                
-                // 如果没有300x300的，选择第一个作为主缩略图
-                if (primaryThumbnailPath == null) {
-                    primaryThumbnailPath = result.getThumbnails().get(0).getThumbnailPath();
-                }
-                
-                // 发布缩略图生成完成事件，通知core-service更新MaterialFile表
-                String organizationId = "default"; // 从fileInfo或其他地方获取organizationId
-                eventPublisher.publishThumbnailGenerated(fileId, primaryThumbnailPath, organizationId);
-                
+                // 获取主缩略图路径
+                String primaryThumbnailPath = choosePrimaryThumbnail(result);
+
+                // 更新MaterialFile表
+                fileInfoRepository.updateFileThumbnail(fileId, primaryThumbnailPath);
+
                 log.info("缩略图生成回调成功 - 文件ID: {}, 主缩略图: {}", fileId, primaryThumbnailPath);
             } else {
                 log.warn("缩略图生成失败 - 文件ID: {}, 错误: {}", fileId, 
                         result.getErrorMessage() != null ? result.getErrorMessage() : "未知错误");
             }
         });
+    }
+
+    /**
+     * 获取主缩略图路径（300x300优先，否则选择第一个）
+     * @param result
+     * @return
+     */
+    private static String choosePrimaryThumbnail(ThumbnailService.ThumbnailResult result) {
+        String primaryThumbnailPath = null;
+        for (ThumbnailService.ThumbnailInfo thumbnail : result.getThumbnails()) {
+            if (thumbnail.getWidth() == 300 && thumbnail.getHeight() == 300) {
+                primaryThumbnailPath = thumbnail.getThumbnailPath();
+                break;
+            }
+        }
+
+        // 如果没有300x300的，选择第一个作为主缩略图
+        if (primaryThumbnailPath == null) {
+            primaryThumbnailPath = result.getThumbnails().get(0).getThumbnailPath();
+        }
+        return primaryThumbnailPath;
     }
 
     /**
@@ -800,13 +622,22 @@ public class FileUploadServiceImpl implements FileUploadService {
             
             // 9. 发布上传完成事件（包含完整文件信息）
             eventPublisher.publishUploadCompleted(taskId, uploadResponse, request.getOid().toString());
-            
-            // 10. 异步处理：自动生成缩略图（对图片和视频文件）
+
+            // 10. 异步处理，文件元数据解析（存入mongoDB）
+            String metadataId = asyncAnalyzeAndStoreMetadata(fileInfo, taskId);
+
+            // 11. 异步处理：自动生成缩略图（对图片和视频文件）
             if (isImageFile(file) || isVideoFile(file)) {
                 asyncGenerateThumbnail(fileInfo);
             }
+
+            // 12. 发布文件处理完成事件（包含元数据ID）
+            if (metadataId != null) {
+                fileInfoRepository.updateFileMetadata(fileId, metadataId);
+                eventPublisher.publishProcessingCompleted(taskId, fileId, metadataId, request.getOid().toString());
+            }
             
-            // 11. 更新进度为完成
+            // 12. 更新进度为完成
             progressTrackingService.completeProgress(taskId);
             taskContextService.updateTaskProgress(taskId, 100);
             updateProgress(taskId, file.getSize(), "文件上传完成");

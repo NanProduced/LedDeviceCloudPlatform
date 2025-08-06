@@ -58,7 +58,6 @@ public class FileUploadEventListener implements MessageConsumer {
                 case "FILE_UPLOAD_FAILED" -> handleUploadFailed(message);
                 case "FILE_PROCESSING_STARTED" -> handleProcessingStarted(message);
                 case "FILE_PROCESSING_COMPLETED" -> handleProcessingCompleted(message);
-                case "THUMBNAIL_GENERATED" -> handleThumbnailGenerated(message);
                 default -> {
                     log.warn("⚠️ 未知的文件上传事件类型: {}", message.getMessageType());
                     return ConsumeResult.failure(message.getMessageId(), getConsumerId(), 
@@ -235,18 +234,21 @@ public class FileUploadEventListener implements MessageConsumer {
         FileUploadEvent event = parseEvent(message);
         log.info("✅ 文件处理完成 - 任务ID: {}, 文件ID: {}", 
                 event.getTaskId(), event.getFileId());
-        
-        try {
-            // 更新元数据ID
-            String metadataId = extractMetadataId(event);
-            if (metadataId != null) {
-                materialService.updateMaterialMetadata(event.getFileId(), metadataId);
-            }
 
-            
-        } catch (Exception e) {
-            log.error("❌ 更新素材元数据失败 - 任务ID: {}, 错误: {}", 
-                    event.getTaskId(), e.getMessage(), e);
+        // 元数据解析完成事件
+        if (event.getProcessType().equals("METADATA")) {
+
+            try {
+                // 更新元数据ID
+                String metadataId = event.getMetadataId();
+                if (metadataId != null) {
+                    materialService.updateMaterialMetadata(event.getFileId(), metadataId);
+                }
+
+            } catch (Exception e) {
+                log.error("❌ 更新素材元数据失败 - 任务ID: {}, 错误: {}",
+                        event.getTaskId(), e.getMessage(), e);
+            }
         }
     }
 
@@ -281,40 +283,5 @@ public class FileUploadEventListener implements MessageConsumer {
         }
     }
 
-    /**
-     * 处理缩略图生成完成事件
-     */
-    private void handleThumbnailGenerated(Message message) {
-        try {
-            // 从消息载荷中提取信息
-            Map<String, Object> payload = (Map<String, Object>) message.getPayload();
-            String fileId = (String) payload.get("fileId");
-            String primaryThumbnailPath = (String) payload.get("primaryThumbnailPath");
-            
-            log.info("🖼️ 缩略图生成完成 - 文件ID: {}, 主缩略图路径: {}", fileId, primaryThumbnailPath);
-            
-            // 更新MaterialFile表中的thumbnail_path字段
-            boolean updated = materialFileService.updateThumbnailPath(fileId, primaryThumbnailPath);
-            if (updated) {
-                log.info("✅ 缩略图路径更新成功 - 文件ID: {}", fileId);
-            } else {
-                log.warn("⚠️ 缩略图路径更新失败 - 文件ID: {}", fileId);
-            }
-            
-        } catch (Exception e) {
-            log.error("❌ 处理缩略图生成完成事件失败 - 错误: {}", e.getMessage(), e);
-        }
-    }
-
-    /**
-     * 从事件中提取元数据ID
-     */
-    private String extractMetadataId(FileUploadEvent event) {
-        if (event.getExtras() != null) {
-            Object metadataId = event.getExtras().get("metadataId");
-            return metadataId != null ? metadataId.toString() : null;
-        }
-        return null;
-    }
 
 }

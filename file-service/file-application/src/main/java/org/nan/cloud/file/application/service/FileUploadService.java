@@ -19,15 +19,6 @@ import org.springframework.web.multipart.MultipartFile;
 public interface FileUploadService {
 
     /**
-     * 单文件上传
-     * 
-     * @param file 上传的文件
-     * @param request 上传请求参数
-     * @return 上传结果
-     */
-    FileUploadResponse uploadSingle(MultipartFile file, FileUploadRequest request);
-
-    /**
      * 异步单文件上传
      * 
      * @param file 上传的文件
@@ -35,15 +26,6 @@ public interface FileUploadService {
      * @return 任务初始化响应
      */
     TaskInitResponse uploadSingleAsync(MultipartFile file, FileUploadRequest request);
-
-    /**
-     * 批量文件上传
-     * 
-     * @param files 上传的文件数组
-     * @param request 上传请求参数
-     * @return 批量上传结果
-     */
-    BatchFileUploadResponse uploadBatch(MultipartFile[] files, FileUploadRequest request);
 
     /**
      * 初始化分片上传

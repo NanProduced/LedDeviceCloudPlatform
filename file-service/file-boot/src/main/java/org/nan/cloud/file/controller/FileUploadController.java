@@ -32,25 +32,8 @@ public class FileUploadController implements FileUploadApi {
 
     private final FileUploadService fileUploadService;
 
-    @Override
-    public FileUploadResponse uploadSingle(
-            @Parameter(description = "上传的文件") @RequestParam("file") MultipartFile file,
-            @Parameter(description = "上传参数") @ModelAttribute FileUploadRequest uploadRequest) {
-        
-        log.info("接收单文件上传请求 - 文件名: {}, 大小: {}", 
-                file.getOriginalFilename(), file.getSize());
-
-        // 使用同步方式（保持兼容性）
-        FileUploadResponse response = fileUploadFacade.uploadSingle(file, uploadRequest);
-        
-        log.info("单文件上传成功 - 文件ID: {}, 文件名: {}", 
-                response.getFileId(), response.getOriginalFilename());
-
-        return response;
-    }
-
     /**
-     * 异步上传单个文件（新接口）
+     * 异步上传单个文件
      * 
      * @param file 上传的文件
      * @param uploadRequest 上传参数
@@ -69,21 +52,6 @@ public class FileUploadController implements FileUploadApi {
         log.info("异步上传任务创建成功 - 任务ID: {}, 文件名: {}", 
                 response.getTaskId(), response.getFilename());
 
-        return response;
-    }
-
-    @Override
-    public BatchFileUploadResponse uploadBatch(
-            @Parameter(description = "上传的文件列表") @RequestParam("files") MultipartFile[] files,
-            @Parameter(description = "上传参数") @ModelAttribute FileUploadRequest uploadRequest) {
-        
-        log.info("接收批量文件上传请求 - 文件数量: {}", files.length);
-
-        BatchFileUploadResponse response = fileUploadService.uploadBatch(files, uploadRequest);
-        
-        log.info("批量文件上传完成 - 总数: {}, 成功: {}, 失败: {}", 
-                response.getTotalFiles(), response.getSuccessCount(), response.getFailedCount());
-        
         return response;
     }
 
