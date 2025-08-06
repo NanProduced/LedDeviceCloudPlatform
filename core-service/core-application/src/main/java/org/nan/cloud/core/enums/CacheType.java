@@ -32,7 +32,11 @@ public enum CacheType {
     TASK_PROGRESS("terminal:task:progress", Duration.ofMinutes(30), false, true),
     
     // 实时消息相关缓存
-    REALTIME_MESSAGE_UNREAD_COUNT("realtime:message:unread", Duration.ofMinutes(15), true, true);
+    REALTIME_MESSAGE_UNREAD_COUNT("realtime:message:unread", Duration.ofMinutes(15), true, true),
+    
+    // 广播消息相关缓存
+    BROADCAST_MESSAGE_UNREAD_COUNT("broadcast:message:unread", Duration.ofMinutes(15), true, true),
+    BROADCAST_MESSAGE_CONTENT("broadcast:message:content", Duration.ofMinutes(30), true, true);
 
     private final String keyPrefix;
     private final Duration defaultTtl;
