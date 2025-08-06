@@ -1,6 +1,6 @@
 package org.nan.cloud.core.repository;
 
-import org.nan.cloud.core.domain.MaterialMetadata;
+import org.nan.cloud.common.basic.domain.MaterialMetadata;
 
 /**
  * 素材元数据仓储接口

@@ -1,7 +1,7 @@
 package org.nan.cloud.file.application.service;
 
 import org.nan.cloud.file.application.domain.FileInfo;
-import org.nan.cloud.file.application.domain.MaterialMetadata;
+import org.nan.cloud.common.basic.domain.MaterialMetadata;
 
 /**
  * 文件元数据分析服务接口

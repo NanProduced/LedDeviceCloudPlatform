@@ -1,6 +1,6 @@
 package org.nan.cloud.file.application.repository;
 
-import org.nan.cloud.file.application.domain.MaterialMetadata;
+import org.nan.cloud.common.basic.domain.MaterialMetadata;
 
 /**
  * 素材元数据存储库接口
@@ -59,4 +59,23 @@ public interface MaterialMetadataRepository {
      * @return 是否删除成功
      */
     boolean deleteByFileId(String fileId);
+    
+    /**
+     * 更新缩略图信息
+     * 
+     * @param fileId 文件ID
+     * @param thumbnails 缩略图集合
+     * @return 是否更新成功
+     */
+    boolean updateThumbnails(String fileId, MaterialMetadata.ThumbnailCollection thumbnails);
+    
+    /**
+     * 更新分析状态
+     * 
+     * @param fileId 文件ID
+     * @param status 分析状态
+     * @param errorMessage 错误信息（可选）
+     * @return 是否更新成功
+     */
+    boolean updateAnalysisStatus(String fileId, String status, String errorMessage);
 }

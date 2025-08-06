@@ -9,7 +9,7 @@ import org.apache.tika.sax.BodyContentHandler;
 import org.nan.cloud.file.application.domain.FileInfo;
 import org.nan.cloud.file.application.service.MetadataAnalysisService;
 import org.nan.cloud.file.application.service.StorageService;
-import org.nan.cloud.file.application.domain.MaterialMetadata;
+import org.nan.cloud.common.basic.domain.MaterialMetadata;
 import org.springframework.stereotype.Service;
 import org.springframework.util.StringUtils;
 
@@ -28,9 +28,10 @@ import java.util.*;
 import org.bytedeco.javacv.FFmpegFrameGrabber;
 
 /**
- * 文件元数据分析服务实现
+ * 文件元数据分析服务实现 - 适配统一模型
  * 
  * 使用Apache Tika和FFmpeg进行深度文件分析
+ * 适配统一的MaterialMetadata模型结构
  * 
  * @author LedDeviceCloudPlatform Team
  * @since 1.0.0
@@ -71,43 +72,49 @@ public class MetadataAnalysisServiceImpl implements MetadataAnalysisService {
         log.info("开始分析文件元数据 - 文件ID: {}, 任务ID: {}", fileInfo.getFileId(), taskId);
         
         try {
-            MaterialMetadata.MaterialMetadataBuilder builder = MaterialMetadata.builder()
-                    .fileId(fileInfo.getFileId())
-                    .originalFilename(fileInfo.getOriginalFilename())
-                    .fileSize(fileInfo.getFileSize())
-                    .mimeType(fileInfo.getMimeType())
-                    .fileType(getFileTypeCategory(fileInfo.getMimeType()))
-                    .fileFormat(getFileFormat(fileInfo.getOriginalFilename()))
-                    .md5Hash(fileInfo.getMd5Hash())
-                    .analysisTaskId(taskId)
-                    .analysisStatus("ANALYZING")
-                    .createdAt(LocalDateTime.now())
-                    .updatedAt(LocalDateTime.now());
-
             String filePath = storageService.getAbsolutePath(fileInfo.getStoragePath());
             File file = new File(filePath);
             
             if (!file.exists()) {
                 log.warn("文件不存在，无法分析元数据: {}", filePath);
-                return builder.analysisStatus("FAILED")
-                        .analysisError("文件不存在")
-                        .build();
+                return createFailedMetadata(fileInfo, taskId, "文件不存在");
             }
+
+            // 构建基础文件信息
+            MaterialMetadata.FileBasicInfo basicInfo = MaterialMetadata.FileBasicInfo.builder()
+                    .fileName(fileInfo.getOriginalFilename())
+                    .mimeType(fileInfo.getMimeType())
+                    .fileType(getFileTypeCategory(fileInfo.getMimeType()))
+                    .fileFormat(getFileFormat(fileInfo.getOriginalFilename()))
+                    .fileExtension(getFileExtension(fileInfo.getOriginalFilename()))
+                    .fileSize(fileInfo.getFileSize())
+                    .md5Hash(fileInfo.getMd5Hash())
+                    .build();
+
+            // 构建MaterialMetadata
+            MaterialMetadata.MaterialMetadataBuilder builder = MaterialMetadata.builder()
+                    .fileId(fileInfo.getFileId())
+                    .originalFilename(fileInfo.getOriginalFilename())
+                    .analysisTaskId(taskId)
+                    .basicInfo(basicInfo)
+                    .analysisStatus("ANALYZING")
+                    .createdAt(LocalDateTime.now())
+                    .updatedAt(LocalDateTime.now());
 
             // 根据文件类型进行不同的分析
             String fileType = getFileTypeCategory(fileInfo.getMimeType());
             switch (fileType) {
                 case "IMAGE":
-                    analyzeImageProperties(builder, file, fileInfo);
+                    analyzeImageMetadata(builder, file, fileInfo);
                     break;
                 case "VIDEO":
-                    analyzeVideoProperties(builder, file, fileInfo);
+                    analyzeVideoMetadata(builder, file, fileInfo);
                     break;
                 case "AUDIO":
-                    analyzeAudioProperties(builder, file, fileInfo);
+                    analyzeAudioMetadata(builder, file, fileInfo);
                     break;
                 case "DOCUMENT":
-                    analyzeDocumentProperties(builder, file, fileInfo);
+                    analyzeDocumentMetadata(builder, file, fileInfo);
                     break;
                 default:
                     log.debug("文件类型 {} 不需要特殊分析", fileType);
@@ -126,205 +133,218 @@ public class MetadataAnalysisServiceImpl implements MetadataAnalysisService {
 
         } catch (Exception e) {
             log.error("❌ 文件元数据分析失败 - 文件ID: {}, 错误: {}", fileInfo.getFileId(), e.getMessage(), e);
-            return MaterialMetadata.builder()
-                    .fileId(fileInfo.getFileId())
-                    .originalFilename(fileInfo.getOriginalFilename())
-                    .fileSize(fileInfo.getFileSize())
-                    .mimeType(fileInfo.getMimeType())
-                    .fileType(getFileTypeCategory(fileInfo.getMimeType()))
-                    .md5Hash(fileInfo.getMd5Hash())
-                    .analysisTaskId(taskId)
-                    .analysisStatus("FAILED")
-                    .analysisError(e.getMessage())
-                    .createdAt(LocalDateTime.now())
-                    .updatedAt(LocalDateTime.now())
-                    .build();
+            return createFailedMetadata(fileInfo, taskId, e.getMessage());
         }
     }
 
     /**
-     * 分析图片属性
+     * 分析图片元数据
      */
-    private void analyzeImageProperties(MaterialMetadata.MaterialMetadataBuilder builder, File file, FileInfo fileInfo) {
+    private void analyzeImageMetadata(MaterialMetadata.MaterialMetadataBuilder builder, File file, FileInfo fileInfo) {
         try {
             BufferedImage image = ImageIO.read(file);
             if (image != null) {
-                builder.imageWidth(image.getWidth())
-                        .imageHeight(image.getHeight())
-                        .colorDepth(image.getColorModel().getPixelSize());
+                MaterialMetadata.ImageMetadata imageMetadata = MaterialMetadata.ImageMetadata.builder()
+                        .width(image.getWidth())
+                        .height(image.getHeight())
+                        .colorDepth(image.getColorModel().getPixelSize())
+                        .colorSpace(image.getColorModel().getColorSpace().getType() == java.awt.color.ColorSpace.TYPE_RGB ? "RGB" : "OTHER")
+                        .hasAlpha(image.getColorModel().hasAlpha())
+                        .build();
 
-                // 提取EXIF信息
-                extractExifData(builder, file);
+                // 尝试提取EXIF信息
+                MaterialMetadata.ExifInfo exifInfo = extractExifInfo(file);
+                if (exifInfo != null) {
+                    imageMetadata.setExifInfo(exifInfo);
+                }
+
+                builder.imageMetadata(imageMetadata);
+                log.debug("图片元数据分析完成 - 尺寸: {}x{}", image.getWidth(), image.getHeight());
             }
         } catch (Exception e) {
-            log.warn("图片属性分析失败: {}, 错误: {}", file.getName(), e.getMessage());
+            log.warn("图片元数据分析失败: {}", e.getMessage());
         }
     }
 
     /**
-     * 分析视频属性
+     * 分析视频元数据
      */
-    private void analyzeVideoProperties(MaterialMetadata.MaterialMetadataBuilder builder, File file, FileInfo fileInfo) {
+    private void analyzeVideoMetadata(MaterialMetadata.MaterialMetadataBuilder builder, File file, FileInfo fileInfo) {
         try (FFmpegFrameGrabber grabber = new FFmpegFrameGrabber(file)) {
             grabber.start();
-            
-            builder.videoWidth(grabber.getImageWidth())
-                    .videoHeight(grabber.getImageHeight())
-                    .videoDuration((long) (grabber.getLengthInTime() / 1000000)) // 转换为秒
-                    .frameRate(grabber.getVideoFrameRate())
-                    .videoCodec(grabber.getVideoCodecName())
-                    .videoBitrate((long) grabber.getVideoBitrate())
-                    .aspectRatio(String.format("%.2f:1", (double) grabber.getImageWidth() / grabber.getImageHeight()));
 
-            // 音频信息
+            MaterialMetadata.VideoMetadata.VideoMetadataBuilder videoBuilder = MaterialMetadata.VideoMetadata.builder()
+                    .videoWidth(grabber.getImageWidth())
+                    .videoHeight(grabber.getImageHeight())
+                    .videoDuration((long) (grabber.getLengthInTime() / 1000000.0)) // 转换为秒
+                    .frameRate(grabber.getVideoFrameRate())
+                    .videoBitrate((long) grabber.getVideoBitrate())
+                    .videoCodec(grabber.getVideoCodecName())
+                    .containerFormat(grabber.getFormat())
+                    .aspectRatio(calculateAspectRatio(grabber.getImageWidth(), grabber.getImageHeight()));
+
+            // 音频流信息
             if (grabber.getAudioChannels() > 0) {
-                builder.channels(grabber.getAudioChannels())
-                        .sampleRate(grabber.getSampleRate())
+                MaterialMetadata.AudioStreamInfo audioStream = MaterialMetadata.AudioStreamInfo.builder()
                         .audioCodec(grabber.getAudioCodecName())
                         .audioBitrate((long) grabber.getAudioBitrate())
-                        .audioDuration((long) (grabber.getLengthInTime() / 1000000));
+                        .sampleRate(grabber.getSampleRate())
+                        .channels(grabber.getAudioChannels())
+                        .audioDuration((long) (grabber.getLengthInTime() / 1000000.0))
+                        .build();
+                videoBuilder.audioStream(audioStream);
             }
-            
+
+            builder.videoMetadata(videoBuilder.build());
+            log.debug("视频元数据分析完成 - 尺寸: {}x{}, 时长: {}秒", 
+                    grabber.getImageWidth(), grabber.getImageHeight(), 
+                    grabber.getLengthInTime() / 1000000.0);
+
             grabber.stop();
         } catch (Exception e) {
-            log.warn("视频属性分析失败: {}, 错误: {}", file.getName(), e.getMessage());
+            log.warn("视频元数据分析失败: {}", e.getMessage());
         }
     }
 
     /**
-     * 分析音频属性
+     * 分析音频元数据
      */
-    private void analyzeAudioProperties(MaterialMetadata.MaterialMetadataBuilder builder, File file, FileInfo fileInfo) {
+    private void analyzeAudioMetadata(MaterialMetadata.MaterialMetadataBuilder builder, File file, FileInfo fileInfo) {
         try (FFmpegFrameGrabber grabber = new FFmpegFrameGrabber(file)) {
             grabber.start();
-            
-            builder.channels(grabber.getAudioChannels())
-                    .sampleRate(grabber.getSampleRate())
-                    .audioCodec(grabber.getAudioCodecName())
+
+            MaterialMetadata.AudioMetadata audioMetadata = MaterialMetadata.AudioMetadata.builder()
+                    .audioDuration((long) (grabber.getLengthInTime() / 1000000.0))
                     .audioBitrate((long) grabber.getAudioBitrate())
-                    .audioDuration((long) (grabber.getLengthInTime() / 1000000));
-            
+                    .sampleRate(grabber.getSampleRate())
+                    .channels(grabber.getAudioChannels())
+                    .audioCodec(grabber.getAudioCodecName())
+                    .containerFormat(grabber.getFormat())
+                    .build();
+
+            builder.audioMetadata(audioMetadata);
+            log.debug("音频元数据分析完成 - 时长: {}秒, 比特率: {}", 
+                    grabber.getLengthInTime() / 1000000.0, grabber.getAudioBitrate());
+
             grabber.stop();
         } catch (Exception e) {
-            log.warn("音频属性分析失败: {}, 错误: {}", file.getName(), e.getMessage());
+            log.warn("音频元数据分析失败: {}", e.getMessage());
         }
     }
 
     /**
-     * 分析文档属性
+     * 分析文档元数据
      */
-    private void analyzeDocumentProperties(MaterialMetadata.MaterialMetadataBuilder builder, File file, FileInfo fileInfo) {
-        try (InputStream stream = new FileInputStream(file)) {
+    private void analyzeDocumentMetadata(MaterialMetadata.MaterialMetadataBuilder builder, File file, FileInfo fileInfo) {
+        try (InputStream inputStream = new FileInputStream(file)) {
             Metadata metadata = new Metadata();
             AutoDetectParser parser = new AutoDetectParser();
             BodyContentHandler handler = new BodyContentHandler(-1);
-            
-            parser.parse(stream, handler, metadata);
-            
-            // 提取文档属性
-            builder.documentTitle(metadata.get("title"))
-                    .documentAuthor(metadata.get("creator"))
+
+            parser.parse(inputStream, handler, metadata);
+
+            MaterialMetadata.DocumentMetadata documentMetadata = MaterialMetadata.DocumentMetadata.builder()
+                    .documentTitle(metadata.get("title"))
+                    .documentAuthor(metadata.get("Author"))
                     .documentSubject(metadata.get("subject"))
-                    .documentKeywords(metadata.get("keywords"));
+                    .documentKeywords(metadata.get("Keywords"))
+                    .creator(metadata.get("Application-Name"))
+                    .build();
 
-            // 尝试获取页数（主要针对PDF）
-            String pages = metadata.get("xmpTPg:NPages");
-            if (pages == null) {
-                pages = metadata.get("meta:page-count");  
-            }
-            if (pages != null) {
+            // 尝试解析页数
+            String pageCountStr = metadata.get("xmpTPg:NPages");
+            if (pageCountStr != null) {
                 try {
-                    builder.pageCount(Integer.parseInt(pages));
+                    documentMetadata.setPageCount(Integer.parseInt(pageCountStr));
                 } catch (NumberFormatException e) {
-                    log.debug("页数解析失败: {}", pages);
+                    log.debug("无法解析页数: {}", pageCountStr);
                 }
             }
 
-            // 提取创建和修改时间
-            String created = metadata.get("dcterms:created");
-            String modified = metadata.get("dcterms:modified");
-            
-            if (created != null) {
-                try {
-                    builder.documentCreated(LocalDateTime.parse(created));
-                } catch (Exception e) {
-                    log.debug("文档创建时间解析失败: {}", created);
-                }
-            }
-            
-            if (modified != null) {
-                try {
-                    builder.documentModified(LocalDateTime.parse(modified));
-                } catch (Exception e) {
-                    log.debug("文档修改时间解析失败: {}", modified);
-                }
-            }
+            builder.documentMetadata(documentMetadata);
+            log.debug("文档元数据分析完成 - 标题: {}, 作者: {}", 
+                    documentMetadata.getDocumentTitle(), documentMetadata.getDocumentAuthor());
 
         } catch (Exception e) {
-            log.warn("文档属性分析失败: {}, 错误: {}", file.getName(), e.getMessage());
+            log.warn("文档元数据分析失败: {}", e.getMessage());
         }
     }
 
     /**
-     * 使用Tika提取通用元数据
+     * 提取Tika通用元数据
      */
     private void extractTikaMetadata(MaterialMetadata.MaterialMetadataBuilder builder, File file) {
-        try (InputStream stream = new FileInputStream(file)) {
+        try (InputStream inputStream = new FileInputStream(file)) {
             Metadata metadata = new Metadata();
-            AutoDetectParser parser = new AutoDetectParser();
-            BodyContentHandler handler = new BodyContentHandler(-1);
-            
-            parser.parse(stream, handler, metadata);
-            
-            // 构建额外属性Map
+            tika.parse(inputStream, metadata);
+
             Map<String, Object> additionalProperties = new HashMap<>();
             for (String name : metadata.names()) {
-                additionalProperties.put(name, metadata.get(name));
+                String value = metadata.get(name);
+                if (StringUtils.hasText(value)) {
+                    additionalProperties.put(name, value);
+                }
             }
-            
-            builder.additionalProperties(additionalProperties);
-            
+
+            if (!additionalProperties.isEmpty()) {
+                // 将额外属性添加到basicInfo中
+                MaterialMetadata.FileBasicInfo basicInfo = builder.build().getBasicInfo();
+                if (basicInfo != null) {
+                    basicInfo.setAdditionalProperties(additionalProperties);
+                }
+            }
+
         } catch (Exception e) {
-            log.debug("Tika元数据提取失败: {}, 错误: {}", file.getName(), e.getMessage());
+            log.debug("Tika元数据提取失败: {}", e.getMessage());
         }
     }
 
     /**
-     * 提取图片EXIF数据
+     * 提取EXIF信息（简化版本）
      */
-    private void extractExifData(MaterialMetadata.MaterialMetadataBuilder builder, File file) {
+    private MaterialMetadata.ExifInfo extractExifInfo(File file) {
         try (ImageInputStream iis = ImageIO.createImageInputStream(file)) {
             Iterator<ImageReader> readers = ImageIO.getImageReaders(iis);
             if (readers.hasNext()) {
                 ImageReader reader = readers.next();
-                reader.setInput(iis, true);
-                
+                reader.setInput(iis);
                 IIOMetadata metadata = reader.getImageMetadata(0);
-                if (metadata != null) {
-                    // 简化的EXIF提取，只获取关键信息
-                    String[] formatNames = metadata.getMetadataFormatNames();
-                    StringBuilder exifBuilder = new StringBuilder();
-                    
-                    for (String formatName : formatNames) {
-                        exifBuilder.append(formatName).append(": ");
-                        try {
-                            exifBuilder.append(metadata.getAsTree(formatName).toString());
-                        } catch (Exception e) {
-                            exifBuilder.append("解析失败");
-                        }
-                        exifBuilder.append("; ");
-                    }
-                    
-                    if (exifBuilder.length() > 0) {
-                        builder.exifData(exifBuilder.toString());
-                    }
-                }
                 
-                reader.dispose();
+                if (metadata != null) {
+                    // 这里可以实现详细的EXIF解析
+                    // 暂时返回基础的EXIF信息结构
+                    return MaterialMetadata.ExifInfo.builder()
+                            .build();
+                }
             }
         } catch (Exception e) {
-            log.debug("EXIF数据提取失败: {}, 错误: {}", file.getName(), e.getMessage());
+            log.debug("EXIF信息提取失败: {}", e.getMessage());
         }
+        return null;
+    }
+
+    // ==================== 辅助方法 ====================
+
+    private MaterialMetadata createFailedMetadata(FileInfo fileInfo, String taskId, String errorMessage) {
+        MaterialMetadata.FileBasicInfo basicInfo = MaterialMetadata.FileBasicInfo.builder()
+                .fileName(fileInfo.getOriginalFilename())
+                .mimeType(fileInfo.getMimeType())
+                .fileType(getFileTypeCategory(fileInfo.getMimeType()))
+                .fileFormat(getFileFormat(fileInfo.getOriginalFilename()))
+                .fileSize(fileInfo.getFileSize())
+                .md5Hash(fileInfo.getMd5Hash())
+                .build();
+
+        return MaterialMetadata.builder()
+                .fileId(fileInfo.getFileId())
+                .originalFilename(fileInfo.getOriginalFilename())
+                .analysisTaskId(taskId)
+                .basicInfo(basicInfo)
+                .analysisStatus("FAILED")
+                .analysisError(errorMessage)
+                .createdAt(LocalDateTime.now())
+                .updatedAt(LocalDateTime.now())
+                .build();
     }
 
     @Override
@@ -337,32 +357,42 @@ public class MetadataAnalysisServiceImpl implements MetadataAnalysisService {
 
     @Override
     public String getFileTypeCategory(String mimeType) {
-        if (SUPPORTED_IMAGE_TYPES.contains(mimeType)) {
-            return "IMAGE";
-        } else if (SUPPORTED_VIDEO_TYPES.contains(mimeType)) {
-            return "VIDEO";
-        } else if (SUPPORTED_AUDIO_TYPES.contains(mimeType)) {
-            return "AUDIO";
-        } else if (SUPPORTED_DOCUMENT_TYPES.contains(mimeType)) {
+        if (mimeType == null) {
             return "DOCUMENT";
+        }
+
+        if (mimeType.startsWith("image/")) {
+            return "IMAGE";
+        } else if (mimeType.startsWith("video/")) {
+            return "VIDEO";
+        } else if (mimeType.startsWith("audio/")) {
+            return "AUDIO";
         } else {
-            return "OTHER";
+            return "DOCUMENT";
         }
     }
 
-    /**
-     * 从文件名获取文件格式
-     */
     private String getFileFormat(String filename) {
-        if (!StringUtils.hasText(filename)) {
-            return null;
+        if (filename == null || filename.isEmpty()) {
+            return "";
         }
         
         int lastDotIndex = filename.lastIndexOf('.');
-        if (lastDotIndex > 0 && lastDotIndex < filename.length() - 1) {
-            return filename.substring(lastDotIndex + 1).toLowerCase();
-        }
+        return lastDotIndex > 0 ? filename.substring(lastDotIndex + 1).toLowerCase() : "";
+    }
+
+    private String getFileExtension(String filename) {
+        return getFileFormat(filename);
+    }
+
+    private String calculateAspectRatio(int width, int height) {
+        if (height == 0) return "Unknown";
         
-        return null;
+        double ratio = (double) width / height;
+        if (Math.abs(ratio - 16.0/9.0) < 0.01) return "16:9";
+        if (Math.abs(ratio - 4.0/3.0) < 0.01) return "4:3";
+        if (Math.abs(ratio - 1.0) < 0.01) return "1:1";
+        
+        return String.format("%.2f:1", ratio);
     }
 }

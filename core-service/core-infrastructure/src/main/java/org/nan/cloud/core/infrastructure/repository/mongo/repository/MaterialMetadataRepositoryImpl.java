@@ -1,8 +1,8 @@
-package org.nan.cloud.core.infrastructure.repository.mongodb.impl;
+package org.nan.cloud.core.infrastructure.repository.mongo.repository;
 
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.nan.cloud.core.domain.MaterialMetadata;
+import org.nan.cloud.common.basic.domain.MaterialMetadata;
 import org.nan.cloud.core.repository.MaterialMetadataRepository;
 import org.springframework.data.mongodb.core.MongoTemplate;
 import org.springframework.data.mongodb.core.query.Criteria;
@@ -12,9 +12,20 @@ import org.springframework.stereotype.Repository;
 import java.util.List;
 
 /**
- * 素材元数据仓储MongoDB实现
+ * 素材元数据仓储MongoDB实现 - core-service查询端
  * 
- * 负责MaterialMetadata在MongoDB中的持久化操作
+ * 负责MaterialMetadata在MongoDB中的查询和读取操作
+ * 
+ * ⚠️  使用说明：
+ * - 使用统一的MaterialMetadata模型（common-basic）
+ * - 无MongoDB注解，依赖默认字段映射
+ * - 主要用于根据fileId或ObjectId进行简单查询
+ * - 避免复杂聚合查询，保持高性能
+ * 
+ * 字段映射注意事项：
+ * - 查询条件中的字段名必须与MongoDB实际字段名一致
+ * - 推荐查询：Criteria.where("fileId").is(fileId)
+ * - 避免：Criteria.where("basicInfo.fileSize").gte(minSize)
  * 
  * @author LedDeviceCloudPlatform Team
  * @since 1.0.0

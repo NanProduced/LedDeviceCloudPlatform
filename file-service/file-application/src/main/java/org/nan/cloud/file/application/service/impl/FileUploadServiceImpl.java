@@ -2,6 +2,7 @@ package org.nan.cloud.file.application.service.impl;
 
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.nan.cloud.common.basic.domain.MaterialMetadata;
 import org.nan.cloud.file.api.dto.*;
 import org.nan.cloud.file.application.service.*;
 import org.nan.cloud.file.application.domain.FileInfo;
@@ -9,7 +10,6 @@ import org.nan.cloud.file.application.domain.TaskContext;
 import org.nan.cloud.file.application.repository.FileInfoRepository;
 import org.nan.cloud.file.application.repository.MaterialMetadataRepository;
 import org.nan.cloud.file.application.service.FileUploadEventService;
-import org.nan.cloud.file.application.domain.MaterialMetadata;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
@@ -258,18 +258,83 @@ public class FileUploadServiceImpl implements FileUploadService {
         // 异步生成缩略图，带回调机制
         thumbnailService.generateThumbnailAsync(fileInfo, (fileId, result) -> {
             if (result.isSuccess() && result.getThumbnails() != null && !result.getThumbnails().isEmpty()) {
-                // 获取主缩略图路径
+                // 构建统一的缩略图集合信息
+                org.nan.cloud.common.basic.domain.MaterialMetadata.ThumbnailCollection thumbnailCollection = 
+                        buildThumbnailCollection(result);
+
+                // 获取主缩略图路径（用于MySQL存储）
                 String primaryThumbnailPath = choosePrimaryThumbnail(result);
 
-                // 更新MaterialFile表
+                // 1. 更新MaterialFile表的主缩略图路径
                 fileInfoRepository.updateFileThumbnail(fileId, primaryThumbnailPath);
 
-                log.info("缩略图生成回调成功 - 文件ID: {}, 主缩略图: {}", fileId, primaryThumbnailPath);
+                // 2. 将完整的缩略图信息保存到MongoDB元数据中
+                materialMetadataRepository.updateThumbnails(fileId, thumbnailCollection);
+
+                log.info("✅ 缩略图生成和保存完成 - 文件ID: {}, 主缩略图: {}, 总缩略图数量: {}", 
+                        fileId, primaryThumbnailPath, result.getThumbnails().size());
             } else {
-                log.warn("缩略图生成失败 - 文件ID: {}, 错误: {}", fileId, 
+                // 标记缩略图生成失败
+                org.nan.cloud.common.basic.domain.MaterialMetadata.ThumbnailCollection failedCollection = 
+                        org.nan.cloud.common.basic.domain.MaterialMetadata.ThumbnailCollection.builder()
+                                .generationStatus("FAILED")
+                                .errorMessage(result.getErrorMessage())
+                                .generatedAt(java.time.LocalDateTime.now())
+                                .build();
+                
+                materialMetadataRepository.updateThumbnails(fileId, failedCollection);
+                
+                log.warn("❌ 缩略图生成失败 - 文件ID: {}, 错误: {}", fileId, 
                         result.getErrorMessage() != null ? result.getErrorMessage() : "未知错误");
             }
         });
+    }
+
+    /**
+     * 构建缩略图集合信息
+     */
+    private org.nan.cloud.common.basic.domain.MaterialMetadata.ThumbnailCollection buildThumbnailCollection(
+            ThumbnailService.ThumbnailResult result) {
+        
+        java.util.List<org.nan.cloud.common.basic.domain.MaterialMetadata.ThumbnailInfo> allThumbnails = 
+                new java.util.ArrayList<>();
+        
+        org.nan.cloud.common.basic.domain.MaterialMetadata.ThumbnailInfo primaryThumbnail = null;
+        
+        for (ThumbnailService.ThumbnailInfo thumbnail : result.getThumbnails()) {
+            // 转换缩略图信息
+            org.nan.cloud.common.basic.domain.MaterialMetadata.ThumbnailInfo thumbnailInfo = 
+                    org.nan.cloud.common.basic.domain.MaterialMetadata.ThumbnailInfo.builder()
+                            .size(thumbnail.getWidth() + "x" + thumbnail.getHeight())
+                            .width(thumbnail.getWidth())
+                            .height(thumbnail.getHeight())
+                            .storageUrl(storageService.generateAccessUrl(thumbnail.getThumbnailPath()))
+                            .storagePath(thumbnail.getThumbnailPath())
+                            .fileSize(thumbnail.getFileSize())
+                            .format(thumbnail.getFormat())
+                            .isPrimary(thumbnail.getWidth() == 300 && thumbnail.getHeight() == 300)
+                            .build();
+            
+            allThumbnails.add(thumbnailInfo);
+            
+            // 确定主缩略图（300x300优先）
+            if (thumbnail.getWidth() == 300 && thumbnail.getHeight() == 300) {
+                primaryThumbnail = thumbnailInfo;
+            }
+        }
+        
+        // 如果没有300x300的，选择第一个作为主缩略图
+        if (primaryThumbnail == null && !allThumbnails.isEmpty()) {
+            primaryThumbnail = allThumbnails.get(0);
+            primaryThumbnail.setIsPrimary(true);
+        }
+        
+        return org.nan.cloud.common.basic.domain.MaterialMetadata.ThumbnailCollection.builder()
+                .primaryThumbnail(primaryThumbnail)
+                .allThumbnails(allThumbnails)
+                .generationStatus("SUCCESS")
+                .generatedAt(java.time.LocalDateTime.now())
+                .build();
     }
 
     /**

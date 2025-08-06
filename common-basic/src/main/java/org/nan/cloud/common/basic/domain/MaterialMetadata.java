@@ -1,4 +1,4 @@
-package org.nan.cloud.core.domain;
+package org.nan.cloud.common.basic.domain;
 
 import lombok.AllArgsConstructor;
 import lombok.Builder;
@@ -10,13 +10,51 @@ import java.util.List;
 import java.util.Map;
 
 /**
- * 素材元数据 - MongoDB文档结构
- * 存储素材的详细元数据信息，用于素材详情展示
+ * 素材元数据统一模型 - 跨服务共享
+ * 
+ * 用于MongoDB存储和跨服务查询，采用嵌套结构支持复杂业务需求。
+ * 所有服务统一使用此模型，确保兼容性。
+ * 
+ * 存储策略：
+ * - MongoDB集合：material_metadata
+ * - 支持多种文件类型的元数据
+ * - 包含完整的缩略图信息
+ * - 自动生成_class字段确保跨服务兼容
+ * 
+ * ⚠️  重要使用说明：
+ * 1. 【无MongoDB注解】
+ *    - 此类作为通用模型，不包含@Document、@Field等MongoDB注解
+ *    - 各服务使用时需要手动处理字段映射关系
+ *    - 依赖Spring Data MongoDB的默认字段映射规则
+ * 
+ * 2. 【字段名称映射】
+ *    - Java字段名（驼峰）→ MongoDB字段名（驼峰）
+ *    - 示例：fileId → fileId, createdAt → createdAt
+ *    - ⚠️ 务必确认字段名称与实际MongoDB文档一致
+ * 
+ * 3. 【查询操作建议】
+ *    - 主要查询字段：id (ObjectId), fileId
+ *    - 推荐查询模式：根据fileId或ObjectId进行简单查询
+ *    - ⚠️ 避免复杂的聚合操作和深度嵌套字段查询
+ *    - ⚠️ 复杂查询可能导致性能问题和字段映射错误
+ * 
+ * 4. 【跨服务兼容性】
+ *    - file-service：负责创建和更新元数据
+ *    - core-service：负责查询和展示元数据
+ *    - 两服务使用相同类路径，_class字段自然兼容
+ * 
+ * 5. 【扩展性考虑】
+ *    - 新增字段时保持向后兼容
+ *    - 嵌套结构支持复杂业务场景
+ *    - 预留AI分析和LED业务扩展能力
+ * 
+ * @author LedDeviceCloudPlatform Team
+ * @since 1.0.0
  */
 @Data
-@AllArgsConstructor
-@NoArgsConstructor
 @Builder
+@NoArgsConstructor
+@AllArgsConstructor
 public class MaterialMetadata {
 
     /**
@@ -29,13 +67,20 @@ public class MaterialMetadata {
      */
     private String fileId;
 
-    private String fileName;
+    /**
+     * 原始文件名
+     */
+    private String originalFilename;
 
     /**
-     * 上传该文件的任务Id
-     * 或是转码任务的任务Id
+     * 分析任务ID
      */
-    private String taskId;
+    private String analysisTaskId;
+
+    /**
+     * 组织ID
+     */
+    private String organizationId;
 
     /**
      * 基础文件信息
@@ -43,22 +88,27 @@ public class MaterialMetadata {
     private FileBasicInfo basicInfo;
 
     /**
-     * 图片元数据（仅图片类型素材）
+     * 缩略图信息（所有生成的缩略图）
+     */
+    private ThumbnailCollection thumbnails;
+
+    /**
+     * 图片元数据（仅图片文件）
      */
     private ImageMetadata imageMetadata;
 
     /**
-     * 视频元数据（仅视频类型素材）
+     * 视频元数据（仅视频文件）
      */
     private VideoMetadata videoMetadata;
 
     /**
-     * 音频元数据（仅音频类型素材）
+     * 音频元数据（仅音频文件）
      */
     private AudioMetadata audioMetadata;
 
     /**
-     * 文档元数据（仅文档类型素材）
+     * 文档元数据（仅文档文件）
      */
     private DocumentMetadata documentMetadata;
 
@@ -73,21 +123,26 @@ public class MaterialMetadata {
     private AiAnalysisResult aiAnalysisResult;
 
     /**
-     * 处理历史记录
+     * 分析状态
      */
-    private List<ProcessingHistory> processingHistory;
+    private String analysisStatus;
+
+    /**
+     * 分析错误信息
+     */
+    private String analysisError;
 
     /**
      * 元数据创建时间
      */
-    private LocalDateTime createTime;
+    private LocalDateTime createdAt;
 
     /**
      * 元数据更新时间
      */
-    private LocalDateTime updateTime;
+    private LocalDateTime updatedAt;
 
-    // ========================= 内部类定义 =========================
+    // ========================= 基础信息类 =========================
 
     /**
      * 基础文件信息
@@ -99,15 +154,69 @@ public class MaterialMetadata {
     public static class FileBasicInfo {
         private String fileName;
         private String mimeType;
+        private String fileType; // IMAGE, VIDEO, AUDIO, DOCUMENT
+        private String fileFormat; // jpg, mp4, pdf等
         private String fileExtension;
         private Long fileSize;
         private String md5Hash;
-        private String sha256Hash;
-        private LocalDateTime fileCreateTime;
-        private LocalDateTime fileModifyTime;
+        private String sha256Hash; // 可选
         private String encoding; // 文件编码
-        private Map<String, Object> customProperties; // 自定义属性
+        private Map<String, Object> additionalProperties; // Tika解析的额外属性
     }
+
+    /**
+     * 缩略图集合信息
+     */
+    @Data
+    @Builder
+    @NoArgsConstructor
+    @AllArgsConstructor
+    public static class ThumbnailCollection {
+        /**
+         * 主缩略图（存储在MySQL中的那个）
+         */
+        private ThumbnailInfo primaryThumbnail;
+        
+        /**
+         * 所有生成的缩略图
+         */
+        private List<ThumbnailInfo> allThumbnails;
+        
+        /**
+         * 缩略图生成状态
+         */
+        private String generationStatus; // SUCCESS, FAILED, PROCESSING
+        
+        /**
+         * 缩略图生成时间
+         */
+        private LocalDateTime generatedAt;
+        
+        /**
+         * 失败原因（如果生成失败）
+         */
+        private String errorMessage;
+    }
+
+    /**
+     * 缩略图信息
+     */
+    @Data
+    @Builder
+    @NoArgsConstructor
+    @AllArgsConstructor
+    public static class ThumbnailInfo {
+        private String size; // 尺寸规格：150x150, 300x300, 600x600
+        private Integer width;
+        private Integer height;
+        private String storageUrl; // 缩略图存储URL
+        private String storagePath; // 缩略图存储路径
+        private Long fileSize; // 缩略图文件大小
+        private String format; // 缩略图格式：jpg, png等
+        private Boolean isPrimary; // 是否为主缩略图
+    }
+
+    // ========================= 图片元数据 =========================
 
     /**
      * 图片元数据
@@ -119,17 +228,14 @@ public class MaterialMetadata {
     public static class ImageMetadata {
         private Integer width;
         private Integer height;
-        private Integer bitDepth; // 位深度
+        private Integer colorDepth; // 色深
         private String colorSpace; // 色彩空间：RGB, CMYK, Gray等
         private Boolean hasAlpha; // 是否有透明通道
-        private String format; // PNG, JPEG, GIF, WEBP等
-        private Double dpi; // 分辨率DPI
+        private Integer dpiHorizontal; // 水平DPI
+        private Integer dpiVertical; // 垂直DPI
         
         // EXIF信息
         private ExifInfo exifInfo;
-        
-        // 缩略图信息
-        private List<ThumbnailInfo> thumbnails;
         
         // 图片质量分析
         private ImageQualityInfo qualityInfo;
@@ -145,44 +251,21 @@ public class MaterialMetadata {
     public static class ExifInfo {
         private String cameraMake; // 相机制造商
         private String cameraModel; // 相机型号
-        private LocalDateTime shootingTime; // 拍摄时间
+        private LocalDateTime dateTaken; // 拍摄时间
         private String lensModel; // 镜头型号
         private Double focalLength; // 焦距
         private String aperture; // 光圈
         private String shutterSpeed; // 快门速度
         private Integer iso; // ISO感光度
-        private GpsInfo gpsInfo; // GPS信息
         private String orientation; // 方向
+        
+        // GPS信息
+        private Double gpsLatitude; // 纬度
+        private Double gpsLongitude; // 经度
+        private Double gpsAltitude; // 海拔
+        private String gpsLocation; // 地理位置描述
+        
         private Map<String, Object> additionalExif; // 其他EXIF数据
-    }
-
-    /**
-     * GPS信息
-     */
-    @Data
-    @Builder
-    @NoArgsConstructor
-    @AllArgsConstructor
-    public static class GpsInfo {
-        private Double latitude; // 纬度
-        private Double longitude; // 经度
-        private Double altitude; // 海拔
-        private String location; // 地理位置描述
-    }
-
-    /**
-     * 缩略图信息
-     */
-    @Data
-    @Builder
-    @NoArgsConstructor
-    @AllArgsConstructor
-    public static class ThumbnailInfo {
-        private String size; // 尺寸规格：small, medium, large
-        private Integer width;
-        private Integer height;
-        private String storageUrl; // 缩略图存储URL
-        private Long fileSize;
     }
 
     /**
@@ -199,7 +282,10 @@ public class MaterialMetadata {
         private Double saturation; // 饱和度 0-100
         private Boolean hasBlur; // 是否模糊
         private Boolean hasNoise; // 是否有噪点
+        private String qualityLevel; // 质量等级：高清, 标清等
     }
+
+    // ========================= 视频元数据 =========================
 
     /**
      * 视频元数据
@@ -209,86 +295,36 @@ public class MaterialMetadata {
     @NoArgsConstructor
     @AllArgsConstructor
     public static class VideoMetadata {
-        private Integer width;
-        private Integer height;
-        private Double duration; // 时长(秒)
+        private Integer videoWidth;
+        private Integer videoHeight;
+        private Long videoDuration; // 时长(秒)
         private Double frameRate; // 帧率
-        private Long bitrate; // 比特率
-        private String codecName; // 编码格式：H.264, H.265, VP9等
-        private String containerFormat; // 容器格式：MP4, AVI, MKV等
+        private Long videoBitrate; // 视频比特率
+        private String videoCodec; // 视频编码：H.264, H.265等
         private String aspectRatio; // 宽高比：16:9, 4:3等
+        private String containerFormat; // 容器格式：MP4, AVI等
         
-        // 音视频流信息
-        private List<VideoStreamInfo> videoStreams;
-        private List<AudioStreamInfo> audioStreams;
-        
-        // 关键帧信息
-        private List<KeyFrameInfo> keyFrames;
-        
-        // 预览信息
-        private VideoPreviewInfo previewInfo;
+        // 音频信息（视频中的音频流）
+        private AudioStreamInfo audioStream;
         
         // 视频质量分析
         private VideoQualityInfo qualityInfo;
     }
 
     /**
-     * 视频流信息
-     */
-    @Data
-    @Builder
-    @NoArgsConstructor
-    @AllArgsConstructor
-    public static class VideoStreamInfo {
-        private Integer streamIndex;
-        private String codecName;
-        private Long bitrate;
-        private Double frameRate;
-        private String pixelFormat;
-        private String profile;
-        private String level;
-    }
-
-    /**
-     * 音频流信息
+     * 音频流信息（视频中的音频）
      */
     @Data
     @Builder
     @NoArgsConstructor
     @AllArgsConstructor
     public static class AudioStreamInfo {
-        private Integer streamIndex;
-        private String codecName;
-        private Long bitrate;
-        private Integer sampleRate;
-        private Integer channels;
-        private String channelLayout;
-        private Double duration;
-    }
-
-    /**
-     * 关键帧信息
-     */
-    @Data
-    @Builder
-    @NoArgsConstructor
-    @AllArgsConstructor
-    public static class KeyFrameInfo {
-        private Double timestamp; // 时间戳(秒)
-        private String thumbnailUrl; // 关键帧缩略图URL
-    }
-
-    /**
-     * 视频预览信息
-     */
-    @Data
-    @Builder
-    @NoArgsConstructor
-    @AllArgsConstructor
-    public static class VideoPreviewInfo {
-        private String posterUrl; // 封面图URL
-        private String previewGifUrl; // 预览GIF URL
-        private List<ThumbnailInfo> thumbnails; // 不同尺寸的封面图
+        private String audioCodec; // 音频编码
+        private Long audioBitrate; // 音频比特率
+        private Integer sampleRate; // 采样率
+        private Integer channels; // 声道数
+        private String channelLayout; // 声道布局
+        private Long audioDuration; // 音频时长
     }
 
     /**
@@ -300,12 +336,14 @@ public class MaterialMetadata {
     @AllArgsConstructor
     public static class VideoQualityInfo {
         private String resolution; // 分辨率等级：4K, 1080P, 720P等
-        private String qualityLevel; // 质量等级：高清, 标清, 超清等
+        private String qualityLevel; // 质量等级：超清, 高清, 标清等
         private Boolean hasInterlacing; // 是否隔行扫描
         private Double averageBitrate; // 平均比特率
         private Boolean hasAudioIssues; // 是否有音频问题
         private Boolean hasVideoIssues; // 是否有视频问题
     }
+
+    // ========================= 音频元数据 =========================
 
     /**
      * 音频元数据
@@ -315,22 +353,19 @@ public class MaterialMetadata {
     @NoArgsConstructor
     @AllArgsConstructor
     public static class AudioMetadata {
-        private Double duration; // 时长(秒)
-        private Long bitrate; // 比特率
+        private Long audioDuration; // 时长(秒)
+        private Long audioBitrate; // 比特率
         private Integer sampleRate; // 采样率
         private Integer channels; // 声道数
         private String channelLayout; // 声道布局：mono, stereo等
-        private String codecName; // 编码格式：MP3, AAC, FLAC等
-        private String container; // 容器格式
+        private String audioCodec; // 编码格式：MP3, AAC, FLAC等
+        private String containerFormat; // 容器格式
         
         // 音乐标签信息（ID3等）
         private MusicTagInfo musicTagInfo;
         
         // 音频质量分析
         private AudioQualityInfo qualityInfo;
-        
-        // 音频波形数据（可选）
-        private AudioWaveformInfo waveformInfo;
     }
 
     /**
@@ -350,7 +385,6 @@ public class MaterialMetadata {
         private String albumArtist; // 专辑艺术家
         private String composer; // 作曲家
         private String comment; // 备注
-        private String albumArtUrl; // 专辑封面URL
     }
 
     /**
@@ -369,18 +403,7 @@ public class MaterialMetadata {
         private Double signalToNoiseRatio; // 信噪比
     }
 
-    /**
-     * 音频波形信息
-     */
-    @Data
-    @Builder
-    @NoArgsConstructor
-    @AllArgsConstructor
-    public static class AudioWaveformInfo {
-        private String waveformImageUrl; // 波形图片URL
-        private List<Double> peakData; // 峰值数据
-        private Integer samplePoints; // 采样点数
-    }
+    // ========================= 文档元数据 =========================
 
     /**
      * 文档元数据
@@ -394,19 +417,16 @@ public class MaterialMetadata {
         private Integer wordCount; // 字数
         private String language; // 语言
         private String encoding; // 编码
-        private String author; // 作者
-        private String title; // 标题
-        private String subject; // 主题
-        private List<String> keywords; // 关键词
+        private String documentAuthor; // 作者
+        private String documentTitle; // 标题
+        private String documentSubject; // 主题
+        private String documentKeywords; // 关键词
         private String creator; // 创建软件
-        private LocalDateTime documentCreateTime; // 文档创建时间
-        private LocalDateTime documentModifyTime; // 文档修改时间
+        private LocalDateTime documentCreated; // 文档创建时间
+        private LocalDateTime documentModified; // 文档修改时间
         
-        // OCR提取的文本内容（可选）
+        // 文档内容信息
         private DocumentContentInfo contentInfo;
-        
-        // 文档预览信息
-        private DocumentPreviewInfo previewInfo;
     }
 
     /**
@@ -417,25 +437,13 @@ public class MaterialMetadata {
     @NoArgsConstructor
     @AllArgsConstructor
     public static class DocumentContentInfo {
-        private String extractedText; // 提取的文本内容
-        private List<String> extractedImages; // 提取的图片URL列表
+        private String extractedText; // 提取的文本内容（摘要）
         private Integer tableCount; // 表格数量
         private Integer imageCount; // 图片数量
         private Map<String, Object> structure; // 文档结构信息
     }
 
-    /**
-     * 文档预览信息
-     */
-    @Data
-    @Builder
-    @NoArgsConstructor
-    @AllArgsConstructor
-    public static class DocumentPreviewInfo {
-        private List<String> pagePreviewUrls; // 各页预览图URL
-        private String coverImageUrl; // 封面图URL
-        private List<ThumbnailInfo> thumbnails; // 不同尺寸的预览图
-    }
+    // ========================= LED业务元数据 =========================
 
     /**
      * LED业务相关元数据
@@ -457,14 +465,11 @@ public class MaterialMetadata {
         private String contentCategory; // 内容分类
         private String businessType; // 业务类型
         
-        // 使用限制
+        // 使用限制和兼容性
         private List<String> suitableEnvironments; // 适用环境
         private List<String> unsuitableEnvironments; // 不适用环境
         private String ageRating; // 年龄分级
-        private List<String> restrictions; // 使用限制
-        
-        // LED屏幕适配信息
-        private List<LedScreenCompatibility> screenCompatibility;
+        private List<LedScreenCompatibility> screenCompatibility; // 屏幕兼容性
     }
 
     /**
@@ -496,30 +501,23 @@ public class MaterialMetadata {
         private String compatibilityNote; // 兼容性说明
     }
 
+    // ========================= AI分析结果 =========================
+
     /**
-     * AI分析结果
+     * AI分析结果（预留扩展）
      */
     @Data
     @Builder
     @NoArgsConstructor
     @AllArgsConstructor
     public static class AiAnalysisResult {
-        // 图像识别结果
+        // 图像识别标签
         private List<ImageRecognitionTag> imageRecognitionTags;
-        
-        // 人脸检测结果
-        private List<FaceDetectionInfo> faceDetectionInfo;
-        
-        // OCR文字识别结果
-        private List<OcrTextInfo> ocrTextInfo;
         
         // 内容安全检测
         private ContentSafetyCheck contentSafetyCheck;
         
-        // 情感分析（针对音频/视频）
-        private EmotionAnalysisInfo emotionAnalysisInfo;
-        
-        // 分析时间
+        // 分析时间和版本
         private LocalDateTime analysisTime;
         private String analysisVersion; // AI模型版本
     }
@@ -535,63 +533,6 @@ public class MaterialMetadata {
         private String tag; // 标签名称
         private Double confidence; // 置信度 0-1
         private String category; // 分类：人物, 物品, 场景等
-        private BoundingBox boundingBox; // 边界框（可选）
-    }
-
-    /**
-     * 边界框
-     */
-    @Data
-    @Builder
-    @NoArgsConstructor
-    @AllArgsConstructor
-    public static class BoundingBox {
-        private Integer x;
-        private Integer y;
-        private Integer width;
-        private Integer height;
-    }
-
-    /**
-     * 人脸检测信息
-     */
-    @Data
-    @Builder
-    @NoArgsConstructor
-    @AllArgsConstructor
-    public static class FaceDetectionInfo {
-        private Integer faceCount; // 人脸数量
-        private List<FaceInfo> faces; // 人脸详情
-    }
-
-    /**
-     * 人脸信息
-     */
-    @Data
-    @Builder
-    @NoArgsConstructor
-    @AllArgsConstructor
-    public static class FaceInfo {
-        private BoundingBox boundingBox; // 人脸位置
-        private Double confidence; // 置信度
-        private String gender; // 性别
-        private Integer estimatedAge; // 估计年龄
-        private String emotion; // 情绪
-        private List<String> attributes; // 其他属性
-    }
-
-    /**
-     * OCR文字识别信息
-     */
-    @Data
-    @Builder
-    @NoArgsConstructor
-    @AllArgsConstructor
-    public static class OcrTextInfo {
-        private String text; // 识别的文字
-        private BoundingBox boundingBox; // 文字位置
-        private Double confidence; // 置信度
-        private String language; // 语言
     }
 
     /**
@@ -604,51 +545,8 @@ public class MaterialMetadata {
     public static class ContentSafetyCheck {
         private Boolean isSafe; // 是否安全
         private String riskLevel; // 风险等级：low, medium, high
-        private List<String> riskTypes; // 风险类型：violence, adult, terrorism等
+        private List<String> riskTypes; // 风险类型
         private Double safetyScore; // 安全评分 0-100
         private String reviewComment; // 审核意见
-    }
-
-    /**
-     * 情感分析信息
-     */
-    @Data
-    @Builder
-    @NoArgsConstructor
-    @AllArgsConstructor
-    public static class EmotionAnalysisInfo {
-        private String overallEmotion; // 整体情感：positive, negative, neutral
-        private Double emotionScore; // 情感评分 -1到1
-        private Map<String, Double> emotionBreakdown; // 情感细分
-        private List<EmotionTimestamp> emotionTimeline; // 情感时间轴（视频/音频）
-    }
-
-    /**
-     * 情感时间戳
-     */
-    @Data
-    @Builder
-    @NoArgsConstructor
-    @AllArgsConstructor
-    public static class EmotionTimestamp {
-        private Double timestamp; // 时间戳(秒)
-        private String emotion; // 情感
-        private Double score; // 评分
-    }
-
-    /**
-     * 处理历史记录
-     */
-    @Data
-    @Builder
-    @NoArgsConstructor
-    @AllArgsConstructor
-    public static class ProcessingHistory {
-        private String processType; // 处理类型：upload, transcode, analyze等
-        private String processStatus; // 处理状态：success, failed, processing
-        private LocalDateTime processTime; // 处理时间
-        private String processDetails; // 处理详情
-        private String errorMessage; // 错误信息（如果失败）
-        private Map<String, Object> processParams; // 处理参数
     }
 }
