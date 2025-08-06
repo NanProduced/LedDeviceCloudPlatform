@@ -82,7 +82,7 @@ public class FolderRepositoryImpl implements FolderRepository {
                 .orderByAsc(FolderDO::getFolderName);
         
         if (ugid == null) {
-            // 公共资源组
+            // 公共资源组 - 这个方法不应该用于公共资源组，应该使用getPublicRootFolderByOrg
             queryWrapper.eq(FolderDO::getFolderType, "PUBLIC");
         } else {
             // 指定用户组
@@ -92,6 +92,15 @@ public class FolderRepositoryImpl implements FolderRepository {
         
         List<FolderDO> folderDOS = folderMapper.selectList(queryWrapper);
         return materialConverter.toFolders(folderDOS);
+    }
+
+    @Override
+    public Folder getPublicRootFolderByOrg(Long oid) {
+        FolderDO folderDO = folderMapper.selectOne(new LambdaQueryWrapper<FolderDO>()
+                .eq(FolderDO::getOid, oid)
+                .eq(FolderDO::getFolderType, "PUBLIC")
+                .isNull(FolderDO::getParent));
+        return materialConverter.toFolder(folderDO);
     }
 
     @Override
@@ -125,6 +134,21 @@ public class FolderRepositoryImpl implements FolderRepository {
         List<FolderDO> folderDOS = folderMapper.selectList(new LambdaQueryWrapper<FolderDO>()
                 .likeRight(FolderDO::getPath, pathPrefix)
                 .orderByAsc(FolderDO::getPath));
+        return materialConverter.toFolders(folderDOS);
+    }
+
+    @Override
+    public List<Folder> getDirectChildFoldersByParentPath(String parentPath) {
+        // 基于path字段查询直接子文件夹
+        // 子文件夹的path格式为: parentPath|childFid
+        // 计算父级path的层级深度
+        int parentDepth = parentPath.split("\\|").length;
+        int childDepth = parentDepth + 1;
+        
+        List<FolderDO> folderDOS = folderMapper.selectList(new LambdaQueryWrapper<FolderDO>()
+                .likeRight(FolderDO::getPath, parentPath + "|")
+                .apply("CHAR_LENGTH(path) - CHAR_LENGTH(REPLACE(path, '|', '')) = {0}", childDepth - 1) // 确保是直接子节点
+                .orderByAsc(FolderDO::getFolderName));
         return materialConverter.toFolders(folderDOS);
     }
 

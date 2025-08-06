@@ -40,15 +40,15 @@ public class MaterialServiceImpl implements MaterialService {
         // 1. 构建用户组根目录节点
         MaterialNodeTreeResponse.GroupNode rootUserGroupNode = buildUserGroupTree(oid, ugid);
 
-        // 2. 构建公共资源组文件夹
-        List<MaterialNodeTreeResponse.FolderNode> publicFolders = buildPublicFolderTree(oid);
+        // 2. 构建公共资源组根文件夹
+        MaterialNodeTreeResponse.FolderNode publicRootFolder = buildPublicRootFolder(oid);
 
         // 3. 构建分享文件夹
         List<MaterialNodeTreeResponse.FolderNode> sharedFolders = buildSharedFolderTree(oid, ugid);
 
         return MaterialNodeTreeResponse.builder()
                 .rootUserGroupNode(rootUserGroupNode)
-                .publicFolders(publicFolders)
+                .publicRootFolder(publicRootFolder)
                 .sharedFolders(sharedFolders)
                 .build();
     }
@@ -156,7 +156,7 @@ public class MaterialServiceImpl implements MaterialService {
     }
 
     /**
-     * 构建文件夹树形结构
+     * 构建文件夹树形结构（用户组文件夹）
      */
     private List<MaterialNodeTreeResponse.FolderNode> buildFolderTree(Long ugid, Long parentFid) {
         List<Folder> folders;
@@ -175,17 +175,50 @@ public class MaterialServiceImpl implements MaterialService {
                         .folderName(folder.getFolderName())
                         .parent(folder.getParent())
                         .path(folder.getPath())
-                        .children(buildFolderTree(ugid, folder.getFid())) // 递归构建子文件夹
+                        // 优化：如果有path，使用path优化查询，否则使用原有递归方法
+                        .children(folder.getPath() != null && !folder.getPath().isEmpty()
+                                ? buildFolderTreeRecursivelyByPath(folder.getPath())
+                                : buildFolderTree(ugid, folder.getFid()))
                         .build())
                 .collect(Collectors.toList());
     }
 
     /**
-     * 构建公共资源组文件夹树
+     * 构建公共资源组根文件夹
      */
-    private List<MaterialNodeTreeResponse.FolderNode> buildPublicFolderTree(Long oid) {
-        // 获取公共资源组下的根级文件夹
-        return buildFolderTree(null, null); // ugid为null表示公共资源组
+    private MaterialNodeTreeResponse.FolderNode buildPublicRootFolder(Long oid) {
+        // 获取指定组织的公共资源组根文件夹
+        Folder publicRootFolder = folderRepository.getPublicRootFolderByOrg(oid);
+        
+        if (publicRootFolder == null) {
+            return null;
+        }
+
+        return MaterialNodeTreeResponse.FolderNode.builder()
+                .fid(publicRootFolder.getFid())
+                .folderName(publicRootFolder.getFolderName())
+                .parent(publicRootFolder.getParent())
+                .path(publicRootFolder.getPath())
+                .children(buildFolderTreeRecursivelyByPath(publicRootFolder.getPath())) // 使用path优化查询
+                .build();
+    }
+
+    /**
+     * 基于path字段递归构建文件夹树（优化版本）
+     */
+    private List<MaterialNodeTreeResponse.FolderNode> buildFolderTreeRecursivelyByPath(String parentPath) {
+        // 使用path字段优化查询，避免递归数据库查询
+        List<Folder> childFolders = folderRepository.getDirectChildFoldersByParentPath(parentPath);
+        
+        return childFolders.stream()
+                .map(folder -> MaterialNodeTreeResponse.FolderNode.builder()
+                        .fid(folder.getFid())
+                        .folderName(folder.getFolderName())
+                        .parent(folder.getParent())
+                        .path(folder.getPath())
+                        .children(buildFolderTreeRecursivelyByPath(folder.getPath())) // 递归构建子文件夹
+                        .build())
+                .collect(Collectors.toList());
     }
 
     /**

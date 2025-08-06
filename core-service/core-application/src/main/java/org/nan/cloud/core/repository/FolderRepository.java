@@ -38,6 +38,13 @@ public interface FolderRepository {
     List<Folder> getRootFoldersByUserGroup(Long ugid);
 
     /**
+     * 获取指定组织的公共资源组根文件夹
+     * @param oid 组织ID
+     * @return 公共资源组根文件夹，如果不存在则返回null
+     */
+    Folder getPublicRootFolderByOrg(Long oid);
+
+    /**
      * 获取指定父文件夹下的子文件夹
      * @param parentFid 父文件夹ID
      * @return 子文件夹列表
@@ -57,6 +64,13 @@ public interface FolderRepository {
      * @return 子文件夹列表
      */
     List<Folder> getFoldersByPathPrefix(String pathPrefix);
+
+    /**
+     * 根据父文件夹路径获取直接子文件夹（基于path字段优化）
+     * @param parentPath 父文件夹路径
+     * @return 直接子文件夹列表
+     */
+    List<Folder> getDirectChildFoldersByParentPath(String parentPath);
 
     /**
      * 获取分享给指定用户组的文件夹

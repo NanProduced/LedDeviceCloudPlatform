@@ -21,8 +21,8 @@ public class MaterialNodeTreeResponse {
     @Schema(description = "用户组根目录")
     private GroupNode rootUserGroupNode;
 
-    @Schema(description = "公共资源组文件夹")
-    private List<FolderNode> publicFolders;
+    @Schema(description = "公共资源组根节点")
+    private FolderNode publicRootFolder;
 
     @Schema(description = "分享文件夹")
     private List<FolderNode> sharedFolders;
