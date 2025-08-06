@@ -24,7 +24,7 @@ import java.util.concurrent.locks.ReentrantReadWriteLock;
  * 1. 线程安全的进度存储和更新
  * 2. 实时进度计算（速度、剩余时间等）
  * 3. 自动过期清理（默认1小时）
- * 4. 支持单文件和分片上传进度跟踪
+ * 4. 支持单文件上传进度跟踪
  * 5. 质量指标统计（平均速度、稳定性等）
  * 6. 进度回调支持
  * 
@@ -39,11 +39,6 @@ public class ProgressTrackingServiceImpl implements ProgressTrackingService {
      * 进度信息存储 - 线程安全
      */
     private final ConcurrentHashMap<String, ProgressInfo> progressMap = new ConcurrentHashMap<>();
-    
-    /**
-     * 分片进度信息存储
-     */
-    private final ConcurrentHashMap<String, ChunkProgressInfo> chunkProgressMap = new ConcurrentHashMap<>();
     
     /**
      * 进度回调存储
@@ -97,24 +92,8 @@ public class ProgressTrackingServiceImpl implements ProgressTrackingService {
 
     @Override
     public void initializeChunkProgress(String uploadId, int totalChunks) {
-        if (uploadId == null) {
-            throw new IllegalArgumentException("uploadId 不能为空");
-        }
-
-        ChunkProgressInfo chunkInfo = new ChunkProgressInfo(uploadId, totalChunks);
-        chunkProgressMap.put(uploadId, chunkInfo);
-        
-        // 同时创建一个通用的进度信息用于统一查询
-        ProgressInfo progressInfo = new ProgressInfo(uploadId, 0);
-        progressInfo.setStatus(ProgressStatus.IN_PROGRESS);
-        progressInfo.setTotalChunks(totalChunks);
-        progressInfo.setUploadedChunks(0);
-        progressMap.put(uploadId, progressInfo);
-        
-        log.debug("初始化分片上传进度 - 上传ID: {}, 总分片数: {}", uploadId, totalChunks);
-        
-        // 触发回调
-        triggerCallback(uploadId, 0, "分片上传初始化完成");
+        // 分片上传已移除，这个方法保留为空实现以保持接口兼容
+        log.warn("分片上传功能已移除，initializeChunkProgress方法调用被忽略 - 上传ID: {}", uploadId);
     }
 
     @Override
@@ -128,14 +107,31 @@ public class ProgressTrackingServiceImpl implements ProgressTrackingService {
         lock.writeLock().lock();
         try {
             long previousUploaded = progressInfo.getUploadedSize();
+            long currentTime = System.currentTimeMillis();
+            long previousTime = progressInfo.getLastUpdateTime();
+            
+            // 更新进度
             progressInfo.updateProgress(uploadedSize);
             
-            // 计算上传速度
-            long deltaBytes = uploadedSize - previousUploaded;
-            long deltaTime = System.currentTimeMillis() - progressInfo.getLastUpdateTime();
-            if (deltaTime > 0) {
-                long currentSpeed = (deltaBytes * 1000) / deltaTime; // 字节/秒
-                progressInfo.updateSpeed(currentSpeed);
+            // 计算上传速度（只有在实际有数据变化时才计算）
+            if (uploadedSize > previousUploaded && currentTime > previousTime) {
+                long deltaBytes = uploadedSize - previousUploaded;
+                long deltaTime = currentTime - previousTime;
+                
+                // 防止时间间隔过小导致速度异常：最小间隔100ms
+                if (deltaTime >= 100) {
+                    long currentSpeed = (deltaBytes * 1000) / deltaTime; // 字节/秒
+                    
+                    // 限制最大速度为500MB/s（合理的本地传输上限）
+                    long maxSpeed = 500 * 1024 * 1024; // 500MB/s
+                    currentSpeed = Math.min(currentSpeed, maxSpeed);
+                    
+                    progressInfo.updateSpeed(currentSpeed);
+                    log.debug("速度计算 - 时间间隔: {}ms, 数据增量: {}B, 计算速度: {}KB/s", 
+                            deltaTime, deltaBytes, currentSpeed / 1024);
+                } else {
+                    log.debug("跳过速度计算 - 时间间隔太小: {}ms", deltaTime);
+                }
             }
             
             log.debug("更新单文件上传进度 - 任务ID: {}, 进度: {}%, 速度: {}KB/s", 
@@ -152,34 +148,8 @@ public class ProgressTrackingServiceImpl implements ProgressTrackingService {
 
     @Override
     public void updateChunkProgress(String uploadId, int chunkNumber) {
-        ChunkProgressInfo chunkInfo = chunkProgressMap.get(uploadId);
-        ProgressInfo progressInfo = progressMap.get(uploadId);
-        
-        if (chunkInfo == null || progressInfo == null) {
-            log.warn("分片进度信息不存在，无法更新 - 上传ID: {}", uploadId);
-            return;
-        }
-
-        lock.writeLock().lock();
-        try {
-            int previousCompleted = chunkInfo.getCompletedChunks();
-            chunkInfo.updateProgress(chunkInfo.getCompletedChunks() + 1);
-            
-            // 更新通用进度信息
-            progressInfo.setUploadedChunks(chunkInfo.getCompletedChunks());
-            progressInfo.setProgress(chunkInfo.getProgress());
-            progressInfo.setLastUpdateTime(System.currentTimeMillis());
-            
-            log.debug("更新分片上传进度 - 上传ID: {}, 完成分片: {}/{}, 进度: {}%", 
-                    uploadId, chunkInfo.getCompletedChunks(), chunkInfo.getTotalChunks(), chunkInfo.getProgress());
-            
-            // 触发回调
-            triggerCallback(uploadId, chunkInfo.getProgress(), 
-                    String.format("已完成 %d/%d 分片", chunkInfo.getCompletedChunks(), chunkInfo.getTotalChunks()));
-            
-        } finally {
-            lock.writeLock().unlock();
-        }
+        // 分片上传已移除，这个方法保留为空实现以保持接口兼容
+        log.warn("分片上传功能已移除，updateChunkProgress方法调用被忽略 - 上传ID: {}", uploadId);
     }
 
     @Override
@@ -195,14 +165,6 @@ public class ProgressTrackingServiceImpl implements ProgressTrackingService {
             // 触发回调
             triggerCallback(taskId, 100, "上传完成");
         }
-        
-        // 同时更新分片进度
-        ChunkProgressInfo chunkInfo = chunkProgressMap.get(taskId);
-        if (chunkInfo != null) {
-            chunkInfo.setStatus(ProgressStatus.COMPLETED);
-            chunkInfo.setProgress(100);
-            chunkInfo.setUpdateTime(System.currentTimeMillis());
-        }
     }
 
     @Override
@@ -216,13 +178,6 @@ public class ProgressTrackingServiceImpl implements ProgressTrackingService {
             
             // 触发回调
             triggerCallback(taskId, (int) progressInfo.getProgress(), "上传已取消");
-        }
-        
-        // 同时更新分片进度
-        ChunkProgressInfo chunkInfo = chunkProgressMap.get(taskId);
-        if (chunkInfo != null) {
-            chunkInfo.setStatus(ProgressStatus.CANCELLED);
-            chunkInfo.setUpdateTime(System.currentTimeMillis());
         }
     }
 
@@ -239,14 +194,6 @@ public class ProgressTrackingServiceImpl implements ProgressTrackingService {
             // 触发回调
             triggerCallback(taskId, (int) progressInfo.getProgress(), "上传失败: " + errorMessage);
         }
-        
-        // 同时更新分片进度
-        ChunkProgressInfo chunkInfo = chunkProgressMap.get(taskId);
-        if (chunkInfo != null) {
-            chunkInfo.setStatus(ProgressStatus.FAILED);
-            chunkInfo.setMessage("上传失败: " + errorMessage);
-            chunkInfo.setUpdateTime(System.currentTimeMillis());
-        }
     }
 
     @Override
@@ -256,9 +203,6 @@ public class ProgressTrackingServiceImpl implements ProgressTrackingService {
             return null;
         }
 
-        // 检查是否是分片上传
-        ChunkProgressInfo chunkInfo = chunkProgressMap.get(taskId);
-        
         UploadProgressResponse.UploadProgressResponseBuilder builder = UploadProgressResponse.builder()
                 .uploadId(taskId)
                 .fileName(progressInfo.getFileName())
@@ -272,13 +216,6 @@ public class ProgressTrackingServiceImpl implements ProgressTrackingService {
                 .lastUpdateTime(progressInfo.getLastUpdateTimeAsLocalDateTime())
                 .errorMessage(progressInfo.getErrorMessage())
                 .retryCount(progressInfo.getRetryCount());
-
-        // 如果是分片上传，添加分片相关信息
-        if (chunkInfo != null) {
-            builder.uploadedChunks(chunkInfo.getCompletedChunks())
-                   .totalChunks(chunkInfo.getTotalChunks())
-                   .failedChunks(progressInfo.getFailedChunks());
-        }
 
         // 添加质量指标
         UploadProgressResponse.QualityMetrics qualityMetrics = UploadProgressResponse.QualityMetrics.builder()
@@ -295,7 +232,8 @@ public class ProgressTrackingServiceImpl implements ProgressTrackingService {
 
     @Override
     public ChunkProgressInfo getChunkProgress(String uploadId) {
-        return chunkProgressMap.get(uploadId);
+        // 分片上传已移除，返回null
+        return null;
     }
 
     @Override
@@ -314,7 +252,7 @@ public class ProgressTrackingServiceImpl implements ProgressTrackingService {
         long expireTime = System.currentTimeMillis() - (expireMinutes * 60 * 1000);
         int cleanedCount = 0;
 
-        // 清理普通进度记录
+        // 清理进度记录
         for (var iterator = progressMap.entrySet().iterator(); iterator.hasNext(); ) {
             var entry = iterator.next();
             ProgressInfo progressInfo = entry.getValue();
@@ -331,22 +269,6 @@ public class ProgressTrackingServiceImpl implements ProgressTrackingService {
                 
                 log.debug("清理过期进度记录 - 任务ID: {}, 状态: {}", 
                         entry.getKey(), progressInfo.getStatus());
-            }
-        }
-
-        // 清理分片进度记录
-        for (var iterator = chunkProgressMap.entrySet().iterator(); iterator.hasNext(); ) {
-            var entry = iterator.next();
-            ChunkProgressInfo chunkInfo = entry.getValue();
-            
-            // 清理过期或已完成的任务
-            if (chunkInfo.getUpdateTime() < expireTime || 
-                chunkInfo.getStatus() == ProgressStatus.COMPLETED ||
-                chunkInfo.getStatus() == ProgressStatus.FAILED ||
-                chunkInfo.getStatus() == ProgressStatus.CANCELLED) {
-                
-                iterator.remove();
-                cleanedCount++;
             }
         }
 
@@ -478,11 +400,6 @@ public class ProgressTrackingServiceImpl implements ProgressTrackingService {
         private long totalSpeedSum;
         private int speedMeasurements;
         private List<Long> speedHistory;
-        
-        // 分片相关
-        private Integer totalChunks;
-        private Integer uploadedChunks;
-        private List<Integer> failedChunks;
 
         public ProgressInfo(String taskId, long totalSize) {
             this.taskId = taskId;
@@ -499,7 +416,6 @@ public class ProgressTrackingServiceImpl implements ProgressTrackingService {
             this.totalSpeedSum = 0;
             this.speedMeasurements = 0;
             this.speedHistory = new ArrayList<>();
-            this.failedChunks = new ArrayList<>();
         }
 
         public void updateProgress(long uploadedSize) {
@@ -511,7 +427,12 @@ public class ProgressTrackingServiceImpl implements ProgressTrackingService {
         public void updateSpeed(long currentSpeed) {
             this.uploadSpeed = currentSpeed;
             this.maxSpeed = Math.max(this.maxSpeed, currentSpeed);
-            this.minSpeed = Math.min(this.minSpeed, currentSpeed);
+            
+            // 只有在速度大于0时才更新最小速度
+            if (currentSpeed > 0) {
+                this.minSpeed = Math.min(this.minSpeed, currentSpeed);
+            }
+            
             this.totalSpeedSum += currentSpeed;
             this.speedMeasurements++;
             
@@ -581,14 +502,5 @@ public class ProgressTrackingServiceImpl implements ProgressTrackingService {
         
         public List<Long> getSpeedHistory() { return speedHistory; }
         public void setSpeedHistory(List<Long> speedHistory) { this.speedHistory = speedHistory; }
-        
-        public Integer getTotalChunks() { return totalChunks; }
-        public void setTotalChunks(Integer totalChunks) { this.totalChunks = totalChunks; }
-        
-        public Integer getUploadedChunks() { return uploadedChunks; }
-        public void setUploadedChunks(Integer uploadedChunks) { this.uploadedChunks = uploadedChunks; }
-        
-        public List<Integer> getFailedChunks() { return failedChunks; }
-        public void setFailedChunks(List<Integer> failedChunks) { this.failedChunks = failedChunks; }
     }
 }

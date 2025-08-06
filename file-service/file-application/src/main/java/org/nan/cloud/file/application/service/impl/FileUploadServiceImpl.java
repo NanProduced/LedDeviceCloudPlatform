@@ -433,27 +433,30 @@ public class FileUploadServiceImpl implements FileUploadService {
             // 8. 构建上传响应对象（使用正确的方法签名）
             FileUploadResponse uploadResponse = buildUploadResponse(fileInfo, taskId);
             
-            // 9. 发布上传完成事件（包含完整文件信息）
-            eventPublisher.publishUploadCompleted(taskId, uploadResponse, request.getOid().toString());
-
-            // 10. 异步处理，文件元数据解析（存入mongoDB）
+            // 9. 异步处理，文件元数据解析（存入mongoDB）
             String metadataId = asyncAnalyzeAndStoreMetadata(fileInfo, taskId);
 
-            // 11. 异步处理：自动生成缩略图（对图片和视频文件）
+            // 10. 异步处理：自动生成缩略图（对图片和视频文件）
             if (isImageFile(file) || isVideoFile(file)) {
                 asyncGenerateThumbnail(fileInfo);
             }
 
-            // 12. 发布文件处理完成事件（包含元数据ID）
+            // 11. 更新元数据ID到文件信息
             if (metadataId != null) {
                 fileInfoRepository.updateFileMetadata(fileId, metadataId);
-                eventPublisher.publishProcessingCompleted(taskId, fileId, metadataId, request.getOid().toString());
             }
             
-            // 12. 更新进度为完成
+            // 12. 更新进度为完成（在发布事件之前）
             progressTrackingService.completeProgress(taskId);
             taskContextService.updateTaskProgress(taskId, 100);
-            updateProgress(taskId, file.getSize(), "文件上传完成");
+            
+            // 13. 发布上传完成事件（包含完整文件信息）
+            eventPublisher.publishUploadCompleted(taskId, uploadResponse, request.getOid().toString());
+
+            // 14. 发布文件处理完成事件（包含元数据ID）
+            if (metadataId != null) {
+                eventPublisher.publishProcessingCompleted(taskId, fileId, metadataId, request.getOid().toString());
+            }
             
             log.info("异步文件上传完成 - 任务ID: {}, 文件ID: {}, 存储路径: {}", 
                     taskId, fileId, storagePath);
@@ -484,19 +487,16 @@ public class FileUploadServiceImpl implements FileUploadService {
             existingFileInfo.setRefCount(existingFileInfo.getRefCount() + 1);
             fileInfoRepository.save(existingFileInfo);
             
-            // 4. 更新任务状态为已完成（秒传）
+            // 4. 构建响应对象
+            FileUploadResponse uploadResponse = buildUploadResponse(newFileInfo, taskId);
+            
+            // 5. 更新进度为完成（在发布事件之前）
+            progressTrackingService.completeProgress(taskId);
             taskContextService.updateTaskStatus(taskId, TaskContext.TaskStatus.COMPLETED);
             taskContextService.updateTaskProgress(taskId, 100);
             
-            // 5. 构建响应对象
-            FileUploadResponse uploadResponse = buildUploadResponse(newFileInfo, taskId);
-            
             // 6. 发布上传完成事件
             eventPublisher.publishUploadCompleted(taskId, uploadResponse, request.getOid().toString());
-            
-            // 7. 更新进度为完成
-            progressTrackingService.completeProgress(taskId);
-            updateProgress(taskId, file.getSize(), "秒传完成");
             
             log.info("异步秒传完成 - 任务ID: {}, 新文件ID: {}, 原文件ID: {}", 
                     taskId, newFileId, existingFileInfo.getFileId());

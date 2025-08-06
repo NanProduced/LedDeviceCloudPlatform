@@ -109,7 +109,8 @@ public class MqStompBridgeListener {
     public void handleFileUploadMessage(@Payload Message message,
                                       @Header(name = "amqp_receivedRoutingKey", required = false) String routingKey) {
         try {
-            log.debug("收到文件上传消息 - 路由键: {}", routingKey);
+            log.info("🔍 DEBUG: 收到文件上传消息 - 路由键: {}, 消息类型: {}, 载荷: {}", 
+                    routingKey, message.getMessageType(), message.getPayload());
             
             String messagePayload = JsonUtils.toJson(message.getPayload());
             BusinessMessageProcessor.BusinessMessageProcessResult processResult = 
