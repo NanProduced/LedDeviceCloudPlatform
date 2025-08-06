@@ -2,8 +2,6 @@ package org.nan.cloud.file.application.service;
 
 import lombok.Getter;
 import lombok.Setter;
-import org.nan.cloud.file.api.dto.ChunkUploadInitRequest;
-import org.nan.cloud.file.api.dto.ChunkUploadRequest;
 import org.nan.cloud.file.api.dto.FileUploadRequest;
 import org.springframework.web.multipart.MultipartFile;
 
@@ -39,62 +37,6 @@ public interface StorageService {
      */
     String store(MultipartFile file, String fileId);
 
-    /**
-     * 初始化分片上传
-     * 
-     * @param uploadId 上传ID
-     * @param request 分片上传初始化请求
-     * @return 初始化结果信息
-     */
-    String initChunkUpload(String uploadId, ChunkUploadInitRequest request);
-
-    /**
-     * 上传文件分片
-     * 
-     * @param chunk 文件分片
-     * @param request 分片上传请求
-     * @return 分片存储路径
-     */
-    String uploadChunk(MultipartFile chunk, ChunkUploadRequest request);
-
-    /**
-     * 合并文件分片
-     * 
-     * @param uploadId 上传ID
-     * @return 最终文件存储路径
-     */
-    String mergeChunks(String uploadId);
-
-    /**
-     * 清理分片临时文件
-     * 
-     * @param uploadId 上传ID
-     */
-    void cleanupChunks(String uploadId);
-
-    /**
-     * 检查所有分片是否已上传完成
-     * 
-     * @param uploadId 上传ID
-     * @return 是否所有分片都已上传
-     */
-    boolean isAllChunksUploaded(String uploadId);
-
-    /**
-     * 计算合并后文件的MD5值
-     * 
-     * @param filePath 文件路径
-     * @return MD5哈希值
-     */
-    String calculateMergedFileMD5(String filePath);
-
-    /**
-     * 获取分片上传初始化信息
-     * 
-     * @param uploadId 上传ID
-     * @return 初始化请求信息
-     */
-    ChunkUploadInitRequest getChunkUploadInfo(String uploadId);
 
     /**
      * 生成文件访问URL

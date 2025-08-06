@@ -55,61 +55,6 @@ public class FileUploadController implements FileUploadApi {
         return response;
     }
 
-    @Override
-    public ChunkUploadInitResponse initChunkUpload(
-            @RequestBody ChunkUploadInitRequest request) {
-        
-        log.info("初始化分片上传 - 文件名: {}, 文件大小: {}, 分片大小: {}", 
-                request.getFilename(), request.getFileSize(), request.getChunkSize());
-
-        ChunkUploadInitResponse response = fileUploadService.initChunkUpload(request);
-        
-        log.info("分片上传初始化成功 - 上传ID: {}, 总分片数: {}", 
-                response.getUploadId(), response.getTotalChunks());
-        
-        return response;
-    }
-
-    @Override
-    public ChunkUploadResponse uploadChunk(
-            @Parameter(description = "文件分片") @RequestParam("chunk") MultipartFile chunk,
-            @Parameter(description = "分片信息") @ModelAttribute ChunkUploadRequest request) {
-        
-        log.debug("上传文件分片 - 上传ID: {}, 分片号: {}/{}", 
-                request.getUploadId(), request.getChunkNumber(), request.getTotalChunks());
-
-        ChunkUploadResponse response = fileUploadService.uploadChunk(chunk, request);
-        
-        log.debug("文件分片上传成功 - 上传ID: {}, 分片号: {}", 
-                request.getUploadId(), request.getChunkNumber());
-        
-        return response;
-    }
-
-    @Override
-    public FileUploadResponse completeChunkUpload(
-            @RequestBody ChunkUploadCompleteRequest request) {
-        
-        log.info("完成分片上传 - 上传ID: {}", request.getUploadId());
-
-        FileUploadResponse response = fileUploadService.completeChunkUpload(request);
-        
-        log.info("分片上传完成 - 文件ID: {}, 上传ID: {}", 
-                response.getFileId(), request.getUploadId());
-        
-        return response;
-    }
-
-    @Override
-    public void cancelChunkUpload(
-            @Parameter(description = "上传任务ID") @PathVariable String uploadId) {
-        
-        log.info("取消分片上传 - 上传ID: {}", uploadId);
-
-        fileUploadService.cancelChunkUpload(uploadId);
-        
-        log.info("分片上传已取消 - 上传ID: {}", uploadId);
-    }
 
     @Override
     public UploadProgressResponse getUploadProgress(

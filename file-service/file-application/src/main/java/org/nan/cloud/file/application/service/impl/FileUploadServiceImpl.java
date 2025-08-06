@@ -121,150 +121,6 @@ public class FileUploadServiceImpl implements FileUploadService {
     }
 
 
-    @Override
-    public ChunkUploadInitResponse initChunkUpload(ChunkUploadInitRequest request) {
-        log.info("初始化分片上传 - 文件名: {}, 文件大小: {}, 分片大小: {}", 
-                request.getFilename(), request.getFileSize(), request.getChunkSize());
-
-        try {
-            // 1. 验证请求参数
-            validateChunkUploadRequest(request);
-
-            // 2. 生成上传ID
-            String uploadId = generateUploadId();
-
-            // 3. 初始化分片上传会话
-            storageService.initChunkUpload(uploadId, request);
-
-            // 4. 计算分片数量
-            int totalChunks = (int) Math.ceil((double) request.getFileSize() / request.getChunkSize());
-
-            // 5. 创建进度跟踪
-            progressTrackingService.initializeChunkProgress(uploadId, totalChunks);
-
-            ChunkUploadInitResponse response = ChunkUploadInitResponse.builder()
-                    .uploadId(uploadId)
-                    .chunkSize(request.getChunkSize())
-                    .totalChunks(totalChunks)
-                    .expirationTime(LocalDateTime.now().plusHours(24)) // 24小时过期
-                    .build();
-
-            log.info("分片上传初始化完成 - 上传ID: {}, 总分片数: {}", uploadId, totalChunks);
-            return response;
-
-        } catch (Exception e) {
-            log.error("分片上传初始化失败 - 文件名: {}", request.getFilename(), e);
-            throw new RuntimeException("分片上传初始化失败: " + e.getMessage(), e);
-        }
-    }
-
-    @Override
-    public ChunkUploadResponse uploadChunk(MultipartFile chunk, ChunkUploadRequest request) {
-        log.debug("上传文件分片 - 上传ID: {}, 分片号: {}/{}", 
-                request.getUploadId(), request.getChunkNumber(), request.getTotalChunks());
-
-        try {
-            // 1. 验证分片参数
-            validateChunkRequest(request);
-
-            // 2. 上传分片到存储
-            String chunkPath = storageService.uploadChunk(chunk, request);
-
-            // 3. 更新进度
-            progressTrackingService.updateChunkProgress(request.getUploadId(), request.getChunkNumber());
-
-            // 4. 验证分片完整性
-            String chunkMD5 = calculateMD5(chunk);
-            if (!chunkMD5.equals(request.getChunkMD5())) {
-                throw new IllegalArgumentException("分片MD5校验失败");
-            }
-
-            ChunkUploadResponse response = ChunkUploadResponse.builder()
-                    .uploadId(request.getUploadId())
-                    .chunkNumber(request.getChunkNumber())
-                    .chunkPath(chunkPath)
-                    .chunkMD5(chunkMD5)
-                    .uploadTime(LocalDateTime.now())
-                    .build();
-
-            log.debug("文件分片上传完成 - 上传ID: {}, 分片号: {}", 
-                    request.getUploadId(), request.getChunkNumber());
-
-            return response;
-
-        } catch (Exception e) {
-            log.error("文件分片上传失败 - 上传ID: {}, 分片号: {}", 
-                    request.getUploadId(), request.getChunkNumber(), e);
-            throw new RuntimeException("分片上传失败: " + e.getMessage(), e);
-        }
-    }
-
-    @Override
-    @Transactional
-    public FileUploadResponse completeChunkUpload(ChunkUploadCompleteRequest request) {
-        log.info("完成分片上传 - 上传ID: {}", request.getUploadId());
-
-        try {
-            // 1. 验证所有分片是否上传完成
-            validateChunkCompletion(request.getUploadId());
-
-            // 2. 合并分片
-            String finalPath = storageService.mergeChunks(request.getUploadId());
-
-            // 3. 验证最终文件完整性
-            String finalMD5 = storageService.calculateMergedFileMD5(finalPath);
-            if (!finalMD5.equals(request.getFileMD5())) {
-                throw new IllegalArgumentException("文件MD5校验失败");
-            }
-
-            // 4. 生成文件ID
-            String fileId = generateFileId();
-
-            // 5. 获取原始上传请求
-            ChunkUploadInitRequest initRequest = storageService.getChunkUploadInfo(request.getUploadId());
-
-            // 6. 创建文件信息记录
-            FileInfo fileInfo = createFileInfoFromChunk(initRequest, fileId, finalMD5, finalPath);
-            fileInfoRepository.save(fileInfo);
-
-            // 7. 清理分片临时文件
-            storageService.cleanupChunks(request.getUploadId());
-
-            // 8. 构建响应
-            FileUploadResponse response = buildUploadResponse(fileInfo, request.getUploadId());
-
-            // 9. 完成进度跟踪
-            progressTrackingService.completeProgress(request.getUploadId());
-
-            log.info("分片上传完成 - 文件ID: {}, 上传ID: {}", fileId, request.getUploadId());
-            return response;
-
-        } catch (Exception e) {
-            log.error("分片上传完成失败 - 上传ID: {}", request.getUploadId(), e);
-            // 清理资源
-            storageService.cleanupChunks(request.getUploadId());
-            throw new RuntimeException("分片上传完成失败: " + e.getMessage(), e);
-        }
-    }
-
-    @Override
-    public void cancelChunkUpload(String uploadId) {
-        log.info("取消分片上传 - 上传ID: {}", uploadId);
-
-        try {
-            // 1. 清理分片文件
-            storageService.cleanupChunks(uploadId);
-
-            // 2. 清理进度记录
-            progressTrackingService.cancelProgress(uploadId);
-
-            log.info("分片上传已取消 - 上传ID: {}", uploadId);
-
-        } catch (Exception e) {
-            log.error("取消分片上传失败 - 上传ID: {}", uploadId, e);
-            throw new RuntimeException("取消分片上传失败: " + e.getMessage(), e);
-        }
-    }
 
     @Override
     public UploadProgressResponse getUploadProgress(String taskId) {
@@ -366,23 +222,6 @@ public class FileUploadServiceImpl implements FileUploadService {
                 .build();
     }
 
-    private FileInfo createFileInfoFromChunk(ChunkUploadInitRequest initRequest, 
-                                           String fileId, String md5Hash, String storagePath) {
-        return FileInfo.builder()
-                .fileId(fileId)
-                .originalFilename(initRequest.getFilename())
-                .fileSize(initRequest.getFileSize())
-                .mimeType(initRequest.getMimeType())
-                .md5Hash(md5Hash)
-                .fileExtension(getFileExtension(initRequest.getFilename()))
-                .storagePath(storagePath)
-                .storageType("LOCAL") // 默认本地存储
-                .uploadTime(LocalDateTime.now())
-                .updateTime(LocalDateTime.now())
-                .refCount(1L)
-                .fileStatus(1) // 默认已完成状态
-                .build();
-    }
 
     private FileUploadResponse buildUploadResponse(FileInfo fileInfo, String taskId) {
         return FileUploadResponse.builder()
@@ -508,32 +347,6 @@ public class FileUploadServiceImpl implements FileUploadService {
         return contentType != null && contentType.startsWith("video/");
     }
 
-    private void validateChunkUploadRequest(ChunkUploadInitRequest request) {
-        if (request.getFileSize() <= 0) {
-            throw new IllegalArgumentException("文件大小必须大于0");
-        }
-        if (request.getChunkSize() <= 0) {
-            throw new IllegalArgumentException("分片大小必须大于0");
-        }
-        // 其他验证逻辑...
-    }
-
-    private void validateChunkRequest(ChunkUploadRequest request) {
-        if (request.getChunkNumber() < 1) {
-            throw new IllegalArgumentException("分片号必须从1开始");
-        }
-        if (request.getChunkNumber() > request.getTotalChunks()) {
-            throw new IllegalArgumentException("分片号不能超过总分片数");
-        }
-        // 其他验证逻辑...
-    }
-
-    private void validateChunkCompletion(String uploadId) {
-        // 验证所有分片是否都已上传
-        if (!storageService.isAllChunksUploaded(uploadId)) {
-            throw new IllegalStateException("还有分片未上传完成");
-        }
-    }
 
     /**
      * 获取文件扩展名
