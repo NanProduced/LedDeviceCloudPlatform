@@ -1,5 +1,6 @@
 package org.nan.cloud.core.domain;
 
+import lombok.Data;
 import org.nan.cloud.core.enums.ProgramApprovalStatusEnum;
 import org.nan.cloud.core.enums.ProgramStatusEnum;
 
@@ -7,9 +8,9 @@ import java.time.LocalDateTime;
 import java.util.Set;
 
 /**
- * 节目基础信息实体类
- * 对应MySQL表 material_program
+ * 节目基础信息领域类
  */
+@Data
 public class Program {
 
     /**
@@ -37,11 +38,7 @@ public class Program {
      * 画布高度
      */
     private Integer canvasHeight;
-    
-    /**
-     * 设备类型
-     */
-    private String deviceType;
+
 
     // 权限主要是依据所属用户组来判断
 
@@ -125,110 +122,9 @@ public class Program {
      * 最后发布时间
      */
     private LocalDateTime lastDeployTime;
-    
-    /**
-     * 分类
-     */
-    private String category;
-    
-    /**
-     * 标签集合
-     */
-    private Set<String> tags;
-    
-    /**
-     * 支持的设备类型集合
-     */
-    private Set<String> supportedDeviceTypes;
-    
-    /**
-     * 最低播放器版本
-     */
-    private String minPlayerVersion;
+
 
     // 时间戳
     private LocalDateTime createTime;
     private LocalDateTime updateTime;
-
-    // Getters and Setters
-    public String getProgramId() { return programId; }
-    public void setProgramId(String programId) { this.programId = programId; }
-
-    public String getProgramName() { return programName; }
-    public void setProgramName(String programName) { this.programName = programName; }
-
-    public String getDescription() { return description; }
-    public void setDescription(String description) { this.description = description; }
-
-    public Integer getCanvasWidth() { return canvasWidth; }
-    public void setCanvasWidth(Integer canvasWidth) { this.canvasWidth = canvasWidth; }
-
-    public Integer getCanvasHeight() { return canvasHeight; }
-    public void setCanvasHeight(Integer canvasHeight) { this.canvasHeight = canvasHeight; }
-
-    public String getDeviceType() { return deviceType; }
-    public void setDeviceType(String deviceType) { this.deviceType = deviceType; }
-
-    public Long getOid() { return oid; }
-    public void setOid(Long oid) { this.oid = oid; }
-
-    public Long getUgid() { return ugid; }
-    public void setUgid(Long ugid) { this.ugid = ugid; }
-
-    public Long getCreatorId() { return creatorId; }
-    public void setCreatorId(Long creatorId) { this.creatorId = creatorId; }
-
-    public Long getUpdaterId() { return updaterId; }
-    public void setUpdaterId(Long updaterId) { this.updaterId = updaterId; }
-
-    public String getProgramContentId() { return programContentId; }
-    public void setProgramContentId(String programContentId) { this.programContentId = programContentId; }
-
-    public String getVsnFileId() { return vsnFileId; }
-    public void setVsnFileId(String vsnFileId) { this.vsnFileId = vsnFileId; }
-
-    public String getThumbnailPath() { return thumbnailPath; }
-    public void setThumbnailPath(String thumbnailPath) { this.thumbnailPath = thumbnailPath; }
-
-    public String getPreviewVideoPath() { return previewVideoPath; }
-    public void setPreviewVideoPath(String previewVideoPath) { this.previewVideoPath = previewVideoPath; }
-
-    public Integer getVersion() { return version; }
-    public void setVersion(Integer version) { this.version = version; }
-
-    public String getSourceProgramId() { return sourceProgramId; }
-    public void setSourceProgramId(String sourceProgramId) { this.sourceProgramId = sourceProgramId; }
-
-    public Boolean getSourceProgram() { return sourceProgram; }
-    public void setSourceProgram(Boolean sourceProgram) { this.sourceProgram = sourceProgram; }
-
-    public ProgramApprovalStatusEnum getApprovalStatus() { return approvalStatus; }
-    public void setApprovalStatus(ProgramApprovalStatusEnum approvalStatus) { this.approvalStatus = approvalStatus; }
-
-    public ProgramStatusEnum getProgramStatus() { return programStatus; }
-    public void setProgramStatus(ProgramStatusEnum programStatus) { this.programStatus = programStatus; }
-
-    public Integer getUsageCount() { return usageCount; }
-    public void setUsageCount(Integer usageCount) { this.usageCount = usageCount; }
-
-    public LocalDateTime getLastDeployTime() { return lastDeployTime; }
-    public void setLastDeployTime(LocalDateTime lastDeployTime) { this.lastDeployTime = lastDeployTime; }
-
-    public String getCategory() { return category; }
-    public void setCategory(String category) { this.category = category; }
-
-    public Set<String> getTags() { return tags; }
-    public void setTags(Set<String> tags) { this.tags = tags; }
-
-    public Set<String> getSupportedDeviceTypes() { return supportedDeviceTypes; }
-    public void setSupportedDeviceTypes(Set<String> supportedDeviceTypes) { this.supportedDeviceTypes = supportedDeviceTypes; }
-
-    public String getMinPlayerVersion() { return minPlayerVersion; }
-    public void setMinPlayerVersion(String minPlayerVersion) { this.minPlayerVersion = minPlayerVersion; }
-
-    public LocalDateTime getCreateTime() { return createTime; }
-    public void setCreateTime(LocalDateTime createTime) { this.createTime = createTime; }
-
-    public LocalDateTime getUpdateTime() { return updateTime; }
-    public void setUpdateTime(LocalDateTime updateTime) { this.updateTime = updateTime; }
 }
