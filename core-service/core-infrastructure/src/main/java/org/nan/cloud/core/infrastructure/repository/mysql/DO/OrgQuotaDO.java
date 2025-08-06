@@ -52,34 +52,10 @@ public class OrgQuotaDO {
     private Integer usedFileCount;
 
     /**
-     * 每日最大上传数量
-     */
-    @TableField("max_daily_uploads")
-    private Integer maxDailyUploads;
-
-    /**
-     * 今日上传数量
-     */
-    @TableField("today_upload_count")
-    private Integer todayUploadCount;
-
-    /**
-     * 上次重置日期
-     */
-    @TableField("last_reset_date")
-    private LocalDate lastResetDate;
-
-    /**
      * 告警阈值百分比
      */
     @TableField("warning_threshold_percent")
     private Integer warningThresholdPercent;
-
-    /**
-     * 是否启用配额限制
-     */
-    @TableField("is_quota_enabled")
-    private Boolean quotaEnabled;
 
     /**
      * 创建时间

@@ -29,7 +29,10 @@ public enum CacheType {
     SYSTEM_CONFIG("system:config", Duration.ofHours(12), true, false),
 
     // 任务进度缓存
-    TASK_PROGRESS("terminal:task:progress", Duration.ofMinutes(30), false, true);
+    TASK_PROGRESS("terminal:task:progress", Duration.ofMinutes(30), false, true),
+    
+    // 实时消息相关缓存
+    REALTIME_MESSAGE_UNREAD_COUNT("realtime:message:unread", Duration.ofMinutes(15), true, true);
 
     private final String keyPrefix;
     private final Duration defaultTtl;

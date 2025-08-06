@@ -1,6 +1,7 @@
 package org.nan.cloud.message.infrastructure.websocket.dispatcher;
 
 import lombok.extern.slf4j.Slf4j;
+import org.nan.cloud.message.infrastructure.service.RealtimeMessagePersistenceService;
 import org.nan.cloud.message.infrastructure.websocket.manager.StompConnectionManager;
 import org.nan.cloud.message.infrastructure.websocket.routing.TopicRoutingDecision;
 import org.nan.cloud.message.infrastructure.websocket.routing.TopicRoutingManager;
@@ -51,13 +52,16 @@ public class StompMessageDispatcher {
     private final StompConnectionManager stompConnectionManager;
     private final TopicRoutingManager topicRoutingManager;
     private final StompMessageSender messageSender;
+    private final RealtimeMessagePersistenceService realtimeMessagePersistenceService;
     
     public StompMessageDispatcher(StompConnectionManager stompConnectionManager,
                                 TopicRoutingManager topicRoutingManager,
-                                StompMessageSender messageSender) {
+                                StompMessageSender messageSender,
+                                RealtimeMessagePersistenceService  realtimeMessagePersistenceService) {
         this.stompConnectionManager = stompConnectionManager;
         this.topicRoutingManager = topicRoutingManager;
         this.messageSender = messageSender;
+        this.realtimeMessagePersistenceService = realtimeMessagePersistenceService;
     }
     
     // ==================== 智能路由分发 ====================
@@ -71,6 +75,8 @@ public class StompMessageDispatcher {
             TopicRoutingDecision topicRoutingDecision = topicRoutingManager.decideRouting(message);
 
             DispatchResult result = new DispatchResult(message.getMessageId());
+
+            realtimeMessagePersistenceService.persistMessageAsync(message, result);
 
             for (String topic : topicRoutingDecision.getTargetTopics()) {
                 try {
@@ -103,7 +109,7 @@ public class StompMessageDispatcher {
     
     /**
      * 发送消息给单个用户
-     * 
+     * 注：这里的消息都会持久化
      * @param userId 目标用户ID
      * @param message STOMP消息对象
      */
@@ -117,9 +123,13 @@ public class StompMessageDispatcher {
             // 检查用户是否在线
             if (!stompConnectionManager.isUserOnline(userId)) {
                 log.warn("用户不在线，跳过STOMP消息推送 - 用户ID: {}", userId);
-                // TODO: 可以考虑将消息存储到离线消息队列
+                // TODO: 可以考虑将消息存储到离线消息队列, 上线时推送
+                // 暂时没必要
                 return;
             }
+
+            // 持久化
+            realtimeMessagePersistenceService.persistMessageAsync(message, null);
             
             // 使用StompConnectionManager进行推送
             boolean sent = stompConnectionManager.sendToUser(userId, message);
