@@ -286,7 +286,6 @@ public class ProgressTrackingServiceImpl implements ProgressTrackingService {
                 .maxSpeed(progressInfo.getMaxSpeed())
                 .minSpeed(progressInfo.getMinSpeed())
                 .stability(calculateStability(progressInfo))
-                .retransmissionRate(calculateRetransmissionRate(progressInfo))
                 .build();
         
         builder.qualityMetrics(qualityMetrics);
@@ -437,15 +436,6 @@ public class ProgressTrackingServiceImpl implements ProgressTrackingService {
         
         double stdDev = Math.sqrt(variance);
         return Math.max(0.0, 1.0 - (stdDev / Math.max(avg, 1.0)));
-    }
-    
-    /**
-     * 计算重传率
-     */
-    private Double calculateRetransmissionRate(ProgressInfo progressInfo) {
-        int totalRetries = progressInfo.getRetryCount();
-        int totalOperations = Math.max(1, progressInfo.getUploadedChunks());
-        return (double) totalRetries / totalOperations;
     }
 
     /**

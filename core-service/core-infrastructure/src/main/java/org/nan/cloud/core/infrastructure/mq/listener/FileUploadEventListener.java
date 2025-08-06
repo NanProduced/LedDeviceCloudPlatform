@@ -172,15 +172,8 @@ public class FileUploadEventListener implements MessageConsumer {
                 event.getTaskId(), event.getFileId());
         
         try {
-            // 1. 创建或更新MaterialFile（文件实体信息）
-            boolean fileCreated = materialFileService.createMaterialFile(event);
-            if (!fileCreated) {
-                log.error("创建MaterialFile失败 - 文件ID: {}", event.getFileId());
-                taskStatusHandler.failTask(event.getTaskId(), "创建文件记录失败");
-                return;
-            }
 
-            // 2. 检查是否已存在Material（避免重复创建）
+            // 检查是否已存在Material（避免重复创建）
             Material existingMaterial = materialService.getMaterialByFileId(event.getFileId());
             Long materialId;
             

@@ -21,26 +21,6 @@ public class MaterialFileServiceImpl implements MaterialFileService {
 
     private final MaterialFileRepository materialFileRepository;
 
-    @Override
-    @Transactional
-    public boolean createMaterialFile(FileUploadEvent event) {
-        try {
-            // 检查文件是否已存在（避免重复创建）
-            if (existsFile(event.getFileId())) {
-                log.warn("文件已存在，跳过创建 - 文件ID: {}", event.getFileId());
-                return true;
-            }
-
-            materialFileRepository.createMaterialFile(event);
-            log.info("素材文件记录创建成功 - 文件ID: {}, 大小: {}, 类型: {}", 
-                    event.getFileId(), event.getFileSize(), event.getMimeType());
-            return true;
-            
-        } catch (Exception e) {
-            log.error("创建素材文件记录失败 - 文件ID: {}, 错误: {}", event.getFileId(), e.getMessage(), e);
-            return false;
-        }
-    }
 
     @Override
     @Transactional

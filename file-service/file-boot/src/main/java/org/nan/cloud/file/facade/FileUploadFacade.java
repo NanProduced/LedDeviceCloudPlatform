@@ -7,7 +7,6 @@ import org.nan.cloud.common.web.context.RequestUserInfo;
 import org.nan.cloud.file.api.dto.FileUploadRequest;
 import org.nan.cloud.file.api.dto.TaskInitResponse;
 import org.nan.cloud.file.application.service.FileUploadService;
-import org.nan.cloud.file.application.service.FileValidationService;
 import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
 
@@ -29,7 +28,6 @@ import org.springframework.web.multipart.MultipartFile;
 public class FileUploadFacade {
 
     private final FileUploadService fileUploadService;
-    private final FileValidationService fileValidationService;
 
     /**
      * 填充上传请求的上下文信息
@@ -47,30 +45,6 @@ public class FileUploadFacade {
     }
 
     /**
-     * 验证上传请求参数
-     * 
-     * @param file 上传文件
-     * @param uploadRequest 上传请求
-     */
-    private void validateUploadRequest(MultipartFile file, FileUploadRequest uploadRequest) {
-        // 基础业务参数验证
-        if (uploadRequest.getOid() == null) {
-            throw new IllegalArgumentException("无法获取用户组织信息");
-        }
-        
-        // 使用统一的文件验证服务进行详细验证
-        FileValidationService.FileValidationResult validationResult = 
-                fileValidationService.validate(file, uploadRequest);
-        
-        if (!validationResult.isValid()) {
-            throw new IllegalArgumentException(validationResult.getErrorMessage());
-        }
-        
-        log.debug("上传请求参数验证通过 - 文件名: {}, 大小: {}, 组织: {}", 
-                file.getOriginalFilename(), file.getSize(), uploadRequest.getOid());
-    }
-
-    /**
      * 异步单文件上传门面方法
      * 
      * @param file 上传的文件
@@ -85,13 +59,10 @@ public class FileUploadFacade {
             // 1. 填充上下文信息
             enrichUploadRequest(uploadRequest);
             
-            // 2. 参数验证
-            validateUploadRequest(file, uploadRequest);
-            
-            // 3. 调用应用服务执行异步上传
+            // 2. 调用应用服务执行异步上传
             TaskInitResponse response = fileUploadService.uploadSingleAsync(file, uploadRequest);
             
-            log.info("门面层异步上传任务创建完成 - 任务ID: {}", response.getTaskId());
+            log.debug("门面层异步上传任务创建完成 - 任务ID: {}", response.getTaskId());
             
             return response;
             

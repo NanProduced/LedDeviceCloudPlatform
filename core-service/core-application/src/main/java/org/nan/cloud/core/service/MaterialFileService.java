@@ -14,14 +14,6 @@ import org.nan.cloud.core.event.mq.FileUploadEvent;
 public interface MaterialFileService {
 
     /**
-     * 创建文件记录（文件上传完成后调用）
-     * 
-     * @param event 文件上传完成事件
-     * @return 是否创建成功
-     */
-    boolean createMaterialFile(FileUploadEvent event);
-
-    /**
      * 更新文件的缩略图路径
      * 
      * @param fileId 文件ID

@@ -111,7 +111,7 @@ public class FileUploadServiceImpl implements FileUploadService {
             // 7. 启动异步上传处理
             performAsyncUploadAsync(taskId, fileId, file, request);
             
-            log.info("异步单文件上传任务已创建 - taskId: {}, fileId: {}", taskId, fileId);
+            log.debug("异步单文件上传任务已创建 - taskId: {}, fileId: {}", taskId, fileId);
             return response;
 
         } catch (Exception e) {
