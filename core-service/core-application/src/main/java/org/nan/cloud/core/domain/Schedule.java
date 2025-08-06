@@ -38,6 +38,12 @@ public class Schedule {
     private Long updaterId;
 
     /**
+     * 排程数据 - 保存在mongoDB
+     * 这里是mongoDB文档的objectId
+     */
+    private String scheduleDataId;
+
+    /**
      * 关联的排程Id
      * 如果是由其他排程修改，绑定到初始排程
      */
