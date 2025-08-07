@@ -188,14 +188,12 @@ public class ThumbnailServiceImpl implements ThumbnailService {
                 try {
                     ThumbnailInfo thumbnail = generateSingleThumbnail(
                         fileInfo, originalFile, sizeConfig.width, sizeConfig.height);
-                    
-                    if (thumbnail != null) {
-                        thumbnails.add(thumbnail);
-                        log.debug("生成缩略图成功 - {}x{}, 文件: {}", 
-                                sizeConfig.width, sizeConfig.height, thumbnail.getThumbnailPath());
-                    }
+
+                    thumbnails.add(thumbnail);
+                    log.debug("生成缩略图成功 - {}x{}, 文件: {}",
+                            sizeConfig.width, sizeConfig.height, thumbnail.getThumbnailPath());
                 } catch (Exception e) {
-                    log.warn("生成{}x{}缩略图失败 - 文件ID: {}, 错误: {}", 
+                    log.warn("图片缩略图 - 生成{}x{}缩略图失败 - 文件ID: {}, 错误: {}",
                             sizeConfig.width, sizeConfig.height, fileInfo.getFileId(), e.getMessage());
                 }
             }
@@ -311,7 +309,7 @@ public class ThumbnailServiceImpl implements ThumbnailService {
                     log.debug("生成视频缩略图成功 - {}x{}, 文件: {}",
                             sizeConfig.width, sizeConfig.height, thumbnail.getThumbnailPath());
                 } catch (Exception e) {
-                    log.warn("生成{}x{}视频缩略图失败 - 文件ID: {}, 错误: {}", 
+                    log.warn("视频缩略图 - 生成{}x{}视频缩略图失败 - 文件ID: {}, 错误: {}",
                             sizeConfig.width, sizeConfig.height, fileInfo.getFileId(), e.getMessage());
                 }
             }
