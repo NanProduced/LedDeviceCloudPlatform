@@ -40,8 +40,7 @@ import java.util.concurrent.ConcurrentHashMap;
 @Component
 @RequiredArgsConstructor
 public class UserQueueSubscriptionListener {
-    
-    private final StompConnectionManager stompConnectionManager;
+
     private final SubscriptionManager subscriptionManager;
     private final SimpMessagingTemplate messagingTemplate;
     

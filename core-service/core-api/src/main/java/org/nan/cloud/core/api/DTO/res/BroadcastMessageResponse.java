@@ -1,5 +1,6 @@
 package org.nan.cloud.core.api.DTO.res;
 
+import com.fasterxml.jackson.annotation.JsonInclude;
 import io.swagger.v3.oas.annotations.media.Schema;
 import lombok.Builder;
 import lombok.Data;
@@ -16,6 +17,7 @@ import java.util.List;
 @Schema(description = "广播消息响应类")
 @Data
 @Builder
+@JsonInclude(JsonInclude.Include.NON_NULL)
 public class BroadcastMessageResponse {
 
     @Schema(description = "MongoDB文档ID")
@@ -44,9 +46,6 @@ public class BroadcastMessageResponse {
 
     @Schema(description = "消息范围（SYSTEM/ORG）")
     private String scope;
-
-    @Schema(description = "目标组织列表")
-    private List<Long> targetOid;
 
     @Schema(description = "消息标题")
     private String title;

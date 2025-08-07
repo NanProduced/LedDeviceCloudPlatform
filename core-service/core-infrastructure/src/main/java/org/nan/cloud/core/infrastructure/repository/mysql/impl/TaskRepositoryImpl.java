@@ -1,6 +1,8 @@
 package org.nan.cloud.core.infrastructure.repository.mysql.impl;
 
 import lombok.RequiredArgsConstructor;
+import org.nan.cloud.common.basic.model.PageVO;
+import org.nan.cloud.core.api.DTO.res.QueryTaskResponse;
 import org.nan.cloud.core.domain.Task;
 import org.nan.cloud.core.enums.TaskStatusEnum;
 import org.nan.cloud.core.infrastructure.repository.mysql.DO.TaskDO;
@@ -21,6 +23,11 @@ public class TaskRepositoryImpl implements TaskRepository {
 
     private final TaskConverter taskConverter;
 
+    @Override
+    public PageVO<Task> listTasks(int pageNum, int pageSize, String taskType, String taskStatus, Long orgId, Long userId) {
+
+        return null;
+    }
 
     @Override
     public Task getTaskById(String taskId) {

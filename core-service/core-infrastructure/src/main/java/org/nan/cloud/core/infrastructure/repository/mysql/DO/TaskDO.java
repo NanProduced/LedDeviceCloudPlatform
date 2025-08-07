@@ -54,6 +54,7 @@ public class TaskDO {
 
     /**
      * 素材相关任务的缩略图Url
+     * todo: 还没填充
      */
     @TableField("thumbnail_url")
     private String thumbnailUrl;

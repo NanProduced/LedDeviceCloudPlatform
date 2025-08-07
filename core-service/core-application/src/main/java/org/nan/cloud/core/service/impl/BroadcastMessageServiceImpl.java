@@ -266,7 +266,6 @@ public class BroadcastMessageServiceImpl implements BroadcastMessageService {
                 .subType_2(document.getSubType_2())
                 .level(document.getLevel())
                 .scope(document.getScope())
-                .targetOid(document.getTargetOid())
                 .title(document.getTitle())
                 .content(document.getContent())
                 .payload(document.getPayload())

@@ -1,5 +1,9 @@
 package org.nan.cloud.core.service;
 
+import org.nan.cloud.common.basic.model.PageRequestDTO;
+import org.nan.cloud.common.basic.model.PageVO;
+import org.nan.cloud.core.api.DTO.req.QueryTaskRequest;
+import org.nan.cloud.core.api.DTO.res.QueryTaskResponse;
 import org.nan.cloud.core.domain.Task;
 import org.nan.cloud.core.enums.TaskStatusEnum;
 import org.nan.cloud.core.enums.TaskTypeEnum;
@@ -12,6 +16,9 @@ import java.util.List;
  * @author Nan
  */
 public interface TaskService {
+
+    PageVO<QueryTaskResponse> listTasks(PageRequestDTO<QueryTaskRequest> pageRequest,
+                                        Long orgId, Long userId);
 
     /**
      * 根据任务ID查询任务

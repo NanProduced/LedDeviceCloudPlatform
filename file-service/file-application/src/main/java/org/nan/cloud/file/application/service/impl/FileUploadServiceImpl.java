@@ -99,7 +99,7 @@ public class FileUploadServiceImpl implements FileUploadService {
                     .userId(request.getUid().toString())
                     .estimatedDuration("约30秒-2分钟")
                     .createTime(LocalDateTime.now())
-                    .progressSubscriptionUrl("/stomp/topic/task/" + taskId) // 见StompTopic.java
+                    .progressSubscriptionUrl("/topic/task" + taskId) // 见StompTopic.java
                     .message("任务已创建，正在处理中...")
                     .build();
             

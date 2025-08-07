@@ -37,7 +37,7 @@ public interface MaterialFileMapper extends BaseMapper<MaterialFileDO> {
     @Select("SELECT mf.* FROM material_file mf " +
             "INNER JOIN material m ON mf.file_id = m.file_id " +
             "WHERE mf.md5_hash = #{md5Hash} AND m.oid = #{organizationId} " +
-            "AND mf.deleted = 0 AND m.deleted = 0 " +
+            "AND mf.deleted = 0 " +
             "LIMIT 1")
     MaterialFileDO findByMd5HashAndOrganizationId(String md5Hash, Long organizationId);
 
@@ -49,7 +49,7 @@ public interface MaterialFileMapper extends BaseMapper<MaterialFileDO> {
      */
     @Select("SELECT COUNT(*) FROM material_file mf " +
             "INNER JOIN material m ON mf.file_id = m.file_id " +
-            "WHERE m.oid = #{organizationId} AND mf.deleted = 0 AND m.deleted = 0")
+            "WHERE m.oid = #{organizationId} AND mf.deleted = 0")
     long countByOrganizationId(Long organizationId);
 
     /**
@@ -60,7 +60,7 @@ public interface MaterialFileMapper extends BaseMapper<MaterialFileDO> {
      */
     @Select("SELECT COALESCE(SUM(mf.original_file_size), 0) FROM material_file mf " +
             "INNER JOIN material m ON mf.file_id = m.file_id " +
-            "WHERE m.oid = #{organizationId} AND mf.deleted = 0 AND m.deleted = 0")
+            "WHERE m.oid = #{organizationId} AND mf.deleted = 0")
     long sumFileSizeByOrganizationId(Long organizationId);
 
     /**
@@ -86,7 +86,7 @@ public interface MaterialFileMapper extends BaseMapper<MaterialFileDO> {
      */
     @Select("SELECT mf.* FROM material_file mf " +
             "INNER JOIN material m ON mf.file_id = m.file_id " +
-            "WHERE m.oid = #{organizationId} AND mf.deleted = 0 AND m.deleted = 0 " +
+            "WHERE m.oid = #{organizationId} AND mf.deleted = 0" +
             "ORDER BY mf.upload_time DESC " +
             "LIMIT #{limit}")
     List<MaterialFileDO> findRecentUploads(Long organizationId, int limit);

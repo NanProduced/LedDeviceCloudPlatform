@@ -2,6 +2,10 @@ package org.nan.cloud.core.service.impl;
 
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.nan.cloud.common.basic.model.PageRequestDTO;
+import org.nan.cloud.common.basic.model.PageVO;
+import org.nan.cloud.core.api.DTO.req.QueryTaskRequest;
+import org.nan.cloud.core.api.DTO.res.QueryTaskResponse;
 import org.nan.cloud.core.domain.Task;
 import org.nan.cloud.core.enums.TaskStatusEnum;
 import org.nan.cloud.core.enums.TaskTypeEnum;
@@ -26,6 +30,12 @@ public class TaskServiceImpl implements TaskService {
 
     private final TaskRepository taskRepository;
     private final BusinessCacheService businessCacheService;
+
+    @Override
+    public PageVO<QueryTaskResponse> listTasks(PageRequestDTO<QueryTaskRequest> pageRequest, Long orgId, Long userId) {
+
+        return null;
+    }
 
     @Override
     public Task getTaskById(String taskId) {

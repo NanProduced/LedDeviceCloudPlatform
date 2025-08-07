@@ -87,25 +87,6 @@ public class ProgramDO {
     private Integer usageCount;
     
     /**
-     * 最后发布时间
-     */
-    @TableField("last_published_time")
-    private LocalDateTime lastPublishedTime;
-    
-    /**
-     * 最后发布到的终端组ID
-     */
-    @TableField("last_published_group_id")
-    private String lastPublishedGroupId;
-    
-    /**
-     * 最后发布到的终端ID列表
-     * JSON格式存储终端ID数组
-     */
-    @TableField("last_published_terminal_ids")
-    private String lastPublishedTerminalIds;
-    
-    /**
      * 所属组织ID
      */
     @TableField("org_id")
