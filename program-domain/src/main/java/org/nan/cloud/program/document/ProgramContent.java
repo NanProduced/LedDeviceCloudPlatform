@@ -11,7 +11,7 @@ import java.util.List;
 
 /**
  * 节目详细内容 - MongoDB文档
- * 对应VSN <Program>结构，存储节目的完整内容
+ * 其中vsnPrograms对应VSN <Programs>结构，存储节目的完整内容
  */
 @Data
 @Document(collection = "program_contents")
@@ -28,43 +28,21 @@ public class ProgramContent {
      */
     @JsonProperty("programId")
     @Field("program_id")
-    private String programId;
+    private Long programId;
     
     /**
      * 节目版本号
      */
     @JsonProperty("version")
     @Field("version")
-    private String version;
-    
+    private String  version;
+
     /**
-     * 节目信息 - 对应VSN <Information>
+     * 对应VSN文件结构 - 对应VSN <Programs>
      */
-    @JsonProperty("information")
-    @Field("information")
-    private ProgramInformation information;
-    
-    /**
-     * 节目页列表 - 对应VSN <Pages>
-     */
-    @JsonProperty("pages")
-    @Field("pages")
-    private List<ProgramPage> pages;
-    
-    /**
-     * VSN节目ID - 对应VSN <programId>
-     * 用于桶节目判断
-     */
-    @JsonProperty("vsnProgramId")
-    @Field("vsn_program_id")
-    private String vsnProgramId;
-    
-    /**
-     * 是否为桶节目 - 对应VSN <isBucketProgram>
-     */
-    @JsonProperty("isBucketProgram")
-    @Field("is_bucket_program")
-    private Boolean isBucketProgram;
+    @JsonProperty("vsn_programs")
+    @Field("vsn_programs")
+    private List<VsnProgram> vsnPrograms;
     
     /**
      * 原始前端数据

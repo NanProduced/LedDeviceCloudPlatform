@@ -4,6 +4,7 @@ import com.fasterxml.jackson.annotation.JsonFormat;
 import lombok.Data;
 import org.nan.cloud.program.enums.ProgramApprovalStatusEnum;
 import org.nan.cloud.program.enums.ProgramStatusEnum;
+import org.nan.cloud.program.enums.VsnGenerationStatusEnum;
 
 import java.time.LocalDateTime;
 
@@ -16,7 +17,7 @@ public class ProgramDTO {
     /**
      * 节目ID
      */
-    private String id;
+    private Long id;
     
     /**
      * 节目名称
@@ -79,6 +80,21 @@ public class ProgramDTO {
     private Integer usageCount;
     
     /**
+     * VSN生成状态
+     */
+    private VsnGenerationStatusEnum vsnGenerationStatus;
+    
+    /**
+     * VSN生成状态显示名称
+     */
+    private String vsnGenerationStatusName;
+    
+    /**
+     * VSN文件路径
+     */
+    private String vsnFilePath;
+    
+    /**
      * 最后发布时间
      */
     @JsonFormat(pattern = "yyyy-MM-dd HH:mm:ss")
@@ -99,20 +115,12 @@ public class ProgramDTO {
     /**
      * 创建者用户ID
      */
-    private String createdBy;
-    
-    /**
-     * 创建者姓名
-     */
-    private String createdByName;
+    private Long createdBy;
+
     
     /**
      * 更新者用户ID
      */
-    private String updatedBy;
-    
-    /**
-     * 更新者姓名
-     */
-    private String updatedByName;
+    private Long updatedBy;
+
 }

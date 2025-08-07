@@ -4,6 +4,7 @@ import com.baomidou.mybatisplus.annotation.*;
 import lombok.Data;
 import org.nan.cloud.program.enums.ProgramApprovalStatusEnum;
 import org.nan.cloud.program.enums.ProgramStatusEnum;
+import org.nan.cloud.program.enums.VsnGenerationStatusEnum;
 
 import java.time.LocalDateTime;
 
@@ -18,8 +19,8 @@ public class ProgramDO {
     /**
      * 节目ID（主键）
      */
-    @TableId(value = "id", type = IdType.ASSIGN_ID)
-    private String id;
+    @TableId(value = "id", type = IdType.AUTO)
+    private Long id;
     
     /**
      * 节目名称
@@ -87,10 +88,44 @@ public class ProgramDO {
     private Integer usageCount;
     
     /**
+     * VSN文件ID
+     * 生成的VSN文件的唯一标识
+     */
+    @TableField("vsn_file_id")
+    private String vsnFileId;
+    
+    /**
+     * VSN文件路径
+     * VSN文件在文件系统或对象存储中的完整路径
+     */
+    @TableField("vsn_file_path")
+    private String vsnFilePath;
+    
+    /**
+     * VSN生成状态
+     * 跟踪VSN文件的生成进度和状态
+     */
+    @TableField("vsn_generation_status")
+    private VsnGenerationStatusEnum vsnGenerationStatus;
+    
+    /**
+     * VSN生成错误信息
+     * 当VSN生成失败时，记录详细的错误信息用于排查
+     */
+    @TableField("vsn_generation_error")
+    private String vsnGenerationError;
+    
+    /**
      * 所属组织ID
      */
-    @TableField("org_id")
-    private String orgId;
+    @TableField("oid")
+    private Long orgId;
+
+    /**
+     * 所属用户组ID
+     */
+    @TableField("ugid")
+    private Long ugid;
     
     /**
      * 创建时间
@@ -108,13 +143,13 @@ public class ProgramDO {
      * 创建者用户ID
      */
     @TableField(value = "created_by", fill = FieldFill.INSERT)
-    private String createdBy;
+    private Long createdBy;
     
     /**
      * 更新者用户ID
      */
     @TableField(value = "updated_by", fill = FieldFill.INSERT_UPDATE)
-    private String updatedBy;
+    private Long updatedBy;
     
     /**
      * 逻辑删除标记

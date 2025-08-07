@@ -17,14 +17,14 @@ public class ProgramApprovalDO {
     /**
      * 审核记录ID（主键）
      */
-    @TableId(value = "id", type = IdType.ASSIGN_ID)
-    private String id;
+    @TableId(value = "id", type = IdType.AUTO)
+    private Long id;
     
     /**
      * 节目ID
      */
     @TableField("program_id")
-    private String programId;
+    private Long programId;
     
     /**
      * 节目版本号
@@ -54,13 +54,7 @@ public class ProgramApprovalDO {
      * 审核者用户ID
      */
     @TableField("reviewer_id")
-    private String reviewerId;
-    
-    /**
-     * 审核者姓名
-     */
-    @TableField("reviewer_name")
-    private String reviewerName;
+    private Long reviewerId;
     
     /**
      * 审核意见/备注
@@ -79,7 +73,7 @@ public class ProgramApprovalDO {
      * 所属组织ID
      */
     @TableField("org_id")
-    private String orgId;
+    private Long orgId;
     
     /**
      * 创建时间
@@ -97,5 +91,5 @@ public class ProgramApprovalDO {
      * 创建者用户ID（申请人）
      */
     @TableField(value = "created_by", fill = FieldFill.INSERT)
-    private String createdBy;
+    private Long createdBy;
 }

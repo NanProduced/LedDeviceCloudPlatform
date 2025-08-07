@@ -16,14 +16,14 @@ public class ProgramMaterialRefDO {
     /**
      * 主键ID
      */
-    @TableId(value = "id", type = IdType.ASSIGN_ID)
-    private String id;
+    @TableId(value = "id", type = IdType.AUTO)
+    private Long id;
     
     /**
      * 节目ID
      */
     @TableField("program_id")
-    private String programId;
+    private Long programId;
     
     /**
      * 节目版本号
@@ -35,7 +35,7 @@ public class ProgramMaterialRefDO {
      * 素材ID（关联material表）
      */
     @TableField("material_id")
-    private String materialId;
+    private Long materialId;
     
     /**
      * 素材类型
@@ -68,5 +68,5 @@ public class ProgramMaterialRefDO {
      * 创建者用户ID
      */
     @TableField(value = "created_by", fill = FieldFill.INSERT)
-    private String createdBy;
+    private Long createdBy;
 }

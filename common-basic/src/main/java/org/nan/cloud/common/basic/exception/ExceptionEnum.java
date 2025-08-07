@@ -46,6 +46,7 @@ public enum ExceptionEnum {
     FOLDER_PERMISSION_DENIED(5015, "Folder permission denied"),
     COMMAND_PARAMS_ERROR(5016, "command parameters error"),
     DETAILS_DENIED(5017, "get details failed"),
+    PROGRAM_NAME_EXISTS(5018, "program name already exists"),
 
     /* websocket\STOMP 异常 */
     STOMP_ACCESS_DENIED(6001, "stomp access denied"),
