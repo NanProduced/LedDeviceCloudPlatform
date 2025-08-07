@@ -1,8 +1,11 @@
 package org.nan.cloud.core.infrastructure.repository.mysql.impl;
 
+import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
+import com.baomidou.mybatisplus.core.metadata.IPage;
+import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import lombok.RequiredArgsConstructor;
 import org.nan.cloud.common.basic.model.PageVO;
-import org.nan.cloud.core.api.DTO.res.QueryTaskResponse;
+import org.nan.cloud.common.basic.utils.StringUtils;
 import org.nan.cloud.core.domain.Task;
 import org.nan.cloud.core.enums.TaskStatusEnum;
 import org.nan.cloud.core.infrastructure.repository.mysql.DO.TaskDO;
@@ -13,7 +16,6 @@ import org.springframework.stereotype.Repository;
 
 import java.time.LocalDateTime;
 import java.util.List;
-import java.util.Objects;
 
 @Repository
 @RequiredArgsConstructor
@@ -25,8 +27,26 @@ public class TaskRepositoryImpl implements TaskRepository {
 
     @Override
     public PageVO<Task> listTasks(int pageNum, int pageSize, String taskType, String taskStatus, Long orgId, Long userId) {
-
-        return null;
+        Page<TaskDO> page = new Page<>(pageNum, pageSize);
+        LambdaQueryWrapper<TaskDO> wrapper = new LambdaQueryWrapper<TaskDO>()
+                .eq(TaskDO::getOid, orgId)
+                .eq(TaskDO::getCreator, userId);
+        if (StringUtils.isNotBlank(taskType)) {
+            wrapper.and(qw -> qw.eq(TaskDO::getTaskType, taskType));
+        }
+        if (StringUtils.isNotBlank(taskStatus)) {
+            wrapper.and(qw -> qw.eq(TaskDO::getTaskStatus, taskStatus));
+        }
+        wrapper.orderByDesc(TaskDO::getCreateTime);
+        IPage<TaskDO> pageResult = taskMapper.selectPage(page, wrapper);
+        PageVO<Task> pageVO = PageVO.<Task>builder()
+                .pageNum((int) pageResult.getCurrent())
+                .pageSize((int) pageResult.getSize())
+                .total(pageResult.getTotal())
+                .records(taskConverter.toTaskList(pageResult.getRecords()))
+                .build();
+        pageVO.calculate();
+        return pageVO;
     }
 
     @Override

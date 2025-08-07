@@ -32,9 +32,8 @@ public class TaskServiceImpl implements TaskService {
     private final BusinessCacheService businessCacheService;
 
     @Override
-    public PageVO<QueryTaskResponse> listTasks(PageRequestDTO<QueryTaskRequest> pageRequest, Long orgId, Long userId) {
-
-        return null;
+    public PageVO<Task> listTasks(PageRequestDTO<QueryTaskRequest> pageRequest, Long orgId, Long userId) {
+        return taskRepository.listTasks(pageRequest.getPageNum(), pageRequest.getPageSize(), pageRequest.getParams().getTaskType(), pageRequest.getParams().getTaskStatus(), orgId, userId);
     }
 
     @Override

@@ -17,7 +17,7 @@ import java.util.List;
  */
 public interface TaskService {
 
-    PageVO<QueryTaskResponse> listTasks(PageRequestDTO<QueryTaskRequest> pageRequest,
+    PageVO<Task> listTasks(PageRequestDTO<QueryTaskRequest> pageRequest,
                                         Long orgId, Long userId);
 
     /**

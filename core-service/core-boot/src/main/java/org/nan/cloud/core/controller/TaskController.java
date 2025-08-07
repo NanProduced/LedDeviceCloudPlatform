@@ -9,6 +9,7 @@ import org.nan.cloud.common.basic.model.PageVO;
 import org.nan.cloud.core.api.DTO.req.QueryTaskRequest;
 import org.nan.cloud.core.api.DTO.res.QueryTaskResponse;
 import org.nan.cloud.core.api.TaskApi;
+import org.nan.cloud.core.facade.TaskFacade;
 import org.springframework.web.bind.annotation.RestController;
 
 import java.util.Map;
@@ -19,6 +20,8 @@ import java.util.Map;
 @RequiredArgsConstructor
 public class TaskController implements TaskApi {
 
+    private final TaskFacade taskFacade;
+
     @Operation(
             summary = "获取用户任务列表",
             description = "分页查询当前用户的任务列表，支持类型筛选和任务状态筛选",
@@ -26,7 +29,7 @@ public class TaskController implements TaskApi {
     )
     @Override
     public PageVO<QueryTaskResponse> getUserTask(PageRequestDTO<QueryTaskRequest> requestDTO) {
-        return null;
+        return taskFacade.listTasks(requestDTO);
     }
 
     @Operation(
