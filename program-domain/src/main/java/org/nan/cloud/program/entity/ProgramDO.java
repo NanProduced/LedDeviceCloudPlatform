@@ -18,6 +18,7 @@ public class ProgramDO {
     
     /**
      * 节目ID（主键）
+     * 使用Long类型自增主键
      */
     @TableId(value = "id", type = IdType.AUTO)
     private Long id;
@@ -49,11 +50,26 @@ public class ProgramDO {
     private ProgramApprovalStatusEnum approvalStatus;
     
     /**
-     * 当前版本号
-     * 从1开始，每次编辑递增
+     * 版本号
+     * 从1开始，每次编辑创建新记录时递增
      */
-    @TableField("current_version")
-    private Integer currentVersion;
+    @TableField("version")
+    private Integer version;
+    
+    /**
+     * 原始节目ID
+     * 指向版本号为1的原始节目，用于版本链管理
+     * 原始节目此字段为null或自身ID
+     */
+    @TableField("source_program_id")
+    private Long sourceProgramId;
+    
+    /**
+     * 是否为原始节目
+     * true=版本1的原始节目，false=基于原始节目的编辑版本
+     */
+    @TableField("is_source_program")
+    private Boolean isSourceProgram;
     
     /**
      * 节目宽度（像素）
@@ -82,7 +98,7 @@ public class ProgramDO {
     
     /**
      * 使用次数
-     * 被终端或终端组使用的次数统计
+     * 统计被引用的次数（不涉及具体发布逻辑）
      */
     @TableField("usage_count")
     private Integer usageCount;
@@ -118,13 +134,14 @@ public class ProgramDO {
     /**
      * 所属组织ID
      */
-    @TableField("oid")
-    private Long orgId;
+    @TableField("org_id")
+    private Long oid;
 
     /**
      * 所属用户组ID
+     * 节目归属于用户组，不归属于用户
      */
-    @TableField("ugid")
+    @TableField("user_group_id")
     private Long ugid;
     
     /**

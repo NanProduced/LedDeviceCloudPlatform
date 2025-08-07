@@ -15,7 +15,7 @@ public class DraftDTO {
     /**
      * 草稿ID
      */
-    private String id;
+    private Long id;
     
     /**
      * 草稿名称
@@ -57,7 +57,7 @@ public class DraftDTO {
     /**
      * 创建者用户ID
      */
-    private String createdBy;
+    private Long createdBy;
     
     /**
      * 创建者姓名
@@ -67,7 +67,7 @@ public class DraftDTO {
     /**
      * 更新者用户ID
      */
-    private String updatedBy;
+    private Long updatedBy;
     
     /**
      * 更新者姓名

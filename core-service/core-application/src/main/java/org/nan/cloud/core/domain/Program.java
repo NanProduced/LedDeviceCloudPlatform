@@ -3,9 +3,9 @@ package org.nan.cloud.core.domain;
 import lombok.Data;
 import org.nan.cloud.program.enums.ProgramApprovalStatusEnum;
 import org.nan.cloud.program.enums.ProgramStatusEnum;
+import org.nan.cloud.program.enums.VsnGenerationStatusEnum;
 
 import java.time.LocalDateTime;
-import java.util.Set;
 
 /**
  * 节目基础信息领域类
@@ -16,12 +16,12 @@ public class Program {
     /**
      * 节目ID（主键）
      */
-    private String programId;
+    private Long id;
 
     /**
      * 节目名称
      */
-    private String programName;
+    private String name;
     
     /**
      * 节目描述
@@ -30,15 +30,25 @@ public class Program {
 
     // 节目规格信息
     /**
-     * 画布宽度
+     * 画布宽度（像素）
      */
-    private Integer canvasWidth;
+    private Integer width;
     
     /**
-     * 画布高度
+     * 画布高度（像素）
      */
-    private Integer canvasHeight;
-
+    private Integer height;
+    
+    /**
+     * 节目时长（毫秒）
+     * 计算得出的总播放时长
+     */
+    private Long duration;
+    
+    /**
+     * 节目缩略图URL
+     */
+    private String thumbnailUrl;
 
     // 权限主要是依据所属用户组来判断
 
@@ -55,12 +65,12 @@ public class Program {
     /**
      * 创建者ID
      */
-    private Long creatorId;
+    private Long createdBy;
 
     /**
      * 更新者ID
      */
-    private Long updaterId;
+    private Long updatedBy;
 
     /**
      * 节目详情数据存储在MongoDB
@@ -69,37 +79,48 @@ public class Program {
     private String programContentId;
 
     /**
-     * 生成的vsn文件Id
+     * VSN文件ID
+     * 生成的VSN文件的唯一标识
      */
     private String vsnFileId;
-
-    /**
-     * 缩略图路径
-     */
-    private String thumbnailPath;
     
     /**
-     * 预览视频路径
+     * VSN文件路径
+     * VSN文件在文件系统或对象存储中的完整路径
      */
-    private String previewVideoPath;
+    private String vsnFilePath;
+    
+    /**
+     * VSN生成状态
+     * 跟踪VSN文件的生成进度和状态
+     */
+    private VsnGenerationStatusEnum vsnGenerationStatus;
+    
+    /**
+     * VSN生成错误信息
+     * 当VSN生成失败时，记录详细的错误信息用于排查
+     */
+    private String vsnGenerationError;
+
 
     // 版本控制
     /**
-     * 版本号，节目创建时为1
-     * 每次进行编辑版本号+1
-     * 生成一个新的版本 - 创建者为原始节目作者，修改者为编辑者
+     * 版本号
+     * 从1开始，每次编辑创建新记录时递增
      */
     private Integer version;
 
     /**
-     * 原始节目Id
+     * 原始节目ID
+     * 指向版本号为1的原始节目，用于版本链管理
      */
-    private String sourceProgramId;
+    private Long sourceProgramId;
 
     /**
-     * 是否是原始节目
+     * 是否为原始节目
+     * true=版本1的原始节目，false=基于原始节目的编辑版本
      */
-    private Boolean sourceProgram;
+    private Boolean isSourceProgram;
 
     /**
      * 节目审核状态 - 每个组织的节目策略不同
@@ -111,20 +132,16 @@ public class Program {
      * 节目状态
      * 如果组织开启审核流程 - 需要通过审核后才会有这个状态
      */
-    private ProgramStatusEnum programStatus;
+    private ProgramStatusEnum status;
 
     /**
-     * 使用计数 - 发布计数
+     * 使用次数
+     * 统计被引用的次数（不涉及具体发布逻辑）
      */
     private Integer usageCount;
-    
-    /**
-     * 最后发布时间
-     */
-    private LocalDateTime lastDeployTime;
 
 
     // 时间戳
-    private LocalDateTime createTime;
-    private LocalDateTime updateTime;
+    private LocalDateTime createdTime;
+    private LocalDateTime updatedTime;
 }

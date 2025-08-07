@@ -35,7 +35,14 @@ public class ProgramContent {
      */
     @JsonProperty("version")
     @Field("version")
-    private String  version;
+    private Integer version;
+    
+    /**
+     * 组织ID
+     */
+    @JsonProperty("orgId")
+    @Field("org_id")
+    private Long orgId;
 
     /**
      * 对应VSN文件结构 - 对应VSN <Programs>
@@ -46,11 +53,11 @@ public class ProgramContent {
     
     /**
      * 原始前端数据
-     * 存储前端传来的完整JSON数据，用于备份和调试
+     * 存储前端传来的完整JSON数据字符串，用于前端回显节目编辑状态
      */
     @JsonProperty("originalData")
     @Field("original_data")
-    private Object originalData;
+    private String originalData;
     
     /**
      * 生成的VSN XML内容
@@ -79,12 +86,12 @@ public class ProgramContent {
      */
     @JsonProperty("createdBy")
     @Field("created_by")
-    private String createdBy;
+    private Long createdBy;
     
     /**
      * 更新者用户ID
      */
     @JsonProperty("updatedBy")
     @Field("updated_by")
-    private String updatedBy;
+    private Long updatedBy;
 }

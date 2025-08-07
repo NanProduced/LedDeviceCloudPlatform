@@ -7,7 +7,7 @@ import org.nan.cloud.common.web.context.InvocationContextHolder;
 import org.nan.cloud.common.web.context.RequestUserInfo;
 import org.nan.cloud.core.api.DTO.req.QueryTaskRequest;
 import org.nan.cloud.core.api.DTO.res.QueryTaskResponse;
-import org.nan.cloud.core.converter.TaskConverter;
+import org.nan.cloud.core.service.converter.TaskDtoConverter;
 import org.nan.cloud.core.domain.Task;
 import org.nan.cloud.core.service.TaskService;
 import org.springframework.stereotype.Component;
@@ -19,7 +19,7 @@ import java.util.List;
 public class TaskFacade {
 
     private final TaskService taskService;
-    private final TaskConverter taskConverter;
+    private final TaskDtoConverter taskConverter;
 
     /**
      * 查用户任务列表

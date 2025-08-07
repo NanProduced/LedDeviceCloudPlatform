@@ -9,7 +9,7 @@ import org.nan.cloud.core.infrastructure.repository.mysql.DO.TaskDO;
 import java.util.List;
 
 @Mapper(componentModel = "spring", nullValueCheckStrategy = NullValueCheckStrategy.ALWAYS)
-public interface TaskConverter {
+public interface TaskDomainConverter {
 
     TaskDO toTaskDO(Task task);
 

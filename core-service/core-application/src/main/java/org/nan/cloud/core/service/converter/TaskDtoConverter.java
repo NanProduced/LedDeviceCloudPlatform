@@ -1,4 +1,4 @@
-package org.nan.cloud.core.converter;
+package org.nan.cloud.core.service.converter;
 
 import org.mapstruct.Mapper;
 import org.mapstruct.NullValueCheckStrategy;
@@ -8,7 +8,7 @@ import org.nan.cloud.core.domain.Task;
 import java.util.List;
 
 @Mapper(componentModel = "spring", nullValueCheckStrategy = NullValueCheckStrategy.ALWAYS)
-public interface TaskConverter {
+public interface TaskDtoConverter {
 
     QueryTaskResponse toQueryTaskResponse(Task task);
     List<QueryTaskResponse> toQueryTaskResponseList(List<Task> tasks);

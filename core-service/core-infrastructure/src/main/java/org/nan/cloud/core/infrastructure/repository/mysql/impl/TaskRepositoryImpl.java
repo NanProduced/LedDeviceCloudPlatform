@@ -9,7 +9,7 @@ import org.nan.cloud.common.basic.utils.StringUtils;
 import org.nan.cloud.core.domain.Task;
 import org.nan.cloud.core.enums.TaskStatusEnum;
 import org.nan.cloud.core.infrastructure.repository.mysql.DO.TaskDO;
-import org.nan.cloud.core.infrastructure.repository.mysql.converter.TaskConverter;
+import org.nan.cloud.core.infrastructure.repository.mysql.converter.TaskDomainConverter;
 import org.nan.cloud.core.infrastructure.repository.mysql.mapper.TaskMapper;
 import org.nan.cloud.core.repository.TaskRepository;
 import org.springframework.stereotype.Repository;
@@ -23,7 +23,7 @@ public class TaskRepositoryImpl implements TaskRepository {
 
     private final TaskMapper taskMapper;
 
-    private final TaskConverter taskConverter;
+    private final TaskDomainConverter taskConverter;
 
     @Override
     public PageVO<Task> listTasks(int pageNum, int pageSize, String taskType, String taskStatus, Long orgId, Long userId) {
