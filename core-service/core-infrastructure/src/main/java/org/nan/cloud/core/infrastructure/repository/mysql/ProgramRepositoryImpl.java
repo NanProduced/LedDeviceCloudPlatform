@@ -6,6 +6,7 @@ import com.baomidou.mybatisplus.core.metadata.IPage;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.nan.cloud.common.basic.model.PageVO;
 import org.nan.cloud.core.domain.Program;
 import org.nan.cloud.core.infrastructure.repository.mysql.converter.ProgramDomainConverter;
 import org.nan.cloud.core.infrastructure.repository.mysql.mapper.ProgramMapper;
@@ -65,6 +66,48 @@ public class ProgramRepositoryImpl implements ProgramRepository {
         IPage<ProgramDO> result = programMapper.selectPageByUserGroup(pageParam, oid, ugid, status);
         
         return programDomainConverter.toDomains(result.getRecords());
+    }
+
+    @Override
+    public PageVO<Program> findProgramsPage(Long oid, Long ugid, String keyword, ProgramStatusEnum status, int page, int size) {
+        log.debug("Finding programs page: oid={}, ugid={}, keyword={}, status={}, page={}, size={}", 
+                oid, ugid, keyword, status, page, size);
+        
+        Page<ProgramDO> pageParam = new Page<>(page, size);
+        
+        QueryWrapper<ProgramDO> queryWrapper = new QueryWrapper<>();
+        queryWrapper.eq("org_id", oid)
+                   .eq("user_group_id", ugid)  
+                   .eq("deleted", 0);
+        
+        // 关键词搜索（节目名称或描述）
+        if (keyword != null && !keyword.trim().isEmpty()) {
+            queryWrapper.and(wrapper -> wrapper.like("name", keyword.trim())
+                                              .or()
+                                              .like("description", keyword.trim()));
+        }
+        
+        // 状态过滤
+        if (status != null) {
+            queryWrapper.eq("program_status", status);
+        }
+        
+        // 按更新时间倒序
+        queryWrapper.orderByDesc("updated_time");
+        
+        IPage<ProgramDO> result = programMapper.selectPage(pageParam, queryWrapper);
+        
+        // 转换为Domain对象的IPage
+        List<Program> domainList = programDomainConverter.toDomains(result.getRecords());
+
+        PageVO<Program> pageVO = PageVO.<Program>builder()
+                .records(domainList)
+                .total(result.getTotal())
+                .pageNum((int) result.getCurrent())
+                .pageSize((int) result.getSize())
+                .build();
+        pageVO.calculate();
+        return pageVO;
     }
 
     @Override

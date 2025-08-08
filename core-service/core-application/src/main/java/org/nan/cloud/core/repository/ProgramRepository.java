@@ -1,5 +1,6 @@
 package org.nan.cloud.core.repository;
 
+import org.nan.cloud.common.basic.model.PageVO;
 import org.nan.cloud.core.domain.Program;
 import org.nan.cloud.program.enums.ProgramStatusEnum;
 
@@ -37,6 +38,19 @@ public interface ProgramRepository {
      * @return 节目列表
      */
     List<Program> findByUserGroup(Long oid, Long ugid, ProgramStatusEnum status, int page, int size);
+    
+    /**
+     * 分页查询节目列表（支持关键词搜索）
+     * 使用MyBatis Plus分页插件
+     * @param oid 组织ID
+     * @param ugid 用户组ID
+     * @param keyword 搜索关键词（可选）
+     * @param status 节目状态（可选）
+     * @param page 页码，从1开始
+     * @param size 每页大小
+     * @return MyBatis Plus分页结果
+     */
+    PageVO<Program> findProgramsPage(Long oid, Long ugid, String keyword, ProgramStatusEnum status, int page, int size);
     
     /**
      * 统计用户组下的节目数量

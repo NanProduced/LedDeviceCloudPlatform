@@ -2,6 +2,7 @@ package org.nan.cloud.core.service.impl;
 
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.nan.cloud.common.basic.model.PageVO;
 import org.nan.cloud.core.domain.Program;
 import org.nan.cloud.core.event.mq.VsnGenerationRequestEvent;
 import org.nan.cloud.core.service.converter.ProgramDtoConverter;
@@ -151,6 +152,22 @@ public class ProgramServiceImpl implements ProgramService {
     public List<ProgramDTO> findProgramsByUserGroup(Long oid, Long ugid, ProgramStatusEnum status, int page, int size) {
         List<Program> programs = programRepository.findByUserGroup(oid, ugid, status, page, size);
         return programDtoConverter.toProgramDTOs(programs);
+    }
+
+    @Override
+    public PageVO<ProgramDTO> findProgramsPage(Long oid, Long ugid, String keyword, ProgramStatusEnum status, int page, int size) {
+        log.debug("Finding programs page: oid={}, ugid={}, keyword={}, status={}, page={}, size={}", 
+                oid, ugid, keyword, status, page, size);
+        
+        // 使用MyBatis Plus分页查询
+        PageVO<Program> programPage = programRepository.findProgramsPage(oid, ugid, keyword, status, page, size);
+        
+        // 转换为DTO
+        List<ProgramDTO> programDTOs = programDtoConverter.toProgramDTOs(programPage.getRecords());
+        
+        // 直接使用MyBatis Plus的分页信息
+        PageVO<ProgramDTO> programDTOPageVO = programPage.withRecords(programDTOs);
+        return programDTOPageVO;
     }
 
     @Override

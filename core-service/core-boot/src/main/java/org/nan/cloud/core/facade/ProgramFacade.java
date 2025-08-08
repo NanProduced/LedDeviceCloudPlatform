@@ -37,7 +37,6 @@ public class ProgramFacade {
 
     private final ProgramService programService;
     private final ProgramDraftService programDraftService;
-    private final ProgramDtoConverter programDtoConverter;
 
     /**
      * 创建节目
@@ -131,11 +130,29 @@ public class ProgramFacade {
      */
     public PageVO<ProgramDTO> listPrograms(PageRequestDTO<QueryProgramListRequest> pageRequestDTO) {
         RequestUserInfo userInfo = InvocationContextHolder.getContext().getRequestUser();
+        
+        log.debug("Listing programs: keyword={}, status={}, page={}, pageSize={}, oid={}, ugid={}", 
+                pageRequestDTO.getParams().getKeyword(), 
+                pageRequestDTO.getParams().getStatus(), 
+                pageRequestDTO.getPageNum(),
+                pageRequestDTO.getPageSize(),
+                userInfo.getOid(), 
+                userInfo.getUgid());
 
-        // 需要查询用户当前用户组所有子组
-        // 然后再分页查询节目
+        // 直接使用前端传入的状态，无需转换
+        ProgramStatusEnum statusEnum = null;
+        if (pageRequestDTO.getParams().getStatus() != null) {
+            statusEnum = ProgramStatusEnum.valueOf(pageRequestDTO.getParams().getStatus().toUpperCase());
+        }
 
-        return null;
+        // 调用Service层分页查询
+        return programService.findProgramsPage(
+                userInfo.getOid(), 
+                userInfo.getUgid(), 
+                pageRequestDTO.getParams().getKeyword(),
+                statusEnum,
+                pageRequestDTO.getPageNum(), 
+                pageRequestDTO.getPageSize());
     }
 
     /**

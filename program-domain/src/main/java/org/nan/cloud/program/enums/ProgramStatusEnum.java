@@ -38,6 +38,23 @@ public enum ProgramStatusEnum {
 
     /* ------ 注：前端已适配后端响应值 ------------- */
 
+    /**
+     * 根据前端状态值获取枚举
+     * 支持前端传入的状态字符串转换为后端枚举
+     * 
+     * @param frontendValue 前端状态值
+     * @return 对应的枚举值
+     */
+    public static ProgramStatusEnum fromFrontendValue(String frontendValue) {
+        if (frontendValue == null) return null;
+        return switch(frontendValue.toLowerCase()) {
+            case "draft" -> DRAFT;
+            case "ready" -> PENDING;
+            case "published" -> PUBLISHED;
+            case "template" -> TEMPLATE;
+            default -> throw new IllegalArgumentException("Unknown frontend status: " + frontendValue);
+        };
+    }
 
     /**
      * 前端兼容状态值

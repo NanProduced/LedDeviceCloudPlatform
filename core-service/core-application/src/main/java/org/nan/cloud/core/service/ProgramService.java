@@ -1,5 +1,6 @@
 package org.nan.cloud.core.service;
 
+import org.nan.cloud.common.basic.model.PageVO;
 import org.nan.cloud.core.domain.Program;
 import org.nan.cloud.program.dto.request.CreateProgramRequest;
 import org.nan.cloud.program.dto.request.UpdateProgramRequest;
@@ -63,6 +64,18 @@ public interface ProgramService {
      * @return 节目列表
      */
     List<ProgramDTO> findProgramsByUserGroup(Long oid, Long ugid, ProgramStatusEnum status, int page, int size);
+
+    /**
+     * 分页查询用户组节目列表（支持关键词搜索）
+     * @param oid 组织ID
+     * @param ugid 用户组ID
+     * @param keyword 搜索关键词（可选）
+     * @param status 节目状态（可选）
+     * @param page 页码，从1开始
+     * @param size 每页大小
+     * @return 分页结果
+     */
+    PageVO<ProgramDTO> findProgramsPage(Long oid, Long ugid, String keyword, ProgramStatusEnum status, int page, int size);
     
     /**
      * 统计用户组节目数量
