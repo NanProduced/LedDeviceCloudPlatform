@@ -462,6 +462,25 @@ public class StompConnectionManager {
     }
     
     /**
+     * 检查会话是否仍然活跃
+     * 
+     * @param sessionId 会话ID
+     * @return true表示会话活跃，false表示会话已失效
+     */
+    public boolean isSessionActive(String sessionId) {
+        return sessionMapping.containsKey(sessionId);
+    }
+    
+    /**
+     * 获取所有活跃的会话ID列表
+     * 
+     * @return 活跃会话ID列表
+     */
+    public Set<String> getAllActiveSessionIds() {
+        return new HashSet<>(sessionMapping.keySet());
+    }
+    
+    /**
      * 获取所有在线用户ID列表
      * 
      * @return 在线用户ID列表

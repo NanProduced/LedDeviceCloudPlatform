@@ -340,6 +340,46 @@ public class UserSubscriptionInfo {
                 .build();
     }
     
+    /**
+     * 清理无效会话的订阅
+     * 
+     * @param activeSessionIds 当前活跃的会话ID集合
+     * @return 被清理的主题数量
+     */
+    public synchronized int cleanupInvalidSessions(Set<String> activeSessionIds) {
+        int cleanedTopics = 0;
+        
+        try {
+            // 找出需要清理的会话ID
+            Set<String> invalidSessions = new HashSet<>(sessionSubscriptions.keySet());
+            invalidSessions.removeAll(activeSessionIds);
+            
+            if (!invalidSessions.isEmpty()) {
+                log.info("发现无效会话订阅 - 用户: {}, 无效会话数: {}", userId, invalidSessions.size());
+                
+                // 清理无效会话的订阅
+                for (String invalidSessionId : invalidSessions) {
+                    Set<String> sessionTopics = sessionSubscriptions.remove(invalidSessionId);
+                    if (sessionTopics != null) {
+                        cleanedTopics += sessionTopics.size();
+                        log.debug("清理无效会话订阅 - 用户: {}, 会话: {}, 清理主题数: {}", 
+                                userId, invalidSessionId, sessionTopics.size());
+                    }
+                }
+                
+                if (cleanedTopics > 0) {
+                    lastUpdated = LocalDateTime.now();
+                    log.info("✅ 无效会话订阅清理完成 - 用户: {}, 清理主题数: {}", userId, cleanedTopics);
+                }
+            }
+            
+        } catch (Exception e) {
+            log.error("清理无效会话订阅失败 - 用户: {}, 错误: {}", userId, e.getMessage(), e);
+        }
+        
+        return cleanedTopics;
+    }
+    
     // ==================== 私有工具方法 ====================
     
     /**

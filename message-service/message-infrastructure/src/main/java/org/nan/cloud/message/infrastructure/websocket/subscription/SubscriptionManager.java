@@ -310,9 +310,9 @@ public class SubscriptionManager {
      * 确定订阅层次 (根据极简化Topic结构)
      */
     private SubscriptionLevel determineSubscriptionLevel(String topicPath) {
-        // 个人消息队列使用持久订阅
+        // 个人消息队列使用会话订阅，允许重连后重新订阅
         if (topicPath.startsWith("/user/queue/")) {
-            return SubscriptionLevel.PERSISTENT;
+            return SubscriptionLevel.SESSION;
         }
         
         // 组织消息主题使用持久订阅
