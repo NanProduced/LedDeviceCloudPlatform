@@ -1,4 +1,4 @@
-package org.nan.cloud.core.infrastructure.repository.mysql;
+package org.nan.cloud.core.infrastructure.repository.mysql.impl;
 
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;

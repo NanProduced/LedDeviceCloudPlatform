@@ -1,4 +1,4 @@
-package org.nan.cloud.core.infrastructure.repository.mysql;
+package org.nan.cloud.core.infrastructure.repository.mysql.impl;
 
 import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
 import com.baomidou.mybatisplus.core.conditions.update.UpdateWrapper;
@@ -19,7 +19,6 @@ import org.springframework.util.CollectionUtils;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
-import java.util.stream.Collectors;
 
 /**
  * 节目Repository实现
