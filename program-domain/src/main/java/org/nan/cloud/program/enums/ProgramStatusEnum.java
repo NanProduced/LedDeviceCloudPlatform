@@ -1,5 +1,6 @@
 package org.nan.cloud.program.enums;
 
+import com.fasterxml.jackson.annotation.JsonValue;
 import lombok.Getter;
 
 /**
@@ -34,4 +35,24 @@ public enum ProgramStatusEnum {
     ProgramStatusEnum(String value) {
         this.value = value;
     }
+
+    /* ------ 注：前端已适配后端响应值 ------------- */
+
+
+    /**
+     * 前端兼容状态值
+     * 将后端枚举转换为前端期望的状态字符串
+     * 
+     * @return 前端兼容的状态值
+     */
+    //@JsonValue
+    public String getFrontendValue() {
+        return switch(this) {
+            case DRAFT -> "draft";
+            case PENDING -> "ready";      // 前端使用"ready"表示待发布状态
+            case PUBLISHED -> "published";
+            case TEMPLATE -> "template";
+        };
+    }
+
 }

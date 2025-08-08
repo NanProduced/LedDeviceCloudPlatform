@@ -36,6 +36,11 @@ public class DraftDTO {
      * 节目高度（像素）
      */
     private Integer height;
+
+    /**
+     * 节目时长（毫秒）
+     */
+    private Long duration;
     
     /**
      * 缩略图URL
