@@ -1,4 +1,4 @@
-package org.nan.cloud.core.infrastructure.repository.mongodb;
+package org.nan.cloud.core.infrastructure.repository.mongo.repository;
 
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
