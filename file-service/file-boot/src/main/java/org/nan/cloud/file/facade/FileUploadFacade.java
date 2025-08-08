@@ -7,6 +7,7 @@ import org.nan.cloud.common.web.context.RequestUserInfo;
 import org.nan.cloud.file.api.dto.FileUploadRequest;
 import org.nan.cloud.file.api.dto.TaskInitResponse;
 import org.nan.cloud.file.application.service.FileUploadService;
+import org.nan.cloud.file.application.repository.OrgQuotaRepository;
 import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
 
@@ -28,6 +29,7 @@ import org.springframework.web.multipart.MultipartFile;
 public class FileUploadFacade {
 
     private final FileUploadService fileUploadService;
+    private final OrgQuotaRepository orgQuotaRepository;
 
     /**
      * 填充上传请求的上下文信息
@@ -58,6 +60,12 @@ public class FileUploadFacade {
         try {
             // 1. 填充上下文信息
             enrichUploadRequest(uploadRequest);
+
+            // 1.1 组织配额检查（直接通过本地仓储查询MySQL配额，不走Feign）
+            boolean allowed = orgQuotaRepository.hasEnoughSpace(uploadRequest.getOid(), file.getSize(), 1L);
+            if (!allowed) {
+                throw new IllegalArgumentException("组织配额不足，无法上传");
+            }
             
             // 2. 调用应用服务执行异步上传
             TaskInitResponse response = fileUploadService.uploadSingleAsync(file, uploadRequest);

@@ -51,4 +51,8 @@ public interface CommonConverter {
     OperationPermission toOperationPermission(OperationPermissionDO operationPermissionDO);
 
     List<OperationPermission> toOperationPermission(List<OperationPermissionDO> operationPermissionDOS);
+
+    OrgQuota toOrgQuota(OrgQuotaDO orgQuotaDO);
+
+    OrgQuotaDO toOrgQuotaDO(OrgQuota orgQuota);
 }
