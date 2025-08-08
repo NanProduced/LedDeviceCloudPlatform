@@ -39,8 +39,8 @@ public class ProgramDO {
      * 节目状态
      * 使用ProgramStatusEnum枚举
      */
-    @TableField("status")
-    private ProgramStatusEnum status;
+    @TableField("program_status")
+    private ProgramStatusEnum programStatus;
     
     /**
      * 审核状态

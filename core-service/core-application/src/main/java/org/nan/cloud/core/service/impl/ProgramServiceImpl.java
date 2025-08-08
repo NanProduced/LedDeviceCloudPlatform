@@ -44,7 +44,7 @@ public class ProgramServiceImpl implements ProgramService {
     private final ProgramMaterialRefRepository programMaterialRefRepository;
     private final ProgramApprovalRepository programApprovalRepository;
     private final ProgramDtoConverter programDtoConverter;
-    private final VsnEventPublisher vsnEventPublisher;
+//    private final VsnEventPublisher vsnEventPublisher; // todo:未实现，先注释避免影响项目启动
     private final MaterialDependencyService materialDependencyService;
 
     @Override
@@ -387,10 +387,10 @@ public class ProgramServiceImpl implements ProgramService {
         program.setSourceProgramId(null);
         program.setIsSourceProgram(true);
         
-        // 状态管理
-        program.setStatus(request.getStatus() != null ? request.getStatus() : ProgramStatusEnum.DRAFT);
-        program.setApprovalStatus(ProgramApprovalStatusEnum.PENDING);
-        program.setVsnGenerationStatus(VsnGenerationStatusEnum.PENDING);
+        // 正式节目状态管理（创建时无programStatus，只有审核状态）
+        program.setStatus(null); // 正式节目创建时没有节目状态
+        program.setApprovalStatus(ProgramApprovalStatusEnum.PENDING); // 进入待审核状态
+        program.setVsnGenerationStatus(VsnGenerationStatusEnum.PENDING); // 需要生成VSN
         
         // 权限字段
         program.setOid(oid);
@@ -426,10 +426,10 @@ public class ProgramServiceImpl implements ProgramService {
         newVersion.setSourceProgramId(sourceId);
         newVersion.setIsSourceProgram(false);
         
-        // 状态重置为待审核
-        newVersion.setStatus(ProgramStatusEnum.DRAFT);
-        newVersion.setApprovalStatus(ProgramApprovalStatusEnum.PENDING);
-        newVersion.setVsnGenerationStatus(VsnGenerationStatusEnum.PENDING);
+        // 新版本状态管理（新版本需要重新审核）
+        newVersion.setStatus(null); // 新版本创建时没有节目状态
+        newVersion.setApprovalStatus(ProgramApprovalStatusEnum.PENDING); // 需要重新审核
+        newVersion.setVsnGenerationStatus(VsnGenerationStatusEnum.PENDING); // 需要生成新VSN
         
         // 权限字段（继承原程序）
         newVersion.setOid(original.getOid());
@@ -498,7 +498,7 @@ public class ProgramServiceImpl implements ProgramService {
                 .timestamp(LocalDateTime.now())
                 .build();
 
-        vsnEventPublisher.publishVsnGenerationRequest(event);
+//        vsnEventPublisher.publishVsnGenerationRequest(event);
         log.debug("VSN generation request published for program: {}", program.getId());
     }
 

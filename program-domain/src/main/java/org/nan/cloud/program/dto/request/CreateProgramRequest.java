@@ -45,12 +45,6 @@ public class CreateProgramRequest {
     private Long duration;
     
     /**
-     * 节目状态
-     * 默认为草稿状态
-     */
-    private ProgramStatusEnum status = ProgramStatusEnum.DRAFT;
-    
-    /**
      * 节目缩略图URL
      */
     private String thumbnailUrl;
@@ -65,14 +59,11 @@ public class CreateProgramRequest {
      * 前端编辑器原始数据
      * 用于前端回显节目编辑状态，需要原样返回给前端
      * 存储前端编辑器的完整状态信息
-     * -- GETTER --
-     *  获取内容数据（兼容现有代码）
      *
      * @return 前端编辑器原始数据
 
      */
     private String contentData;
-    
-    // ===== 兼容性方法 =====
+
 
 }

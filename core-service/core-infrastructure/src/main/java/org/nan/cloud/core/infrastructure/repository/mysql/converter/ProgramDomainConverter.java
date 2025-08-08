@@ -1,6 +1,7 @@
 package org.nan.cloud.core.infrastructure.repository.mysql.converter;
 
 import org.mapstruct.Mapper;
+import org.mapstruct.Mapping;
 import org.mapstruct.NullValueCheckStrategy;
 import org.nan.cloud.core.domain.Program;
 import org.nan.cloud.program.entity.ProgramDO;
@@ -20,6 +21,7 @@ public interface ProgramDomainConverter {
      * @param programDO 数据对象
      * @return Domain对象
      */
+    @Mapping(source = "programStatus", target = "status")
     Program toDomain(ProgramDO programDO);
     
     /**
@@ -27,6 +29,7 @@ public interface ProgramDomainConverter {
      * @param program Domain对象
      * @return 数据对象
      */
+    @Mapping(source = "status", target = "programStatus")
     ProgramDO toDO(Program program);
     
     /**

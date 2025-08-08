@@ -1,6 +1,7 @@
 package org.nan.cloud.core.service;
 
 import org.nan.cloud.program.dto.request.CreateProgramRequest;
+import org.nan.cloud.program.dto.request.PublishDraftRequest;
 import org.nan.cloud.program.dto.request.SaveDraftRequest;
 import org.nan.cloud.program.dto.request.UpdateDraftRequest;
 import org.nan.cloud.program.dto.response.DraftDTO;
@@ -99,13 +100,14 @@ public interface ProgramDraftService {
     
     /**
      * 基于草稿创建正式节目
+     * 将草稿状态从DRAFT转换为正式节目（programStatus=null, approvalStatus=PENDING）
      * @param draftId 草稿ID
-     * @param request 节目创建请求（可覆盖草稿中的部分信息）
+     * @param request 草稿发布请求（可覆盖草稿中的部分信息）
      * @param userId 操作者用户ID
      * @param oid 组织ID
-     * @return 创建的节目信息
+     * @return 创建的正式节目信息
      */
-    ProgramDTO publishDraft(Long draftId, CreateProgramRequest request, Long userId, Long oid);
+    ProgramDTO publishDraft(Long draftId, PublishDraftRequest request, Long userId, Long oid);
     
     /**
      * 检查草稿名称在用户组内是否可用

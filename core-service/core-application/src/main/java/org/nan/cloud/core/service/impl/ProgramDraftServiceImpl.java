@@ -12,6 +12,7 @@ import org.nan.cloud.core.service.ProgramDraftService;
 import org.nan.cloud.core.service.ProgramService;
 import org.nan.cloud.program.document.ProgramContent;
 import org.nan.cloud.program.dto.request.CreateProgramRequest;
+import org.nan.cloud.program.dto.request.PublishDraftRequest;
 import org.nan.cloud.program.dto.request.SaveDraftRequest;
 import org.nan.cloud.program.dto.request.UpdateDraftRequest;
 import org.nan.cloud.program.dto.response.DraftDTO;
@@ -193,7 +194,7 @@ public class ProgramDraftServiceImpl implements ProgramDraftService {
 
     @Override
     @Transactional
-    public ProgramDTO publishDraft(Long draftId, CreateProgramRequest request, Long userId, Long oid) {
+    public ProgramDTO publishDraft(Long draftId, PublishDraftRequest request, Long userId, Long oid) {
         log.info("Publishing draft: draftId={}, userId={}, oid={}", draftId, userId, oid);
 
         // 1. 查找草稿并验证
@@ -372,10 +373,10 @@ public class ProgramDraftServiceImpl implements ProgramDraftService {
         draft.setSourceProgramId(null);
         draft.setIsSourceProgram(true);
         
-        // 草稿状态
+        // 草稿状态（草稿只有DRAFT状态，无需审核和VSN生成）
         draft.setStatus(ProgramStatusEnum.DRAFT);
-        draft.setApprovalStatus(ProgramApprovalStatusEnum.PENDING);
-        draft.setVsnGenerationStatus(VsnGenerationStatusEnum.PENDING); // 草稿不生成VSN
+        draft.setApprovalStatus(null); // 草稿不需要审核状态
+        draft.setVsnGenerationStatus(null); // 草稿不生成VSN，无需此状态
         
         // 权限字段
         draft.setOid(oid);
@@ -487,13 +488,14 @@ public class ProgramDraftServiceImpl implements ProgramDraftService {
         }
     }
 
-    private CreateProgramRequest mergeDraftToRequest(Program draft, ProgramContent draftContent, CreateProgramRequest request) {
+    private CreateProgramRequest mergeDraftToRequest(Program draft, ProgramContent draftContent, PublishDraftRequest request) {
         return CreateProgramRequest.builder()
                 .name(StringUtils.hasText(request.getName()) ? request.getName() : draft.getName())
                 .description(StringUtils.hasText(request.getDescription()) ? request.getDescription() : draft.getDescription())
-                .width(request.getWidth() != null ? request.getWidth() : draft.getWidth())
-                .height(request.getHeight() != null ? request.getHeight() : draft.getHeight())
-                .duration(request.getDuration() != null ? request.getDuration() : draft.getDuration())
+                .width(draft.getWidth()) // 使用草稿中的尺寸
+                .height(draft.getHeight()) // 使用草稿中的尺寸
+                .duration(draft.getDuration()) // 使用草稿中的时长
+                .vsnData(StringUtils.hasText(request.getVsnData()) ? request.getVsnData() : null)
                 .contentData(StringUtils.hasText(request.getContentData()) ? request.getContentData() : draftContent.getOriginalData())
                 .build();
     }
