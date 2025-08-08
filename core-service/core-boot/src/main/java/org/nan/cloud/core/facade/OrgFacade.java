@@ -4,15 +4,18 @@ import lombok.RequiredArgsConstructor;
 import org.nan.cloud.common.basic.exception.ExceptionEnum;
 import org.nan.cloud.common.basic.utils.PasswordUtils;
 import org.nan.cloud.common.web.context.InvocationContextHolder;
+import org.nan.cloud.common.web.context.RequestUserInfo;
 import org.nan.cloud.core.DTO.CreateOrgDTO;
 import org.nan.cloud.core.api.DTO.req.CreateOrgRequest;
 import org.nan.cloud.core.api.DTO.res.CreateOrgResponse;
+import org.nan.cloud.core.api.DTO.req.QuotaCheckRequest;
 import org.nan.cloud.core.converter.OrgConverter;
 import org.nan.cloud.core.domain.Organization;
 import org.nan.cloud.core.domain.User;
 import org.nan.cloud.core.infrastructure.repository.enums.SystemRolesRelEnums;
 import org.nan.cloud.core.service.OrgService;
 import org.nan.cloud.core.service.PermissionEventPublisher;
+import org.nan.cloud.core.service.QuotaService;
 import org.nan.cloud.core.service.UserService;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
@@ -27,6 +30,7 @@ public class OrgFacade {
     private final UserService userService;
     private final OrgConverter orgConverter;
     private final PermissionEventPublisher  permissionEventPublisher;
+    private final QuotaService quotaService;
 
     /**
      * 组织创建用例：
@@ -59,5 +63,17 @@ public class OrgFacade {
                 .password(initPsw)
                 .username(orgManagerUser.getUsername())
                 .build();
+    }
+
+    /**
+     * 校验存储空间
+     * @param request
+     * @return
+     */
+    public Boolean checkOrgQuota(QuotaCheckRequest request) {
+
+        RequestUserInfo requestUser = InvocationContextHolder.getContext().getRequestUser();
+
+        return quotaService.checkQuotaAllow(requestUser.getOid(), request.getBytes(), request.getFiles());
     }
 }

@@ -24,12 +24,13 @@ public class TaskStatusHandler {
      * 收到素材上传开始消息后，初始化任务和缓存任务进度
      * @param fileUploadEvent
      */
-    public void initMaterialUploadTask(FileUploadEvent fileUploadEvent) {
+    public void initMaterialUploadTask(FileUploadEvent fileUploadEvent, String refId) {
         Task task = Task.builder()
                 .taskId(fileUploadEvent.getTaskId())
                 .taskType(TaskTypeEnum.MATERIAL_UPLOAD)
                 .taskStatus(TaskStatusEnum.PENDING)
                 .ref(fileUploadEvent.getOriginalFilename())
+                .refId(refId)
                 .createTime(fileUploadEvent.getTimestamp())
                 .oid(Long.valueOf(fileUploadEvent.getOrganizationId()))
                 .creator(Long.valueOf(fileUploadEvent.getUserId()))

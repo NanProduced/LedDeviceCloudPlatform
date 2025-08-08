@@ -6,12 +6,14 @@ import org.nan.cloud.common.basic.utils.JsonUtils;
 import org.nan.cloud.common.mq.consumer.MessageConsumer;
 import org.nan.cloud.common.mq.consumer.ConsumeResult;
 import org.nan.cloud.common.mq.core.message.Message;
+import org.nan.cloud.core.enums.QuotaOperationType;
 import org.nan.cloud.core.event.mq.FileUploadEvent;
+import org.nan.cloud.core.event.quota.QuotaChangeEvent;
 import org.nan.cloud.core.infrastructure.task.TaskStatusHandler;
 import org.nan.cloud.core.service.MaterialService;
-import org.nan.cloud.core.service.MaterialFileService;
 import org.nan.cloud.core.domain.Material;
 import org.nan.cloud.core.enums.TaskStatusEnum;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Component;
 
 import java.util.Map;
@@ -34,8 +36,8 @@ import java.util.Map;
 public class FileUploadEventListener implements MessageConsumer {
 
     private final MaterialService materialService;
-    private final MaterialFileService materialFileService;
     private final TaskStatusHandler taskStatusHandler;
+    private final ApplicationEventPublisher applicationEventPublisher;
 
     // * ============ ⚠️注意 ============= *//
     // Mq消息消费者只关注对应队列消费消息，不要在消费完成后再生产Mq消息给其他服务消费
@@ -111,11 +113,12 @@ public class FileUploadEventListener implements MessageConsumer {
                 event.getTaskId(), event.getFileId(), event.getOriginalFilename());
         
         try {
-            // 1. 初始化任务状态
-            taskStatusHandler.initMaterialUploadTask(event);
             
-            // 2. 创建Material实体 (与文件解耦，先创建占位)
+            // 1. 创建Material实体 (与文件解耦，先创建占位)
             Long materialId = materialService.createPendingMaterialFromEvent(event);
+
+            // 2. 初始化任务状态
+            taskStatusHandler.initMaterialUploadTask(event, materialId.toString());
             
             // 任务创建不推送到message-service
             // 且任务相关的进度、完成情况由file-service直接推送给message-service，不经过core-service
@@ -184,8 +187,11 @@ public class FileUploadEventListener implements MessageConsumer {
                 log.info("✅ 素材业务信息更新完成 - 素材ID: {}, 文件ID: {}", materialId, event.getFileId());
             }
             
-            // 3. 完成任务
+            // 完成任务
             taskStatusHandler.completeTask(event.getTaskId(), event.getThumbnailUrl());
+
+            // 发组织空间变更事件 - 扣除空间
+            applicationEventPublisher.publishEvent(new QuotaChangeEvent(this, QuotaChangeEvent.QuotaChangeEventType.MATERIAL_FILE_UPLOAD, event.getTaskId()));
             
         } catch (Exception e) {
             log.error("❌ 创建素材业务数据失败 - 任务ID: {}, 错误: {}", 

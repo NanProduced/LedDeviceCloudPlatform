@@ -47,6 +47,15 @@ public class TaskDO {
     private String ref;
 
     /**
+     * 关联到的业务Id - 使用String兼容自增Id和UUID
+     * 素材上传 -> material_id
+     * 文件导出 -> file_id
+     * 素材转码 -> material_id
+     */
+    @TableField("ref_id")
+    private String refId;
+
+    /**
      * 文件导出任务的文件下载链接
      */
     @TableField("downloaded_url")

@@ -2,7 +2,6 @@ package org.nan.cloud.core.service.impl;
 
 import lombok.RequiredArgsConstructor;
 import org.nan.cloud.core.domain.OrgQuota;
-import org.nan.cloud.core.enums.QuotaOperationType;
 import org.nan.cloud.core.repository.OrgQuotaRepository;
 import org.nan.cloud.core.service.QuotaService;
 import org.springframework.stereotype.Service;
@@ -14,7 +13,7 @@ public class QuotaServiceImpl implements QuotaService {
     private final OrgQuotaRepository orgQuotaRepository;
 
     @Override
-    public boolean checkQuotaAllow(Long orgId, long bytes, int files, QuotaOperationType operationType) {
+    public boolean checkQuotaAllow(Long orgId, long bytes, int files) {
         if (orgId == null || bytes < 0 || files < 0) {
             return false;
         }
