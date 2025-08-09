@@ -66,4 +66,34 @@ public class MaterialDO {
 
 
 
+    // ====== 以下为联表 material_file 时的扩展字段（非表字段） ======
+    @TableField(exist = false)
+    private String md5Hash;
+
+    @TableField(exist = false)
+    private Long originalFileSize;
+
+    @TableField(exist = false)
+    private String mimeType;
+
+    @TableField(exist = false)
+    private String fileExtension;
+
+    @TableField(exist = false)
+    private String storageType;
+
+    @TableField(exist = false)
+    private String storagePath;
+
+    @TableField(exist = false)
+    private LocalDateTime uploadTime;
+
+    @TableField(exist = false)
+    private Long refCount;
+
+    @TableField(exist = false)
+    private Integer fileStatus;
+
+    @TableField(exist = false)
+    private String metaDataId;
 }

@@ -25,6 +25,15 @@ public interface MaterialConverter {
     List<FolderDO> toFolderDOs(List<FolderDO> folderDOS);
 
     // === Material 转换 ===
+    @Mapping(target = "md5Hash", source = "md5Hash")
+    @Mapping(target = "originalFileSize", source = "originalFileSize")
+    @Mapping(target = "mimeType", source = "mimeType")
+    @Mapping(target = "fileExtension", source = "fileExtension")
+    @Mapping(target = "storageType", source = "storageType")
+    @Mapping(target = "uploadTime", source = "uploadTime")
+    @Mapping(target = "refCount", source = "refCount")
+    @Mapping(target = "fileStatus", source = "fileStatus")
+    @Mapping(target = "metaDataId", source = "metaDataId")
     Material toMaterial(MaterialDO materialDO);
 
     MaterialDO toMaterialDO(Material material);

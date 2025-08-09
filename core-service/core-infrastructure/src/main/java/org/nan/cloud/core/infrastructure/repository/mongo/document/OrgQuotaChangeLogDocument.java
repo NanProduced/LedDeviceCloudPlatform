@@ -1,6 +1,7 @@
 package org.nan.cloud.core.infrastructure.repository.mongo.document;
 
 
+import lombok.Data;
 import org.nan.cloud.core.enums.QuotaOperationType;
 import org.springframework.data.annotation.Id;
 import org.springframework.data.mongodb.core.mapping.Document;
@@ -9,6 +10,7 @@ import java.time.LocalDateTime;
 import java.util.Map;
 
 @Document("org_quota_change_log")
+@Data
 public class OrgQuotaChangeLogDocument {
 
     @Id
@@ -84,7 +86,7 @@ public class OrgQuotaChangeLogDocument {
     /**
      * 对应的任务Id - 可能为空
      */
-    private Long taskId;
+    private String taskId;
 
     /**
      * 保留 - 备注、说明字段
