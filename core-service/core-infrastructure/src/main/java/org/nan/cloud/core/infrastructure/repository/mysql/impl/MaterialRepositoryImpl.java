@@ -38,35 +38,35 @@ public class MaterialRepositoryImpl implements MaterialRepository {
 
     @Override
     public List<Material> listMaterialsByUserGroup(Long oid, Long ugid, Long fid, boolean includeSub) {
-        // 🎯 正确的双维度查询策略
+        // 🎯 正确的API调用逻辑：ugid和fid互斥，只传一个
         
+        if (fid == null) {
+            // 📋 用户组模式：查询用户组下的素材
+            return handleUserGroupQuery(oid, ugid, includeSub);
+        } else {
+            // 📁 文件夹模式：查询文件夹下的素材
+            return handleFolderQuery(oid, fid, includeSub);
+        }
+    }
+    
+    /**
+     * 处理用户组查询模式
+     */
+    private List<Material> handleUserGroupQuery(Long oid, Long ugid, boolean includeSub) {
         List<Long> ugidList;
-        List<Long> fidList = null;
-        Boolean includeNullFid = false;
+        Boolean includeNullFid;
         
         if (includeSub) {
-            // 👥 用户组展开模式：查询所有子组下的所有素材（包括所有文件夹）
+            // 🎯 用户组展开：查询该组及所有子组的所有素材（根级+所有文件夹+所有子文件夹）
             ugidList = userGroupRepository.getAllUgidsByParent(ugid);
-            // 🔓 关键修复：不设置任何文件夹限制，查询所有素材
-            fidList = null;          // 不限制文件夹
-            includeNullFid = false;  // 不需要特殊处理NULL，因为没有文件夹限制
-            log.debug("用户组展开模式 - 原组: {}, 展开后: {} (共{}个), 查询所有文件夹的素材", 
+            includeNullFid = false; // 不限制文件夹，查询所有文件夹的素材
+            log.debug("用户组展开模式 - 原组: {}, 展开后: {} (共{}个), 包含所有文件夹层次", 
                      ugid, ugidList, ugidList.size());
         } else {
-            // 📁 精确模式：限定用户组范围，应用文件夹过滤
+            // 🎯 用户组根级：只查该用户组根级素材（fid IS NULL）
             ugidList = List.of(ugid);
-            
-            if (fid != null) {
-                // 🎯 精确文件夹查询
-                fidList = List.of(fid);
-                includeNullFid = false;
-                log.debug("精确模式 - 用户组: {}, 指定文件夹: {}", ugid, fid);
-            } else {
-                // 🔓 查询该用户组下fid=null的素材
-                fidList = null;
-                includeNullFid = true;
-                log.debug("精确模式 - 用户组: {}, 查询根级素材(fid=null)", ugid);
-            }
+            includeNullFid = true; // 只查询根级素材
+            log.debug("用户组根级模式 - 用户组: {}, 只查询根级素材(fid=null)", ugid);
         }
         
         // 🚀 性能优化：空列表直接返回
@@ -75,13 +75,44 @@ public class MaterialRepositoryImpl implements MaterialRepository {
             return new ArrayList<>();
         }
         
-        // 🔧 使用双维度查询方法
         List<MaterialDO> materialDOS = materialMapper.selectMaterialsByDualDimension(
-            oid, ugidList, fidList, includeNullFid);
+            oid, ugidList, null, includeNullFid);
         
-        log.debug("查询到素材数量: {} - 组织: {}, 用户组数: {}, 文件夹限制: {}", 
-                 materialDOS.size(), oid, ugidList.size(), 
-                 fidList != null ? "指定文件夹" : includeNullFid ? "仅根级" : "无限制");
+        log.debug("用户组查询结果: {} 条素材 - 组织: {}, 用户组数: {}, 包含根级: {}", 
+                 materialDOS.size(), oid, ugidList.size(), includeNullFid);
+        
+        return materialConverter.toMaterials(materialDOS);
+    }
+    
+    /**
+     * 处理文件夹查询模式  
+     */
+    private List<Material> handleFolderQuery(Long oid, Long fid, boolean includeSub) {
+        List<Long> fidList;
+        
+        if (includeSub) {
+            // 🎯 文件夹展开：查询该文件夹及所有子文件夹素材
+            fidList = folderRepository.getAllFidsByParent(fid);
+            log.debug("文件夹展开模式 - 原文件夹: {}, 展开后: {} (共{}个)", 
+                     fid, fidList, fidList.size());
+        } else {
+            // 🎯 文件夹精确：只查该文件夹素材
+            fidList = List.of(fid);
+            log.debug("文件夹精确模式 - 文件夹: {}", fid);
+        }
+        
+        // 🚀 性能优化：空列表直接返回
+        if (fidList.isEmpty()) {
+            log.warn("文件夹列表为空，返回空结果 - fid: {}", fid);
+            return new ArrayList<>();
+        }
+        
+        // 🔧 查询指定文件夹的素材，不限制用户组（文件夹已确定范围）
+        List<MaterialDO> materialDOS = materialMapper.selectMaterialsByDualDimension(
+            oid, null, fidList, false);
+        
+        log.debug("文件夹查询结果: {} 条素材 - 组织: {}, 文件夹数: {}", 
+                 materialDOS.size(), oid, fidList.size());
         
         return materialConverter.toMaterials(materialDOS);
     }
