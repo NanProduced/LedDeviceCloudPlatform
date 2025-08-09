@@ -23,7 +23,7 @@ public interface FileUploadApi {
     String prefix = "/file/upload";
 
     /**
-     * 异步上传单个文件
+     * 异步上传单个文件(素材)
      * 
      * @param file 上传的文件
      * @param uploadRequest 上传参数

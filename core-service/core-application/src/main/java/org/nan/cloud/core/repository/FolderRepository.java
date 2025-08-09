@@ -78,4 +78,18 @@ public interface FolderRepository {
      * @return 分享文件夹列表
      */
     List<Folder> getSharedFolders(Long ugid);
+
+    /**
+     * 获取指定文件夹及其所有子文件夹的ID列表（类似getAllUgidsByParent）
+     * @param fid 父文件夹ID
+     * @return 包含父文件夹及所有子文件夹的ID列表
+     */
+    List<Long> getAllFidsByParent(Long fid);
+
+    /**
+     * 获取指定文件夹的路径
+     * @param fid 文件夹ID
+     * @return 文件夹路径
+     */
+    String getPathByFid(Long fid);
 }

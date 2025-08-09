@@ -27,6 +27,8 @@ public class MaterialRepositoryImpl implements MaterialRepository {
     private final MaterialConverter materialConverter;
     // 🚀 新增UserGroupRepository依赖用于获取子组
     private final org.nan.cloud.core.repository.UserGroupRepository userGroupRepository;
+    // 🚀 新增FolderRepository依赖用于获取子文件夹  
+    private final org.nan.cloud.core.repository.FolderRepository folderRepository;
 
     @Override
     public Material getMaterialById(Long mid) {
@@ -36,18 +38,32 @@ public class MaterialRepositoryImpl implements MaterialRepository {
 
     @Override
     public List<Material> listMaterialsByUserGroup(Long oid, Long ugid, Long fid, boolean includeSub) {
-        String fidCondition = buildFidCondition(fid, includeSub);
+        // 🎯 实现双维度查询策略：上下文感知的includeSub逻辑
         
-        // 🔧 核心修复：支持子用户组查询
         List<Long> ugidList;
+        List<Long> fidList = null;
+        Boolean includeNullFid = false;
+        
         if (includeSub) {
-            // 获取包含子组的用户组ID列表（包含自身）
+            // 👥 用户组展开模式：包含所有子组，忽略文件夹限制
             ugidList = userGroupRepository.getAllUgidsByParent(ugid);
-            log.debug("查询用户组及子组素材 - 原组: {}, 包含子组: {} (共{}个)", ugid, ugidList, ugidList.size());
+            // 🔓 展开用户组时包含所有文件夹（不限制fid）
+            includeNullFid = true; // 包含fid=null的素材
+            log.debug("用户组展开模式 - 原组: {}, 展开后: {} (共{}个), 包含所有文件夹", 
+                     ugid, ugidList, ugidList.size());
         } else {
-            // 仅查询当前用户组
+            // 📁 精确模式：限定用户组范围，应用文件夹过滤
             ugidList = List.of(ugid);
-            log.debug("查询用户组素材 - 仅当前组: {}", ugid);
+            
+            if (fid != null) {
+                // 🎯 精确文件夹查询
+                fidList = List.of(fid);
+                log.debug("精确模式 - 用户组: {}, 指定文件夹: {}", ugid, fid);
+            } else {
+                // 🔓 查询该用户组下fid=null的素材
+                includeNullFid = true;
+                log.debug("精确模式 - 用户组: {}, 查询根级素材(fid=null)", ugid);
+            }
         }
         
         // 🚀 性能优化：空列表直接返回
@@ -56,16 +72,45 @@ public class MaterialRepositoryImpl implements MaterialRepository {
             return new ArrayList<>();
         }
         
-        List<MaterialDO> materialDOS = materialMapper.selectMaterialsByUserGroupList(oid, ugidList, fidCondition);
-        log.debug("查询到素材数量: {} - 组织: {}, 用户组数: {}", materialDOS.size(), oid, ugidList.size());
+        // 🔧 使用双维度查询方法
+        List<MaterialDO> materialDOS = materialMapper.selectMaterialsByDualDimension(
+            oid, ugidList, fidList, includeNullFid);
+        
+        log.debug("查询到素材数量: {} - 组织: {}, 用户组数: {}, 文件夹过滤: {}", 
+                 materialDOS.size(), oid, ugidList.size(), fidList != null ? fidList.size() : "无");
         
         return materialConverter.toMaterials(materialDOS);
     }
 
     @Override
     public List<Material> listPublicMaterials(Long oid, Long fid, boolean includeSub) {
-        String fidCondition = buildFidCondition(fid, includeSub);
-        List<MaterialDO> materialDOS = materialMapper.selectPublicMaterials(oid, fidCondition);
+        // 📂 公共素材查询：文件夹主导的includeSub逻辑
+        
+        List<Long> fidList = null;
+        Boolean includeNullFid = false;
+        
+        if (fid == null) {
+            // 🔓 查询所有根级公共素材（fid=null）
+            includeNullFid = true;
+            log.debug("公共素材查询 - 所有根级素材(fid=null)");
+        } else if (includeSub) {
+            // 📁 文件夹展开模式：包含指定文件夹及其所有子文件夹
+            fidList = folderRepository.getAllFidsByParent(fid);
+            log.debug("公共素材查询 - 文件夹展开模式，原文件夹: {}, 展开后: {} (共{}个)", 
+                     fid, fidList, fidList.size());
+        } else {
+            // 🎯 精确文件夹查询
+            fidList = List.of(fid);
+            log.debug("公共素材查询 - 精确文件夹: {}", fid);
+        }
+        
+        // 🔧 使用双维度查询方法（ugidList=null表示查询公共素材）
+        List<MaterialDO> materialDOS = materialMapper.selectMaterialsByDualDimension(
+            oid, null, fidList, includeNullFid);
+        
+        log.debug("查询到公共素材数量: {} - 组织: {}, 文件夹过滤: {}", 
+                 materialDOS.size(), oid, fidList != null ? fidList.size() : "无");
+        
         return materialConverter.toMaterials(materialDOS);
     }
 

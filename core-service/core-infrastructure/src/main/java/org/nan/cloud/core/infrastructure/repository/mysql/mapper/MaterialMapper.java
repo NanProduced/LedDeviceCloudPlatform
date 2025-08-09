@@ -147,4 +147,48 @@ public interface MaterialMapper extends BaseMapper<MaterialDO> {
             """)
     List<MaterialDO> selectAllVisibleMaterialsByUserGroupList(@Param("oid") Long oid, 
                                                              @Param("ugidList") List<Long> ugidList);
+
+    /**
+     * 双维度查询：支持用户组列表和文件夹列表的灵活组合
+     * 用于支持复杂的includeSub场景
+     */
+    @Select("""
+            <script>
+            SELECT m.*, f.md5_hash, f.original_file_size, f.mime_type, f.file_extension,
+                   f.storage_type, f.storage_path, f.upload_time, f.ref_count, f.file_status, f.meta_data_id
+            FROM material m 
+            LEFT JOIN material_file f ON m.file_id = f.file_id
+            WHERE m.oid = #{oid}
+            <if test="ugidList != null and !ugidList.isEmpty()">
+                AND m.ugid IN 
+                <foreach collection="ugidList" item="ugid" open="(" separator="," close=")">
+                    #{ugid}
+                </foreach>
+            </if>
+            <if test="ugidList == null or ugidList.isEmpty()">
+                AND m.ugid IS NULL
+            </if>
+            <if test="fidList != null and !fidList.isEmpty() or includeNullFid == true">
+                AND (
+                    <if test="fidList != null and !fidList.isEmpty()">
+                        m.fid IN 
+                        <foreach collection="fidList" item="fid" open="(" separator="," close=")">
+                            #{fid}
+                        </foreach>
+                    </if>
+                    <if test="fidList != null and !fidList.isEmpty() and includeNullFid == true">
+                        OR
+                    </if>
+                    <if test="includeNullFid == true">
+                        m.fid IS NULL
+                    </if>
+                )
+            </if>
+            ORDER BY m.create_time DESC
+            </script>
+            """)
+    List<MaterialDO> selectMaterialsByDualDimension(@Param("oid") Long oid,
+                                                   @Param("ugidList") List<Long> ugidList,
+                                                   @Param("fidList") List<Long> fidList,
+                                                   @Param("includeNullFid") Boolean includeNullFid);
 }

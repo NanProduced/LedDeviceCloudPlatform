@@ -158,4 +158,26 @@ public class FolderRepositoryImpl implements FolderRepository {
         // 暂时返回空列表，后续可以通过自定义SQL实现
         return List.of();
     }
+
+    @Override
+    public List<Long> getAllFidsByParent(Long fid) {
+        // 🔧 获取指定文件夹及其所有子文件夹的ID列表（类似UserGroup的getAllUgidsByParent）
+        List<FolderDO> folderDOS = folderMapper.selectList(new LambdaQueryWrapper<FolderDO>()
+                .select(FolderDO::getFid)
+                .likeRight(FolderDO::getPath, getPathByFid(fid) + "|")
+                .or()
+                .eq(FolderDO::getFid, fid));
+        return folderDOS.stream()
+                .map(FolderDO::getFid)
+                .toList();
+    }
+
+    @Override
+    public String getPathByFid(Long fid) {
+        // 🔧 获取指定文件夹的路径
+        FolderDO folderDO = folderMapper.selectOne(new LambdaQueryWrapper<FolderDO>()
+                .select(FolderDO::getPath)
+                .eq(FolderDO::getFid, fid));
+        return folderDO != null ? folderDO.getPath() : null;
+    }
 }
