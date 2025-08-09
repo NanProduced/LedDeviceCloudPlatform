@@ -38,18 +38,19 @@ public class MaterialRepositoryImpl implements MaterialRepository {
 
     @Override
     public List<Material> listMaterialsByUserGroup(Long oid, Long ugid, Long fid, boolean includeSub) {
-        // 🎯 实现双维度查询策略：上下文感知的includeSub逻辑
+        // 🎯 正确的双维度查询策略
         
         List<Long> ugidList;
         List<Long> fidList = null;
         Boolean includeNullFid = false;
         
         if (includeSub) {
-            // 👥 用户组展开模式：包含所有子组，忽略文件夹限制
+            // 👥 用户组展开模式：查询所有子组下的所有素材（包括所有文件夹）
             ugidList = userGroupRepository.getAllUgidsByParent(ugid);
-            // 🔓 展开用户组时包含所有文件夹（不限制fid）
-            includeNullFid = true; // 包含fid=null的素材
-            log.debug("用户组展开模式 - 原组: {}, 展开后: {} (共{}个), 包含所有文件夹", 
+            // 🔓 关键修复：不设置任何文件夹限制，查询所有素材
+            fidList = null;          // 不限制文件夹
+            includeNullFid = false;  // 不需要特殊处理NULL，因为没有文件夹限制
+            log.debug("用户组展开模式 - 原组: {}, 展开后: {} (共{}个), 查询所有文件夹的素材", 
                      ugid, ugidList, ugidList.size());
         } else {
             // 📁 精确模式：限定用户组范围，应用文件夹过滤
@@ -58,9 +59,11 @@ public class MaterialRepositoryImpl implements MaterialRepository {
             if (fid != null) {
                 // 🎯 精确文件夹查询
                 fidList = List.of(fid);
+                includeNullFid = false;
                 log.debug("精确模式 - 用户组: {}, 指定文件夹: {}", ugid, fid);
             } else {
                 // 🔓 查询该用户组下fid=null的素材
+                fidList = null;
                 includeNullFid = true;
                 log.debug("精确模式 - 用户组: {}, 查询根级素材(fid=null)", ugid);
             }
@@ -76,8 +79,9 @@ public class MaterialRepositoryImpl implements MaterialRepository {
         List<MaterialDO> materialDOS = materialMapper.selectMaterialsByDualDimension(
             oid, ugidList, fidList, includeNullFid);
         
-        log.debug("查询到素材数量: {} - 组织: {}, 用户组数: {}, 文件夹过滤: {}", 
-                 materialDOS.size(), oid, ugidList.size(), fidList != null ? fidList.size() : "无");
+        log.debug("查询到素材数量: {} - 组织: {}, 用户组数: {}, 文件夹限制: {}", 
+                 materialDOS.size(), oid, ugidList.size(), 
+                 fidList != null ? "指定文件夹" : includeNullFid ? "仅根级" : "无限制");
         
         return materialConverter.toMaterials(materialDOS);
     }
@@ -119,6 +123,39 @@ public class MaterialRepositoryImpl implements MaterialRepository {
         String fidCondition = buildSharedFidCondition(fid, includeSub);
         List<MaterialShareRelDO> shareRelDOS = materialShareRelMapper.selectSharedMaterials(ugid, fidCondition);
         return materialConverter.toMaterialShareRels(shareRelDOS);
+    }
+
+    @Override
+    public List<Material> listMaterialsByFolder(Long oid, Long fid, boolean includeSub) {
+        // 🎯 文件夹主导查询：纯文件夹层次展开，不涉及用户组展开
+        
+        List<Long> fidList;
+        Boolean includeNullFid = false;
+        
+        if (includeSub) {
+            // 📁 文件夹展开模式：包含该文件夹及其所有子文件夹
+            fidList = folderRepository.getAllFidsByParent(fid);
+            log.debug("文件夹展开模式 - 原文件夹: {}, 展开后: {} (共{}个)", fid, fidList, fidList.size());
+        } else {
+            // 🎯 精确文件夹查询
+            fidList = List.of(fid);
+            log.debug("精确文件夹模式 - 文件夹: {}", fid);
+        }
+        
+        // 🚀 性能优化：空列表直接返回
+        if (fidList.isEmpty()) {
+            log.warn("文件夹列表为空，返回空结果 - fid: {}", fid);
+            return new ArrayList<>();
+        }
+        
+        // 🔧 查询指定文件夹的素材（不限制用户组，因为文件夹可能属于用户组或公共组）
+        List<MaterialDO> materialDOS = materialMapper.selectMaterialsByDualDimension(
+            oid, null, fidList, includeNullFid);
+        
+        log.debug("按文件夹查询到素材数量: {} - 组织: {}, 文件夹数: {}", 
+                 materialDOS.size(), oid, fidList.size());
+        
+        return materialConverter.toMaterials(materialDOS);
     }
 
     @Override

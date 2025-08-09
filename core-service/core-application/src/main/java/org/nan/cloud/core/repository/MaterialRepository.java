@@ -42,6 +42,15 @@ public interface MaterialRepository {
     List<MaterialShareRel> listSharedMaterials(Long oid, Long ugid, Long fid, boolean includeSub);
 
     /**
+     * 按文件夹查询素材（自动判断用户组/公共文件夹）
+     * @param oid 组织ID
+     * @param fid 文件夹ID
+     * @param includeSub 是否包含子文件夹
+     * @return 素材列表
+     */
+    List<Material> listMaterialsByFolder(Long oid, Long fid, boolean includeSub);
+
+    /**
      * 查询用户组可见的所有素材（自有+公共+分享）
      * @param oid 组织ID
      * @param ugid 用户组ID

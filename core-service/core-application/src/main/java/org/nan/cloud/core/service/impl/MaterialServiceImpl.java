@@ -80,6 +80,14 @@ public class MaterialServiceImpl implements MaterialService {
     }
 
     @Override
+    public List<ListMaterialResponse> listMaterialsByFolder(Long oid, Long fid, boolean includeSub) {
+        log.info("Listing materials by folder for org: {}, folder: {}, includeSub: {}", oid, fid, includeSub);
+        
+        List<Material> materials = materialRepository.listMaterialsByFolder(oid, fid, includeSub);
+        return convertToMaterialResponses(materials);
+    }
+
+    @Override
     public List<ListMaterialResponse> listAllVisibleMaterials(Long oid, Long ugid) {
         log.info("Listing all visible materials for org: {}, userGroup: {}", oid, ugid);
 

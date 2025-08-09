@@ -151,6 +151,11 @@ public interface MaterialMapper extends BaseMapper<MaterialDO> {
     /**
      * 双维度查询：支持用户组列表和文件夹列表的灵活组合
      * 用于支持复杂的includeSub场景
+     * 
+     * 参数说明：
+     * - ugidList: null表示查询所有用户组(包括公共)，非null表示查询指定用户组
+     * - fidList: null表示不限制文件夹，非null表示查询指定文件夹
+     * - includeNullFid: true表示包含根级素材(fid=null)
      */
     @Select("""
             <script>
@@ -159,31 +164,27 @@ public interface MaterialMapper extends BaseMapper<MaterialDO> {
             FROM material m 
             LEFT JOIN material_file f ON m.file_id = f.file_id
             WHERE m.oid = #{oid}
+            <!-- 用户组条件：null=所有用户组，非null=指定用户组 -->
             <if test="ugidList != null and !ugidList.isEmpty()">
                 AND m.ugid IN 
                 <foreach collection="ugidList" item="ugid" open="(" separator="," close=")">
                     #{ugid}
                 </foreach>
             </if>
-            <if test="ugidList == null or ugidList.isEmpty()">
-                AND m.ugid IS NULL
+            <!-- 文件夹条件：只有在明确指定文件夹限制时才添加 -->
+            <if test="fidList != null and !fidList.isEmpty()">
+                AND m.fid IN 
+                <foreach collection="fidList" item="fid" open="(" separator="," close=")">
+                    #{fid}
+                </foreach>
             </if>
-            <if test="fidList != null and !fidList.isEmpty() or includeNullFid == true">
-                AND (
-                    <if test="fidList != null and !fidList.isEmpty()">
-                        m.fid IN 
-                        <foreach collection="fidList" item="fid" open="(" separator="," close=")">
-                            #{fid}
-                        </foreach>
-                    </if>
-                    <if test="fidList != null and !fidList.isEmpty() and includeNullFid == true">
-                        OR
-                    </if>
-                    <if test="includeNullFid == true">
-                        m.fid IS NULL
-                    </if>
-                )
+            <if test="includeNullFid == true">
+                AND m.fid IS NULL
             </if>
+            <!-- 注意：
+                 1. ugidList=null时，查询所有用户组(包括公共素材ugid IS NULL)
+                 2. fidList=null且includeNullFid=false时，不添加任何fid条件，查询所有文件夹 
+            -->
             ORDER BY m.create_time DESC
             </script>
             """)
