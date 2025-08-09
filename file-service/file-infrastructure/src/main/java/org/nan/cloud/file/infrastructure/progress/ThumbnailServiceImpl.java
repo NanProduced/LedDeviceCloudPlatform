@@ -9,15 +9,25 @@ import org.nan.cloud.file.application.config.FileStorageProperties;
 import org.nan.cloud.file.application.domain.FileInfo;
 import org.nan.cloud.file.application.service.StorageService;
 import org.nan.cloud.file.application.service.ThumbnailService;
+import org.nan.cloud.file.application.service.ThumbnailService.ThumbnailInfo;
+import org.nan.cloud.file.application.service.CacheService;
+import org.nan.cloud.file.application.enums.FileCacheType;
+import org.nan.cloud.common.basic.exception.BaseException;
+import org.nan.cloud.common.basic.exception.ExceptionEnum;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
 import org.springframework.util.StringUtils;
+import org.springframework.http.HttpStatus;
 
 import jakarta.annotation.PostConstruct;
 import java.awt.image.BufferedImage;
 import java.io.File;
 import java.io.IOException;
+import java.io.InputStream;
+import java.io.FileInputStream;
+import java.io.ByteArrayInputStream;
+import java.io.ByteArrayOutputStream;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
@@ -28,6 +38,7 @@ import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.stream.Collectors;
+import javax.imageio.ImageIO;
 
 // JavaCV相关导入 - 用于视频处理
 import org.bytedeco.javacv.FFmpegFrameGrabber;
@@ -58,12 +69,19 @@ import org.bytedeco.ffmpeg.global.avutil;
  */
 @Slf4j
 @Service
-@RequiredArgsConstructor
 public class ThumbnailServiceImpl implements ThumbnailService {
 
     private final StorageService storageService;
-    
     private final FileStorageProperties storageProperties;
+    private final CacheService cacheService;
+    
+    public ThumbnailServiceImpl(StorageService storageService,
+                              FileStorageProperties storageProperties,
+                              CacheService cacheService) {
+        this.storageService = storageService;
+        this.storageProperties = storageProperties;
+        this.cacheService = cacheService;
+    }
     
     /**
      * 支持的图片格式
@@ -96,11 +114,6 @@ public class ThumbnailServiceImpl implements ThumbnailService {
     );
     
     /**
-     * 缩略图缓存 - 避免重复生成
-     */
-    private final Map<String, List<ThumbnailInfo>> thumbnailCache = new ConcurrentHashMap<>();
-    
-    /**
      * Tika实例用于文件类型检测
      */
     private final Tika tika = new Tika();
@@ -123,6 +136,12 @@ public class ThumbnailServiceImpl implements ThumbnailService {
      * 解析后的缩略图尺寸配置
      */
     private List<ThumbnailSizeConfig> sizeConfigs;
+    
+    /**
+     * 本地缩略图缓存
+     * 用于存储已生成的缩略图信息，避免重复生成
+     */
+    private final ConcurrentHashMap<String, List<ThumbnailInfo>> thumbnailCache = new ConcurrentHashMap<>();
 
     @PostConstruct
     public void initialize() {
@@ -167,7 +186,10 @@ public class ThumbnailServiceImpl implements ThumbnailService {
                     fileInfo.getFileId(), fileInfo.getOriginalFilename());
             
             // 检查缓存
-            List<ThumbnailInfo> cachedThumbnails = thumbnailCache.get(fileInfo.getFileId());
+            String cacheKey = FileCacheType.THUMBNAIL_INFO.buildKey(fileInfo.getFileId());
+            @SuppressWarnings("unchecked")
+            List<ThumbnailInfo> cachedThumbnails = cacheService.getWithCacheTypeConfig(
+                    cacheKey, FileCacheType.THUMBNAIL_INFO, List.class);
             if (cachedThumbnails != null && !cachedThumbnails.isEmpty()) {
                 log.debug("使用缓存的缩略图 - 文件ID: {}", fileInfo.getFileId());
                 return ThumbnailResult.success(cachedThumbnails);
@@ -632,7 +654,209 @@ public class ThumbnailServiceImpl implements ThumbnailService {
         return cleanedCount.get();
     }
 
+    @Override
+    public InputStream generateThumbnail(ThumbnailRequest request) {
+        if (!thumbnailEnabled) {
+            throw new BaseException(ExceptionEnum.THUMBNAIL_GENERATION_FAILED, 
+                "缩略图生成功能已禁用", HttpStatus.SERVICE_UNAVAILABLE);
+        }
+        
+        if (request.getSourceFileId() == null) {
+            throw new BaseException(ExceptionEnum.FILE_NOT_FOUND, 
+                "源文件ID不能为空", HttpStatus.BAD_REQUEST);
+        }
+        
+        long startTime = System.currentTimeMillis();
+        
+        try {
+            log.debug("生成缩略图流 - 文件ID: {}, 尺寸: {}x{}, 格式: {}", 
+                    request.getSourceFileId(), request.getTargetWidth(), 
+                    request.getTargetHeight(), request.getOutputFormat());
+            
+            // 通过StorageService获取文件信息
+            // TODO: 需要通过fileId获取FileInfo，这里简化处理
+            String sourceFilePath = getSourceFilePath(request.getSourceFileId());
+            File sourceFile = new File(sourceFilePath);
+            
+            if (!sourceFile.exists()) {
+                throw new BaseException(ExceptionEnum.FILE_NOT_FOUND, 
+                    "源文件不存在: " + request.getSourceFileId(), HttpStatus.NOT_FOUND);
+            }
+            
+            // 检查是否为图片文件
+            String mimeType = tika.detect(sourceFile);
+            if (!SUPPORTED_IMAGE_FORMATS.contains(mimeType.toLowerCase())) {
+                throw new BaseException(ExceptionEnum.UNSUPPORTED_FILE_FORMAT, 
+                    "不支持的文件格式: " + mimeType, HttpStatus.UNSUPPORTED_MEDIA_TYPE);
+            }
+            
+            // 设置默认尺寸
+            int targetWidth = request.getTargetWidth() != null ? request.getTargetWidth() : 300;
+            int targetHeight = request.getTargetHeight() != null ? request.getTargetHeight() : 300;
+            String outputFormat = request.getOutputFormat() != null ? request.getOutputFormat() : "jpg";
+            double quality = request.getQuality() != null ? request.getQuality() / 100.0 : 0.85;
+            
+            // 生成缩略图到内存
+            BufferedImage thumbnail = Thumbnails.of(sourceFile)
+                    .size(targetWidth, targetHeight)
+                    .keepAspectRatio(true)
+                    .crop(Positions.CENTER)
+                    .outputQuality(quality)
+                    .asBufferedImage();
+            
+            // 将BufferedImage转换为InputStream
+            ByteArrayOutputStream baos = new ByteArrayOutputStream();
+            ImageIO.write(thumbnail, outputFormat.toLowerCase(), baos);
+            
+            long processingTime = System.currentTimeMillis() - startTime;
+            log.debug("缩略图生成完成 - 文件ID: {}, 耗时: {}ms", request.getSourceFileId(), processingTime);
+            
+            return new ByteArrayInputStream(baos.toByteArray());
+            
+        } catch (BaseException e) {
+            // 重新抛出业务异常
+            throw e;
+        } catch (Exception e) {
+            long processingTime = System.currentTimeMillis() - startTime;
+            log.error("生成缩略图失败 - 文件ID: {}, 耗时: {}ms", 
+                    request.getSourceFileId(), processingTime, e);
+            throw new BaseException(ExceptionEnum.THUMBNAIL_GENERATION_FAILED, 
+                "缩略图生成异常: " + e.getMessage(), HttpStatus.INTERNAL_SERVER_ERROR);
+        }
+    }
+    
+    @Override
+    public InputStream generateVideoFrameThumbnail(ThumbnailRequest request) {
+        if (!thumbnailEnabled || !videoThumbnailEnabled) {
+            throw new BaseException(ExceptionEnum.THUMBNAIL_GENERATION_FAILED, 
+                "视频缩略图生成功能已禁用", HttpStatus.SERVICE_UNAVAILABLE);
+        }
+        
+        if (request.getSourceFileId() == null) {
+            throw new BaseException(ExceptionEnum.FILE_NOT_FOUND, 
+                "源文件ID不能为空", HttpStatus.BAD_REQUEST);
+        }
+        
+        long startTime = System.currentTimeMillis();
+        FFmpegFrameGrabber frameGrabber = null;
+        
+        try {
+            log.debug("生成视频帧缩略图流 - 文件ID: {}, 时间偏移: {}s, 尺寸: {}x{}", 
+                    request.getSourceFileId(), request.getTimeOffset(), 
+                    request.getTargetWidth(), request.getTargetHeight());
+            
+            // 获取源视频文件路径
+            String sourceFilePath = getSourceFilePath(request.getSourceFileId());
+            File sourceFile = new File(sourceFilePath);
+            
+            if (!sourceFile.exists()) {
+                throw new BaseException(ExceptionEnum.FILE_NOT_FOUND, 
+                    "源视频文件不存在: " + request.getSourceFileId(), HttpStatus.NOT_FOUND);
+            }
+            
+            // 检查是否为视频文件
+            String mimeType = tika.detect(sourceFile);
+            if (!SUPPORTED_VIDEO_FORMATS.contains(mimeType.toLowerCase())) {
+                throw new BaseException(ExceptionEnum.UNSUPPORTED_FILE_FORMAT, 
+                    "不支持的视频文件格式: " + mimeType, HttpStatus.UNSUPPORTED_MEDIA_TYPE);
+            }
+            
+            // 初始化FFmpeg帧抓取器
+            frameGrabber = new FFmpegFrameGrabber(sourceFilePath);
+            
+            // 配置GPU加速（如果启用）
+            if (gpuAcceleration) {
+                frameGrabber.setVideoOption("hwaccel", "nvdec");
+                frameGrabber.setVideoOption("hwaccel_device", "0");
+                log.debug("启用GPU硬件加速 - NVIDIA NVDEC");
+            }
+            
+            frameGrabber.start();
+            
+            // 获取视频信息
+            double duration = frameGrabber.getLengthInTime() / 1000000.0;
+            
+            // 设置时间偏移
+            double timeOffset = request.getTimeOffset() != null ? request.getTimeOffset() : 1.0;
+            double actualTimeOffset = Math.max(0, Math.min(timeOffset, duration - 1));
+            
+            // 跳转到指定时间点
+            long timestampMicros = (long) (actualTimeOffset * 1000000);
+            frameGrabber.setTimestamp(timestampMicros);
+            
+            // 抓取帧
+            Frame frame = frameGrabber.grabImage();
+            if (frame == null) {
+                throw new BaseException(ExceptionEnum.VIDEO_FRAME_EXTRACTION_FAILED, 
+                    "无法从视频中抓取帧", HttpStatus.NOT_FOUND);
+            }
+            
+            // 转换为BufferedImage
+            Java2DFrameConverter converter = new Java2DFrameConverter();
+            BufferedImage image = converter.convert(frame);
+            
+            if (image == null) {
+                throw new BaseException(ExceptionEnum.VIDEO_FRAME_EXTRACTION_FAILED, 
+                    "帧转换为图片失败", HttpStatus.INTERNAL_SERVER_ERROR);
+            }
+            
+            // 设置默认尺寸
+            int targetWidth = request.getTargetWidth() != null ? request.getTargetWidth() : 300;
+            int targetHeight = request.getTargetHeight() != null ? request.getTargetHeight() : 300;
+            String outputFormat = request.getOutputFormat() != null ? request.getOutputFormat() : "jpg";
+            double quality = request.getQuality() != null ? request.getQuality() / 100.0 : 0.85;
+            
+            // 使用Thumbnailator处理BufferedImage生成缩略图
+            BufferedImage thumbnail = Thumbnails.of(image)
+                    .size(targetWidth, targetHeight)
+                    .keepAspectRatio(true)
+                    .crop(Positions.CENTER)
+                    .outputQuality(quality)
+                    .asBufferedImage();
+            
+            // 将BufferedImage转换为InputStream
+            ByteArrayOutputStream baos = new ByteArrayOutputStream();
+            ImageIO.write(thumbnail, outputFormat.toLowerCase(), baos);
+            
+            long processingTime = System.currentTimeMillis() - startTime;
+            log.info("视频帧缩略图生成完成 - 文件ID: {}, 时间偏移: {}s, 耗时: {}ms", 
+                    request.getSourceFileId(), actualTimeOffset, processingTime);
+            
+            return new ByteArrayInputStream(baos.toByteArray());
+            
+        } catch (BaseException e) {
+            // 重新抛出业务异常
+            throw e;
+        } catch (Exception e) {
+            long processingTime = System.currentTimeMillis() - startTime;
+            log.error("生成视频帧缩略图失败 - 文件ID: {}, 耗时: {}ms", 
+                    request.getSourceFileId(), processingTime, e);
+            throw new BaseException(ExceptionEnum.VIDEO_FRAME_EXTRACTION_FAILED, 
+                "视频帧缩略图生成异常: " + e.getMessage(), HttpStatus.INTERNAL_SERVER_ERROR);
+        } finally {
+            // 确保释放资源
+            if (frameGrabber != null) {
+                try {
+                    frameGrabber.stop();
+                    frameGrabber.release();
+                } catch (Exception e) {
+                    log.warn("释放FFmpeg资源失败", e);
+                }
+            }
+        }
+    }
+
     // ==================== 私有辅助方法 ====================
+    
+    /**
+     * 获取源文件路径（临时实现，应该通过StorageService获取）
+     */
+    private String getSourceFilePath(String fileId) {
+        // TODO: 这里应该调用StorageService.getFileInfo(fileId)获取实际文件路径
+        // 临时实现：假设文件存储在标准路径下
+        return Paths.get(storageProperties.getStorage().getLocal().getBasePath(), 
+                        "files", fileId).toString();
+    }
     
     /**
      * 生成单个缩略图

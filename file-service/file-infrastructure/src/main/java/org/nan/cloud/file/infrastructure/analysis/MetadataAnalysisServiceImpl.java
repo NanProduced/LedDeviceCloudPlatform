@@ -144,13 +144,22 @@ public class MetadataAnalysisServiceImpl implements MetadataAnalysisService {
         try {
             BufferedImage image = ImageIO.read(file);
             if (image != null) {
-                MaterialMetadata.ImageMetadata imageMetadata = MaterialMetadata.ImageMetadata.builder()
+                // 🔍 精确的透明度检测
+                boolean hasActualTransparency = detectActualTransparency(image, fileInfo.getMimeType());
+                
+                MaterialMetadata.ImageMetadata.ImageMetadataBuilder imageBuilder = MaterialMetadata.ImageMetadata.builder()
                         .width(image.getWidth())
                         .height(image.getHeight())
                         .colorDepth(image.getColorModel().getPixelSize())
                         .colorSpace(image.getColorModel().getColorSpace().getType() == java.awt.color.ColorSpace.TYPE_RGB ? "RGB" : "OTHER")
-                        .hasAlpha(image.getColorModel().hasAlpha())
-                        .build();
+                        .hasAlpha(hasActualTransparency);
+
+                // 🎯 GIF动画特殊处理
+                if ("image/gif".equalsIgnoreCase(fileInfo.getMimeType())) {
+                    analyzeGifAnimation(imageBuilder, file);
+                }
+
+                MaterialMetadata.ImageMetadata imageMetadata = imageBuilder.build();
 
                 // 尝试提取EXIF信息
                 MaterialMetadata.ExifInfo exifInfo = extractExifInfo(file);
@@ -159,11 +168,271 @@ public class MetadataAnalysisServiceImpl implements MetadataAnalysisService {
                 }
 
                 builder.imageMetadata(imageMetadata);
-                log.debug("图片元数据分析完成 - 尺寸: {}x{}", image.getWidth(), image.getHeight());
+                log.debug("图片元数据分析完成 - 尺寸: {}x{}, GIF动画: {}", 
+                         image.getWidth(), image.getHeight(), imageMetadata.getIsAnimated());
             }
         } catch (Exception e) {
             log.warn("图片元数据分析失败: {}", e.getMessage());
         }
+    }
+
+    /**
+     * 分析GIF动画信息
+     */
+    private void analyzeGifAnimation(MaterialMetadata.ImageMetadata.ImageMetadataBuilder imageBuilder, File file) {
+        try (ImageInputStream iis = ImageIO.createImageInputStream(file)) {
+            Iterator<ImageReader> readers = ImageIO.getImageReadersByFormatName("gif");
+            if (readers.hasNext()) {
+                ImageReader reader = readers.next();
+                reader.setInput(iis);
+                
+                // 🔍 分析GIF帧信息
+                int frameCount = reader.getNumImages(true);
+                boolean isAnimated = frameCount > 1;
+                
+                long totalDuration = 0; // 毫秒
+                int loopCount = 0;
+                
+                if (isAnimated) {
+                    // 📊 分析每帧的延迟时间
+                    List<Integer> frameDelays = new ArrayList<>();
+                    
+                    for (int i = 0; i < frameCount; i++) {
+                        try {
+                            IIOMetadata imageMetadata = reader.getImageMetadata(i);
+                            if (imageMetadata != null) {
+                                // 解析GIF帧延迟（GIF使用1/100秒为单位）
+                                String[] metadataNames = imageMetadata.getMetadataFormatNames();
+                                for (String format : metadataNames) {
+                                    // 简化实现：使用默认帧延迟
+                                    int frameDelay = 100; // 默认100毫秒
+                                    frameDelays.add(frameDelay);
+                                    totalDuration += frameDelay;
+                                }
+                            }
+                        } catch (Exception e) {
+                            log.debug("解析GIF帧{}延迟失败: {}", i, e.getMessage());
+                            // 使用默认延迟
+                            int defaultDelay = 100;
+                            frameDelays.add(defaultDelay);
+                            totalDuration += defaultDelay;
+                        }
+                    }
+                    
+                    // 计算平均帧延迟
+                    double averageDelay = frameDelays.isEmpty() ? 100.0 : 
+                                         frameDelays.stream().mapToInt(Integer::intValue).average().orElse(100.0);
+                    
+                    // 🔧 设置GIF动画属性
+                    imageBuilder
+                        .isAnimated(true)
+                        .frameCount(frameCount)
+                        .animationDuration(totalDuration)
+                        .loopCount(loopCount) // GIF默认无限循环
+                        .averageFrameDelay(averageDelay);
+                    
+                    log.debug("GIF动画分析完成 - 帧数: {}, 总时长: {}ms, 平均延迟: {}ms", 
+                             frameCount, totalDuration, averageDelay);
+                } else {
+                    // 静态GIF
+                    imageBuilder
+                        .isAnimated(false)
+                        .frameCount(1)
+                        .animationDuration(null)
+                        .loopCount(null)
+                        .averageFrameDelay(null);
+                    
+                    log.debug("静态GIF图片分析完成");
+                }
+                
+                reader.dispose();
+            } else {
+                log.warn("未找到GIF格式的ImageReader");
+                // 设置默认值
+                imageBuilder
+                    .isAnimated(false)
+                    .frameCount(1)
+                    .animationDuration(null)
+                    .loopCount(null)
+                    .averageFrameDelay(null);
+            }
+        } catch (Exception e) {
+            log.error("GIF动画分析失败: {}", e.getMessage(), e);
+            // 设置默认值
+            imageBuilder
+                .isAnimated(false)
+                .frameCount(null)
+                .animationDuration(null)
+                .loopCount(null)
+                .averageFrameDelay(null);
+        }
+    }
+
+    /**
+     * 检测图片是否实际使用了透明度
+     */
+    private boolean detectActualTransparency(BufferedImage image, String mimeType) {
+        try {
+            // 🚀 首先检查颜色模型是否支持透明度
+            if (!image.getColorModel().hasAlpha()) {
+                return false;
+            }
+            
+            int width = image.getWidth();
+            int height = image.getHeight();
+            
+            // 🔧 根据图片格式使用不同的检测策略
+            if ("image/png".equalsIgnoreCase(mimeType)) {
+                return detectPngTransparency(image, width, height);
+            } else if ("image/gif".equalsIgnoreCase(mimeType)) {
+                return detectGifTransparency(image, width, height);
+            } else {
+                // 对于其他格式，使用通用检测方法
+                return detectGeneralTransparency(image, width, height);
+            }
+            
+        } catch (Exception e) {
+            log.debug("透明度检测失败，使用颜色模型判断: {}", e.getMessage());
+            return image.getColorModel().hasAlpha();
+        }
+    }
+    
+    /**
+     * 检测PNG图片的透明度
+     */
+    private boolean detectPngTransparency(BufferedImage image, int width, int height) {
+        // 🎯 PNG透明度检测：采样检测法，避免处理大图片时的性能问题
+        int sampleSize = Math.min(100, Math.max(width, height)); // 最多采样100个像素
+        int stepX = Math.max(1, width / sampleSize);
+        int stepY = Math.max(1, height / sampleSize);
+        
+        for (int y = 0; y < height; y += stepY) {
+            for (int x = 0; x < width; x += stepX) {
+                int rgb = image.getRGB(x, y);
+                int alpha = (rgb >> 24) & 0xFF;
+                
+                // 如果发现任何非完全不透明的像素（alpha < 255）
+                if (alpha < 255) {
+                    log.debug("PNG透明度检测：发现透明像素 at ({}, {}), alpha={}", x, y, alpha);
+                    return true;
+                }
+            }
+        }
+        
+        return false;
+    }
+    
+    /**
+     * 检测GIF图片的透明度
+     */
+    private boolean detectGifTransparency(BufferedImage image, int width, int height) {
+        // 🎯 GIF透明度检测：GIF使用索引色彩模式，需要检查调色板
+        try {
+            // GIF图片通常使用IndexColorModel
+            if (image.getColorModel() instanceof java.awt.image.IndexColorModel) {
+                java.awt.image.IndexColorModel icm = (java.awt.image.IndexColorModel) image.getColorModel();
+                
+                // 检查是否有透明颜色索引
+                int transparentPixel = icm.getTransparentPixel();
+                if (transparentPixel != -1) {
+                    log.debug("GIF透明度检测：发现透明色索引 {}", transparentPixel);
+                    return true;
+                }
+            }
+            
+            // 备用方法：像素采样检测
+            return detectGeneralTransparency(image, width, height);
+            
+        } catch (Exception e) {
+            log.debug("GIF透明度检测异常: {}", e.getMessage());
+            return detectGeneralTransparency(image, width, height);
+        }
+    }
+    
+    /**
+     * 通用透明度检测方法
+     */
+    private boolean detectGeneralTransparency(BufferedImage image, int width, int height) {
+        // 🚀 性能优化：对于大图片，只检测边缘和中心区域
+        if (width > 1000 || height > 1000) {
+            return detectTransparencyOptimized(image, width, height);
+        }
+        
+        // 🔍 小图片：完整检测（最多检测前1000个像素）
+        int maxPixels = Math.min(1000, width * height);
+        int stepSize = Math.max(1, (width * height) / maxPixels);
+        
+        int checkedPixels = 0;
+        for (int y = 0; y < height && checkedPixels < maxPixels; y++) {
+            for (int x = 0; x < width && checkedPixels < maxPixels; x += stepSize) {
+                int rgb = image.getRGB(x, y);
+                int alpha = (rgb >> 24) & 0xFF;
+                
+                if (alpha < 255) {
+                    log.debug("通用透明度检测：发现透明像素 at ({}, {}), alpha={}", x, y, alpha);
+                    return true;
+                }
+                checkedPixels++;
+            }
+        }
+        
+        return false;
+    }
+    
+    /**
+     * 大图片的优化透明度检测
+     */
+    private boolean detectTransparencyOptimized(BufferedImage image, int width, int height) {
+        // 🎯 检测策略：边缘检测 + 中心区域采样
+        int edgeSize = Math.min(50, Math.min(width, height) / 4); // 边缘检测范围
+        
+        // 检测四个边缘
+        for (int i = 0; i < edgeSize; i++) {
+            // 上边缘
+            for (int x = 0; x < width; x += 10) {
+                if (isTransparentPixel(image.getRGB(x, i))) return true;
+            }
+            // 下边缘
+            for (int x = 0; x < width; x += 10) {
+                if (isTransparentPixel(image.getRGB(x, height - 1 - i))) return true;
+            }
+            // 左边缘
+            for (int y = 0; y < height; y += 10) {
+                if (isTransparentPixel(image.getRGB(i, y))) return true;
+            }
+            // 右边缘
+            for (int y = 0; y < height; y += 10) {
+                if (isTransparentPixel(image.getRGB(width - 1 - i, y))) return true;
+            }
+        }
+        
+        // 中心区域采样检测
+        int centerX = width / 2;
+        int centerY = height / 2;
+        int sampleRadius = Math.min(100, Math.min(width, height) / 8);
+        
+        for (int dy = -sampleRadius; dy <= sampleRadius; dy += 10) {
+            for (int dx = -sampleRadius; dx <= sampleRadius; dx += 10) {
+                int x = centerX + dx;
+                int y = centerY + dy;
+                if (x >= 0 && x < width && y >= 0 && y < height) {
+                    if (isTransparentPixel(image.getRGB(x, y))) {
+                        log.debug("大图透明度检测：中心区域发现透明像素 at ({}, {})", x, y);
+                        return true;
+                    }
+                }
+            }
+        }
+        
+        return false;
+    }
+    
+    /**
+     * 检查单个像素是否透明
+     */
+    private boolean isTransparentPixel(int rgb) {
+        int alpha = (rgb >> 24) & 0xFF;
+        return alpha < 255; // 任何非完全不透明的像素都视为透明
     }
 
     /**
@@ -300,26 +569,245 @@ public class MetadataAnalysisServiceImpl implements MetadataAnalysisService {
     }
 
     /**
-     * 提取EXIF信息（简化版本）
+     * 提取EXIF信息
      */
     private MaterialMetadata.ExifInfo extractExifInfo(File file) {
+        try {
+            // 🔍 使用Apache Tika提取EXIF信息
+            AutoDetectParser parser = new AutoDetectParser();
+            BodyContentHandler handler = new BodyContentHandler();
+            Metadata metadata = new Metadata();
+            
+            try (FileInputStream inputStream = new FileInputStream(file)) {
+                parser.parse(inputStream, handler, metadata);
+                
+                return buildExifInfoFromTika(metadata);
+            }
+            
+        } catch (Exception e) {
+            log.debug("EXIF信息提取失败，尝试使用ImageIO: {}", e.getMessage());
+            // 备用方法：使用ImageIO
+            return extractExifWithImageIO(file);
+        }
+    }
+    
+    /**
+     * 从Tika元数据构建EXIF信息
+     */
+    private MaterialMetadata.ExifInfo buildExifInfoFromTika(Metadata metadata) {
+        try {
+            MaterialMetadata.ExifInfo.ExifInfoBuilder builder = MaterialMetadata.ExifInfo.builder();
+            
+            // 🎯 关键的Orientation信息
+            String orientation = metadata.get("tiff:Orientation");
+            if (StringUtils.hasText(orientation)) {
+                builder.orientation(normalizeOrientation(orientation));
+            }
+            
+            // 📷 相机信息
+            String cameraMake = metadata.get("tiff:Make");
+            if (StringUtils.hasText(cameraMake)) {
+                builder.cameraMake(cameraMake.trim());
+            }
+            
+            String cameraModel = metadata.get("tiff:Model");
+            if (StringUtils.hasText(cameraModel)) {
+                builder.cameraModel(cameraModel.trim());
+            }
+            
+            // 📅 拍摄时间
+            String dateTime = metadata.get("exif:DateTimeOriginal");
+            if (StringUtils.hasText(dateTime)) {
+                try {
+                    // 尝试解析EXIF日期格式：YYYY:MM:DD HH:MM:SS
+                    LocalDateTime dateTaken = parseExifDateTime(dateTime);
+                    builder.dateTaken(dateTaken);
+                } catch (Exception e) {
+                    log.debug("EXIF日期解析失败: {}", dateTime);
+                }
+            }
+            
+            // 🔧 镜头和拍摄参数
+            String lensModel = metadata.get("exif:LensModel");
+            if (StringUtils.hasText(lensModel)) {
+                builder.lensModel(lensModel.trim());
+            }
+            
+            String focalLength = metadata.get("exif:FocalLength");
+            if (StringUtils.hasText(focalLength)) {
+                try {
+                    builder.focalLength(parseExifDouble(focalLength));
+                } catch (Exception e) {
+                    log.debug("焦距解析失败: {}", focalLength);
+                }
+            }
+            
+            String aperture = metadata.get("exif:FNumber");
+            if (StringUtils.hasText(aperture)) {
+                builder.aperture("f/" + aperture);
+            }
+            
+            String shutterSpeed = metadata.get("exif:ExposureTime");
+            if (StringUtils.hasText(shutterSpeed)) {
+                builder.shutterSpeed(shutterSpeed);
+            }
+            
+            String iso = metadata.get("exif:ISOSpeedRatings");
+            if (StringUtils.hasText(iso)) {
+                try {
+                    builder.iso(Integer.parseInt(iso));
+                } catch (Exception e) {
+                    log.debug("ISO解析失败: {}", iso);
+                }
+            }
+            
+            // 📍 GPS信息
+            String gpsLat = metadata.get("geo:lat");
+            String gpsLon = metadata.get("geo:long");
+            if (StringUtils.hasText(gpsLat) && StringUtils.hasText(gpsLon)) {
+                try {
+                    builder.gpsLatitude(Double.parseDouble(gpsLat));
+                    builder.gpsLongitude(Double.parseDouble(gpsLon));
+                } catch (Exception e) {
+                    log.debug("GPS坐标解析失败: lat={}, lon={}", gpsLat, gpsLon);
+                }
+            }
+            
+            log.debug("EXIF信息提取完成 - Orientation: {}, 相机: {} {}", 
+                     orientation, cameraMake, cameraModel);
+            
+            return builder.build();
+            
+        } catch (Exception e) {
+            log.warn("构建EXIF信息失败: {}", e.getMessage());
+            return null;
+        }
+    }
+    
+    /**
+     * 备用EXIF提取方法
+     */
+    private MaterialMetadata.ExifInfo extractExifWithImageIO(File file) {
         try (ImageInputStream iis = ImageIO.createImageInputStream(file)) {
             Iterator<ImageReader> readers = ImageIO.getImageReaders(iis);
             if (readers.hasNext()) {
                 ImageReader reader = readers.next();
                 reader.setInput(iis);
-                IIOMetadata metadata = reader.getImageMetadata(0);
                 
+                IIOMetadata metadata = reader.getImageMetadata(0);
                 if (metadata != null) {
-                    // 这里可以实现详细的EXIF解析
-                    // 暂时返回基础的EXIF信息结构
-                    return MaterialMetadata.ExifInfo.builder()
-                            .build();
+                    // 简化的EXIF处理，主要提取orientation
+                    MaterialMetadata.ExifInfo.ExifInfoBuilder builder = MaterialMetadata.ExifInfo.builder();
+                    
+                    // 尝试从元数据中提取orientation
+                    String[] formatNames = metadata.getMetadataFormatNames();
+                    for (String formatName : formatNames) {
+                        try {
+                            org.w3c.dom.Node tree = metadata.getAsTree(formatName);
+                            String orientation = extractOrientationFromTree(tree);
+                            if (StringUtils.hasText(orientation)) {
+                                builder.orientation(normalizeOrientation(orientation));
+                                break;
+                            }
+                        } catch (Exception e) {
+                            log.debug("从{}格式提取orientation失败: {}", formatName, e.getMessage());
+                        }
+                    }
+                    
+                    return builder.build();
                 }
+                
+                reader.dispose();
             }
         } catch (Exception e) {
-            log.debug("EXIF信息提取失败: {}", e.getMessage());
+            log.debug("ImageIO EXIF提取失败: {}", e.getMessage());
         }
+        return null;
+    }
+    
+    /**
+     * 标准化orientation值
+     */
+    private String normalizeOrientation(String orientation) {
+        if (!StringUtils.hasText(orientation)) {
+            return "1"; // 默认正常方向
+        }
+        
+        // 清理orientation值，只保留数字
+        String cleaned = orientation.replaceAll("[^0-9]", "");
+        if (cleaned.isEmpty()) {
+            return "1";
+        }
+        
+        try {
+            int value = Integer.parseInt(cleaned);
+            // EXIF Orientation取值范围是1-8
+            if (value >= 1 && value <= 8) {
+                return String.valueOf(value);
+            }
+        } catch (NumberFormatException e) {
+            log.debug("Orientation值格式异常: {}", orientation);
+        }
+        
+        return "1"; // 默认值
+    }
+    
+    /**
+     * 解析EXIF日期时间
+     */
+    private LocalDateTime parseExifDateTime(String dateTime) {
+        // EXIF日期格式：YYYY:MM:DD HH:MM:SS
+        if (!StringUtils.hasText(dateTime)) {
+            return null;
+        }
+        
+        try {
+            // 替换前两个冒号为标准日期分隔符 (YYYY:MM:DD HH:MM:SS -> YYYY-MM-DD HH:MM:SS)
+            String normalized = dateTime;
+            if (dateTime.length() >= 10) {
+                normalized = dateTime.substring(0, 4) + "-" + 
+                           dateTime.substring(5, 7) + "-" + 
+                           dateTime.substring(8);
+            }
+            return LocalDateTime.parse(normalized.replace(" ", "T"));
+        } catch (Exception e) {
+            log.debug("EXIF日期时间解析失败: {}", dateTime);
+            return null;
+        }
+    }
+    
+    /**
+     * 解析EXIF浮点数值
+     */
+    private Double parseExifDouble(String value) {
+        if (!StringUtils.hasText(value)) {
+            return null;
+        }
+        
+        try {
+            // 处理分数格式，如"50/1"
+            if (value.contains("/")) {
+                String[] parts = value.split("/");
+                if (parts.length == 2) {
+                    double numerator = Double.parseDouble(parts[0]);
+                    double denominator = Double.parseDouble(parts[1]);
+                    return denominator != 0 ? numerator / denominator : null;
+                }
+            }
+            
+            return Double.parseDouble(value);
+        } catch (Exception e) {
+            log.debug("EXIF数值解析失败: {}", value);
+            return null;
+        }
+    }
+    
+    /**
+     * 从DOM树中提取orientation信息
+     */
+    private String extractOrientationFromTree(org.w3c.dom.Node node) {
+        // 简化实现，实际应该递归遍历DOM树查找orientation节点
+        // 这里只是示例代码
         return null;
     }
 

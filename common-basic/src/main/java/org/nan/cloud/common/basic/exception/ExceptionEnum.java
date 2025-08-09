@@ -48,6 +48,16 @@ public enum ExceptionEnum {
     DETAILS_DENIED(5017, "get details failed"),
     PROGRAM_NAME_EXISTS(5018, "program name already exists"),
 
+    /* 文件预览相关异常 -> 7xxx */
+    FILE_NOT_FOUND(7001, "File not found or deleted"),
+    FILE_ACCESS_DENIED(7002, "File access denied"),
+    FILE_CORRUPTED(7003, "File is corrupted and cannot be read"),
+    UNSUPPORTED_FILE_FORMAT(7004, "Unsupported file format"),
+    FILE_PROCESSING_ERROR(7005, "File processing failed"),
+    THUMBNAIL_GENERATION_FAILED(7006, "Thumbnail generation failed"),
+    VIDEO_FRAME_EXTRACTION_FAILED(7007, "Video frame extraction failed"),
+    FILE_SERVICE_UNAVAILABLE(7008, "File service temporarily unavailable"),
+
     /* websocket\STOMP 异常 */
     STOMP_ACCESS_DENIED(6001, "stomp access denied"),
 

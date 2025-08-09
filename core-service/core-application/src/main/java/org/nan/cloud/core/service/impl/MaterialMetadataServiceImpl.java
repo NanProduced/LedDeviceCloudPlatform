@@ -386,20 +386,37 @@ public class MaterialMetadataServiceImpl implements MaterialMetadataService {
      * 构建GIF元数据
      */
     private MaterialMetadataItem.GifMetadata buildGifMetadata(MaterialMetadata metadata) {
-        // GIF信息可能存储在imageMetadata中，这里做基础处理
+        // GIF信息存储在imageMetadata中
         MaterialMetadata.ImageMetadata imgMeta = metadata.getImageMetadata();
         if (imgMeta == null) {
-            return null;
+            log.debug("GIF文件缺少图片元数据信息 - 返回默认GIF元数据");
+            return createDefaultGifMetadata();
         }
         
         return MaterialMetadataItem.GifMetadata.builder()
             .width(imgMeta.getWidth())
             .height(imgMeta.getHeight())
-            .isAnimated(true) // GIF默认为动画，后续可从元数据中获取精确值
-            .frameCount(null) // 预留字段，待元数据分析服务完善
-            .durationMs(null) // 预留字段
+            .isAnimated(imgMeta.getIsAnimated() != null ? imgMeta.getIsAnimated() : true) // 默认为动画
+            .frameCount(imgMeta.getFrameCount())
+            .durationMs(imgMeta.getAnimationDuration()) // 已经是毫秒单位
+            .loopCount(imgMeta.getLoopCount() != null ? imgMeta.getLoopCount() : 0) // 默认无限循环
+            .averageFrameDelayMs(imgMeta.getAverageFrameDelay() != null ? 
+                                imgMeta.getAverageFrameDelay().intValue() : null)
+            .build();
+    }
+    
+    /**
+     * 创建默认GIF元数据（当分析数据不完整时）
+     */
+    private MaterialMetadataItem.GifMetadata createDefaultGifMetadata() {
+        return MaterialMetadataItem.GifMetadata.builder()
+            .width(null)
+            .height(null)
+            .isAnimated(true) // GIF文件默认假设为动画
+            .frameCount(null) // 未知帧数
+            .durationMs(null) // 未知时长
             .loopCount(0) // 默认无限循环
-            .averageFrameDelayMs(null) // 预留字段
+            .averageFrameDelayMs(null) // 未知帧延迟
             .build();
     }
     

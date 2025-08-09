@@ -30,11 +30,6 @@
             <artifactId>file-infrastructure</artifactId>
             <version>${project.version}</version>
         </dependency>
-        <dependency>
-            <groupId>org.nan
-            </groupId>
-            <artifactId>common-web</artifactId>
-        </dependency>
         
         <!-- Spring Boot Web Starter -->
         <dependency>

@@ -1,7 +1,12 @@
 package org.nan.cloud.file.application.service;
 
+import lombok.Builder;
+import lombok.Data;
+import lombok.Getter;
+import lombok.Setter;
 import org.nan.cloud.file.application.domain.FileInfo;
 
+import java.io.InputStream;
 import java.util.List;
 
 /**
@@ -122,11 +127,64 @@ public interface ThumbnailService {
      * @return 清理的文件数量
      */
     int cleanupExpiredThumbnails(int expireHours);
+    
+    /**
+     * 生成缩略图并返回输入流（用于预览接口）
+     * 
+     * @param request 缩略图生成请求
+     * @return 缩略图输入流
+     */
+    InputStream generateThumbnail(ThumbnailRequest request);
+    
+    /**
+     * 生成视频帧缩略图并返回输入流
+     * 
+     * @param request 缩略图生成请求
+     * @return 视频帧缩略图输入流
+     */
+    InputStream generateVideoFrameThumbnail(ThumbnailRequest request);
+    
+    /**
+     * 缩略图生成请求参数
+     */
+    @Data
+    @Builder
+    class ThumbnailRequest {
+        /** 源文件ID */
+        private String sourceFileId;
+        
+        /** 目标宽度 */
+        private Integer targetWidth;
+        
+        /** 目标高度 */
+        private Integer targetHeight;
+        
+        /** 适应方式 */
+        @Builder.Default
+        private String fit = "cover";
+        
+        /** 输出格式 */
+        @Builder.Default
+        private String outputFormat = "jpg";
+        
+        /** 图片质量 (1-100) */
+        @Builder.Default
+        private Integer quality = 85;
+        
+        /** 视频时间偏移（秒） */
+        @Builder.Default
+        private Double timeOffset = 1.0;
+        
+        /** 视频帧数 */
+        private Integer frameNumber;
+    }
 
     /**
      * 缩略图生成结果
      */
+    @Data
     class ThumbnailResult {
+        // Getters and Setters
         private boolean success;
         private String errorMessage;
         private List<ThumbnailInfo> thumbnails;
@@ -153,18 +211,6 @@ public interface ThumbnailService {
             return new ThumbnailResult(false, errorMessage);
         }
 
-        // Getters and Setters
-        public boolean isSuccess() { return success; }
-        public void setSuccess(boolean success) { this.success = success; }
-
-        public String getErrorMessage() { return errorMessage; }
-        public void setErrorMessage(String errorMessage) { this.errorMessage = errorMessage; }
-
-        public List<ThumbnailInfo> getThumbnails() { return thumbnails; }
-        public void setThumbnails(List<ThumbnailInfo> thumbnails) { this.thumbnails = thumbnails; }
-
-        public long getProcessingTime() { return processingTime; }
-        public void setProcessingTime(long processingTime) { this.processingTime = processingTime; }
     }
 
     /**
@@ -218,7 +264,9 @@ public interface ThumbnailService {
     /**
      * 缩略图信息
      */
+    @Data
     class ThumbnailInfo {
+        // Getters and Setters
         private String thumbnailId;
         private String fileId;
         private String thumbnailPath;
@@ -239,33 +287,6 @@ public interface ThumbnailService {
             this.createTime = java.time.LocalDateTime.now();
         }
 
-        // Getters and Setters
-        public String getThumbnailId() { return thumbnailId; }
-        public void setThumbnailId(String thumbnailId) { this.thumbnailId = thumbnailId; }
-
-        public String getFileId() { return fileId; }
-        public void setFileId(String fileId) { this.fileId = fileId; }
-
-        public String getThumbnailPath() { return thumbnailPath; }
-        public void setThumbnailPath(String thumbnailPath) { this.thumbnailPath = thumbnailPath; }
-
-        public int getWidth() { return width; }
-        public void setWidth(int width) { this.width = width; }
-
-        public int getHeight() { return height; }
-        public void setHeight(int height) { this.height = height; }
-
-        public long getFileSize() { return fileSize; }
-        public void setFileSize(long fileSize) { this.fileSize = fileSize; }
-
-        public String getFormat() { return format; }
-        public void setFormat(String format) { this.format = format; }
-
-        public double getQuality() { return quality; }
-        public void setQuality(double quality) { this.quality = quality; }
-
-        public java.time.LocalDateTime getCreateTime() { return createTime; }
-        public void setCreateTime(java.time.LocalDateTime createTime) { this.createTime = createTime; }
     }
 
     /**
@@ -282,27 +303,4 @@ public interface ThumbnailService {
         void onThumbnailGenerated(String fileId, ThumbnailResult result);
     }
 
-    /**
-     * 缩略图尺寸枚举
-     */
-    enum ThumbnailSize {
-        SMALL(150, 150, "小图"),
-        MEDIUM(300, 300, "中图"),
-        LARGE(600, 600, "大图"),
-        CUSTOM(0, 0, "自定义");
-
-        private final int width;
-        private final int height;
-        private final String description;
-
-        ThumbnailSize(int width, int height, String description) {
-            this.width = width;
-            this.height = height;
-            this.description = description;
-        }
-
-        public int getWidth() { return width; }
-        public int getHeight() { return height; }
-        public String getDescription() { return description; }
-    }
 }

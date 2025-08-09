@@ -67,6 +67,7 @@ public class FileUploadResponse {
     private String errorMessage;
 
     @Schema(description = "是否为秒传（文件已存在）", example = "false")
+    @Builder.Default
     private Boolean instantUpload = false;
 
     /**

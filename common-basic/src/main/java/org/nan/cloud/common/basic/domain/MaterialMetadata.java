@@ -234,6 +234,13 @@ public class MaterialMetadata {
         private Integer dpiHorizontal; // 水平DPI
         private Integer dpiVertical; // 垂直DPI
         
+        // GIF动画相关字段
+        private Boolean isAnimated; // 是否为动画GIF
+        private Integer frameCount; // 动画帧数
+        private Long animationDuration; // 动画总时长(毫秒)
+        private Integer loopCount; // 循环次数，0表示无限循环
+        private Double averageFrameDelay; // 平均帧延迟(毫秒)
+        
         // EXIF信息
         private ExifInfo exifInfo;
         
