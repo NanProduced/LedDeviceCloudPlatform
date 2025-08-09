@@ -2,6 +2,7 @@ package org.nan.cloud.core.infrastructure.repository.mysql.impl;
 
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.nan.cloud.core.domain.Material;
 import org.nan.cloud.core.domain.MaterialShareRel;
 import org.nan.cloud.core.infrastructure.repository.mysql.DO.MaterialDO;
@@ -16,6 +17,7 @@ import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
 
+@Slf4j
 @Repository
 @RequiredArgsConstructor
 public class MaterialRepositoryImpl implements MaterialRepository {
@@ -23,6 +25,8 @@ public class MaterialRepositoryImpl implements MaterialRepository {
     private final MaterialMapper materialMapper;
     private final MaterialShareRelMapper materialShareRelMapper;
     private final MaterialConverter materialConverter;
+    // 🚀 新增UserGroupRepository依赖用于获取子组
+    private final org.nan.cloud.core.repository.UserGroupRepository userGroupRepository;
 
     @Override
     public Material getMaterialById(Long mid) {
@@ -33,7 +37,28 @@ public class MaterialRepositoryImpl implements MaterialRepository {
     @Override
     public List<Material> listMaterialsByUserGroup(Long oid, Long ugid, Long fid, boolean includeSub) {
         String fidCondition = buildFidCondition(fid, includeSub);
-        List<MaterialDO> materialDOS = materialMapper.selectMaterialsByUserGroup(oid, ugid, fidCondition);
+        
+        // 🔧 核心修复：支持子用户组查询
+        List<Long> ugidList;
+        if (includeSub) {
+            // 获取包含子组的用户组ID列表（包含自身）
+            ugidList = userGroupRepository.getAllUgidsByParent(ugid);
+            log.debug("查询用户组及子组素材 - 原组: {}, 包含子组: {} (共{}个)", ugid, ugidList, ugidList.size());
+        } else {
+            // 仅查询当前用户组
+            ugidList = List.of(ugid);
+            log.debug("查询用户组素材 - 仅当前组: {}", ugid);
+        }
+        
+        // 🚀 性能优化：空列表直接返回
+        if (ugidList.isEmpty()) {
+            log.warn("用户组列表为空，返回空结果 - ugid: {}", ugid);
+            return new ArrayList<>();
+        }
+        
+        List<MaterialDO> materialDOS = materialMapper.selectMaterialsByUserGroupList(oid, ugidList, fidCondition);
+        log.debug("查询到素材数量: {} - 组织: {}, 用户组数: {}", materialDOS.size(), oid, ugidList.size());
+        
         return materialConverter.toMaterials(materialDOS);
     }
 
@@ -53,7 +78,19 @@ public class MaterialRepositoryImpl implements MaterialRepository {
 
     @Override
     public List<Material> listAllVisibleMaterials(Long oid, Long ugid) {
-        List<MaterialDO> materialDOS = materialMapper.selectAllVisibleMaterials(oid, ugid);
+        // 🔧 核心修复：默认包含子组权限的全量素材查询
+        List<Long> ugidList = userGroupRepository.getAllUgidsByParent(ugid);
+        log.debug("查询全部可见素材 - 用户组: {}, 包含子组: {} (共{}个)", ugid, ugidList, ugidList.size());
+        
+        // 🚀 性能优化：空列表处理
+        if (ugidList.isEmpty()) {
+            log.warn("用户组列表为空，仅查询公共素材 - ugid: {}", ugid);
+            return materialConverter.toMaterials(materialMapper.selectPublicMaterials(oid, ""));
+        }
+        
+        List<MaterialDO> materialDOS = materialMapper.selectAllVisibleMaterialsByUserGroupList(oid, ugidList);
+        log.debug("查询到全部可见素材数量: {} - 组织: {}, 用户组数: {}", materialDOS.size(), oid, ugidList.size());
+        
         return materialConverter.toMaterials(materialDOS);
     }
 
