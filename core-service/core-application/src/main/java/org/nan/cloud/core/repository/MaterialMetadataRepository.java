@@ -28,13 +28,6 @@ public interface MaterialMetadataRepository {
     MaterialMetadata findById(String id);
 
     /**
-     * 根据文件ID查询素材元数据
-     * @param fileId 文件ID
-     * @return 素材元数据
-     */
-    MaterialMetadata findByFileId(String fileId);
-
-    /**
      * 更新素材元数据
      * @param metadata 素材元数据
      */
@@ -45,10 +38,18 @@ public interface MaterialMetadataRepository {
      * @param id MongoDB文档ID
      */
     void deleteById(String id);
-
+    
     /**
-     * 批量删除素材元数据
+     * 批量根据文件ID查询素材元数据
      * @param fileIds 文件ID列表
+     * @return 素材元数据列表
      */
-    void deleteByFileIds(java.util.List<String> fileIds);
+    java.util.List<MaterialMetadata> batchFindByFileIds(java.util.List<String> fileIds);
+    
+    /**
+     * 检查文件ID对应的元数据是否存在
+     * @param fileId 文件ID
+     * @return 是否存在
+     */
+    boolean existsByFileId(String fileId);
 }

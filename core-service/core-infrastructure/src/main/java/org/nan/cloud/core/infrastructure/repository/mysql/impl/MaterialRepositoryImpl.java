@@ -25,9 +25,7 @@ public class MaterialRepositoryImpl implements MaterialRepository {
     private final MaterialMapper materialMapper;
     private final MaterialShareRelMapper materialShareRelMapper;
     private final MaterialConverter materialConverter;
-    // 🚀 新增UserGroupRepository依赖用于获取子组
     private final org.nan.cloud.core.repository.UserGroupRepository userGroupRepository;
-    // 🚀 新增FolderRepository依赖用于获取子文件夹  
     private final org.nan.cloud.core.repository.FolderRepository folderRepository;
 
     @Override
@@ -157,39 +155,6 @@ public class MaterialRepositoryImpl implements MaterialRepository {
     }
 
     @Override
-    public List<Material> listMaterialsByFolder(Long oid, Long fid, boolean includeSub) {
-        // 🎯 文件夹主导查询：纯文件夹层次展开，不涉及用户组展开
-        
-        List<Long> fidList;
-        Boolean includeNullFid = false;
-        
-        if (includeSub) {
-            // 📁 文件夹展开模式：包含该文件夹及其所有子文件夹
-            fidList = folderRepository.getAllFidsByParent(fid);
-            log.debug("文件夹展开模式 - 原文件夹: {}, 展开后: {} (共{}个)", fid, fidList, fidList.size());
-        } else {
-            // 🎯 精确文件夹查询
-            fidList = List.of(fid);
-            log.debug("精确文件夹模式 - 文件夹: {}", fid);
-        }
-        
-        // 🚀 性能优化：空列表直接返回
-        if (fidList.isEmpty()) {
-            log.warn("文件夹列表为空，返回空结果 - fid: {}", fid);
-            return new ArrayList<>();
-        }
-        
-        // 🔧 查询指定文件夹的素材（不限制用户组，因为文件夹可能属于用户组或公共组）
-        List<MaterialDO> materialDOS = materialMapper.selectMaterialsByDualDimension(
-            oid, null, fidList, includeNullFid);
-        
-        log.debug("按文件夹查询到素材数量: {} - 组织: {}, 文件夹数: {}", 
-                 materialDOS.size(), oid, fidList.size());
-        
-        return materialConverter.toMaterials(materialDOS);
-    }
-
-    @Override
     public List<Material> listAllVisibleMaterials(Long oid, Long ugid) {
         // 🔧 核心修复：默认包含子组权限的全量素材查询
         List<Long> ugidList = userGroupRepository.getAllUgidsByParent(ugid);
@@ -208,43 +173,10 @@ public class MaterialRepositoryImpl implements MaterialRepository {
     }
 
     @Override
-    public long countMaterialsByFolder(Long fid) {
-        return materialMapper.countByFolder(fid);
-    }
-
-    @Override
-    public long countMaterialsByUserGroup(Long ugid) {
-        return materialMapper.countByUserGroup(ugid);
-    }
-
-    @Override
-    public long countPublicMaterials(Long oid) {
-        return materialMapper.countPublicMaterials(oid);
-    }
-
-    @Override
     public boolean isMaterialBelongsToOrg(Long oid, Long mid) {
         return materialMapper.exists(new LambdaQueryWrapper<MaterialDO>()
                 .eq(MaterialDO::getMid, mid)
                 .eq(MaterialDO::getOid, oid));
-    }
-
-    @Override
-    public boolean isMaterialBelongsToUserGroup(Long ugid, Long mid) {
-        return materialMapper.exists(new LambdaQueryWrapper<MaterialDO>()
-                .eq(MaterialDO::getMid, mid)
-                .eq(MaterialDO::getUgid, ugid));
-    }
-
-    @Override
-    public MaterialShareRel getSharedMaterialById(Long shareId) {
-        MaterialShareRelDO shareRelDO = materialShareRelMapper.selectSharedMaterialDetailById(shareId);
-        return materialConverter.toMaterialShareRel(shareRelDO);
-    }
-
-    @Override
-    public boolean isMaterialSharedToUserGroup(Long mid, Long ugid) {
-        return materialShareRelMapper.existsSharedMaterialToUserGroup(mid, ugid);
     }
 
     @Override
@@ -322,5 +254,33 @@ public class MaterialRepositoryImpl implements MaterialRepository {
                     WHERE f.path LIKE CONCAT((SELECT path FROM folder WHERE fid = %d), '|%%')
                 ))
                 """, fid, fid);
+    }
+
+    @Override
+    public List<Material> batchGetMaterialsByIds(List<Long> materialIds) {
+        if (materialIds == null || materialIds.isEmpty()) {
+            log.debug("批量查询素材 - 素材ID列表为空，返回空结果");
+            return new ArrayList<>();
+        }
+        
+        // 🚀 性能优化：限制单次查询数量，避免SQL过长
+        if (materialIds.size() > 1000) {
+            log.warn("批量查询素材 - 查询数量过多: {}, 限制为1000个", materialIds.size());
+            materialIds = materialIds.subList(0, 1000);
+        }
+        
+        try {
+            // 🔧 使用MyBatis Plus的selectBatchIds进行批量查询
+            List<MaterialDO> materialDOS = materialMapper.selectByIds(materialIds);
+            
+            log.debug("批量查询素材完成 - 请求: {}, 返回: {}", materialIds.size(), materialDOS.size());
+            
+            // 🔄 转换为域对象
+            return materialConverter.toMaterials(materialDOS);
+            
+        } catch (Exception e) {
+            log.error("批量查询素材失败 - 素材IDs: {}, 错误: {}", materialIds, e.getMessage(), e);
+            return new ArrayList<>();
+        }
     }
 }

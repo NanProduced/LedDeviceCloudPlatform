@@ -1,20 +1,24 @@
 package org.nan.cloud.core.controller;
 
 import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;
+import org.nan.cloud.core.api.DTO.req.BatchMaterialMetadataRequest;
 import org.nan.cloud.core.api.DTO.req.CreateFolderRequest;
+import org.nan.cloud.core.api.DTO.res.BatchMaterialMetadataResponse;
 import org.nan.cloud.core.api.DTO.res.ListMaterialResponse;
 import org.nan.cloud.core.api.DTO.res.ListSharedMaterialResponse;
+import org.nan.cloud.core.api.DTO.res.MaterialMetadataItem;
 import org.nan.cloud.core.api.DTO.res.MaterialNodeTreeResponse;
 import org.nan.cloud.core.api.MaterialApi;
 import org.nan.cloud.core.facade.FolderFacade;
 import org.nan.cloud.core.facade.MaterialFacade;
+import org.nan.cloud.core.service.MaterialMetadataService;
 import org.springframework.validation.annotation.Validated;
-import org.springframework.web.bind.annotation.RequestBody;
-import org.springframework.web.bind.annotation.RequestParam;
-import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.*;
 
+import jakarta.validation.Valid;
 import java.util.List;
 
 @Tag(name = "Material(素材资源控制器)", description = "素材/文件夹相关所有操作")
@@ -24,6 +28,7 @@ public class MaterialController implements MaterialApi {
 
     private final FolderFacade folderFacade;
     private final MaterialFacade materialFacade;
+    private final MaterialMetadataService materialMetadataService;
 
     @Operation(
             summary = "创建文件夹",
@@ -110,5 +115,60 @@ public class MaterialController implements MaterialApi {
             @RequestParam(value = "fid", required = false) Long fid,
             @RequestParam(value = "includeSub", defaultValue = "false") boolean includeSub) {
         return materialFacade.listSharedMaterials(fid, includeSub);
+    }
+
+    // ========================= 素材元数据批量查询接口 =========================
+
+    @Operation(
+            summary = "批量查询素材元数据",
+            description = "根据素材ID列表批量获取详细元数据信息，专为节目编辑器设计的高性能接口",
+            tags = {"素材元数据"}
+    )
+    @PostMapping("/metadata/batch")
+    public BatchMaterialMetadataResponse batchGetMaterialMetadata(
+            @RequestBody @Valid BatchMaterialMetadataRequest request) {
+        
+        return materialMetadataService.batchGetMaterialMetadata(request);
+    }
+
+    @Operation(
+            summary = "查询单个素材元数据",
+            description = "根据素材ID获取详细元数据信息，包含图片/视频专属信息",
+            tags = {"素材元数据"}
+    )
+    @GetMapping("/metadata/{materialId}")
+    public MaterialMetadataItem getMaterialMetadata(
+            @Parameter(description = "素材ID", required = true) @PathVariable Long materialId,
+            @Parameter(description = "是否包含缩略图信息") @RequestParam(defaultValue = "true") Boolean includeThumbnails,
+            @Parameter(description = "是否包含基础文件信息") @RequestParam(defaultValue = "true") Boolean includeBasicInfo,
+            @Parameter(description = "是否包含图片元数据") @RequestParam(defaultValue = "true") Boolean includeImageMetadata,
+            @Parameter(description = "是否包含视频元数据") @RequestParam(defaultValue = "true") Boolean includeVideoMetadata) {
+        
+        return materialMetadataService.getMaterialMetadata(
+            materialId, includeThumbnails, includeBasicInfo, includeImageMetadata, includeVideoMetadata
+        );
+    }
+
+    @Operation(
+            summary = "检查素材元数据存在性",
+            description = "快速检查素材是否存在元数据，用于前端状态判断",
+            tags = {"素材元数据"}
+    )
+    @GetMapping("/metadata/{materialId}/exists")
+    public Boolean checkMetadataExists(
+            @Parameter(description = "素材ID", required = true) @PathVariable Long materialId) {
+        
+        return materialMetadataService.hasMetadata(materialId);
+    }
+
+    @Operation(
+            summary = "获取元数据查询性能统计",
+            description = "用于监控和优化查询性能的统计信息",
+            tags = {"素材元数据"}
+    )
+    @GetMapping("/metadata/performance-stats")
+    public String getMetadataPerformanceStats() {
+        
+        return materialMetadataService.getPerformanceStats();
     }
 }

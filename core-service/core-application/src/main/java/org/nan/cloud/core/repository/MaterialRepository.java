@@ -42,42 +42,12 @@ public interface MaterialRepository {
     List<MaterialShareRel> listSharedMaterials(Long oid, Long ugid, Long fid, boolean includeSub);
 
     /**
-     * 按文件夹查询素材（自动判断用户组/公共文件夹）
-     * @param oid 组织ID
-     * @param fid 文件夹ID
-     * @param includeSub 是否包含子文件夹
-     * @return 素材列表
-     */
-    List<Material> listMaterialsByFolder(Long oid, Long fid, boolean includeSub);
-
-    /**
      * 查询用户组可见的所有素材（自有+公共+分享）
      * @param oid 组织ID
      * @param ugid 用户组ID
      * @return 素材列表
      */
     List<Material> listAllVisibleMaterials(Long oid, Long ugid);
-
-    /**
-     * 根据文件夹ID查询素材数量
-     * @param fid 文件夹ID
-     * @return 素材数量
-     */
-    long countMaterialsByFolder(Long fid);
-
-    /**
-     * 根据用户组ID查询素材数量
-     * @param ugid 用户组ID
-     * @return 素材数量
-     */
-    long countMaterialsByUserGroup(Long ugid);
-
-    /**
-     * 查询公共素材数量
-     * @param oid 组织ID
-     * @return 素材数量
-     */
-    long countPublicMaterials(Long oid);
 
     /**
      * 检查素材是否属于指定组织
@@ -87,28 +57,6 @@ public interface MaterialRepository {
      */
     boolean isMaterialBelongsToOrg(Long oid, Long mid);
 
-    /**
-     * 检查素材是否属于指定用户组
-     * @param ugid 用户组ID
-     * @param mid 素材ID
-     * @return 是否属于该用户组
-     */
-    boolean isMaterialBelongsToUserGroup(Long ugid, Long mid);
-
-    /**
-     * 根据分享记录ID查询分享素材详情
-     * @param shareId 分享记录ID
-     * @return 分享素材详情
-     */
-    MaterialShareRel getSharedMaterialById(Long shareId);
-
-    /**
-     * 检查素材是否被分享给指定用户组
-     * @param mid 素材ID
-     * @param ugid 用户组ID
-     * @return 是否被分享
-     */
-    boolean isMaterialSharedToUserGroup(Long mid, Long ugid);
 
     /**
      * 根据文件ID查询素材
@@ -140,4 +88,11 @@ public interface MaterialRepository {
      * @param mids 素材ID列表
      */
     void deleteMaterials(List<Long> mids);
+    
+    /**
+     * 批量根据ID查询素材
+     * @param materialIds 素材ID列表
+     * @return 素材列表
+     */
+    List<Material> batchGetMaterialsByIds(List<Long> materialIds);
 }

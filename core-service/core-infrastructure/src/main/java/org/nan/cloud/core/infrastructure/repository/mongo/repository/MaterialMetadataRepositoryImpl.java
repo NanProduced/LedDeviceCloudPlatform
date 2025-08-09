@@ -68,23 +68,6 @@ public class MaterialMetadataRepositoryImpl implements MaterialMetadataRepositor
     }
 
     @Override
-    public MaterialMetadata findByFileId(String fileId) {
-        try {
-            Query query = new Query(Criteria.where("fileId").is(fileId));
-            MaterialMetadata metadata = mongoTemplate.findOne(query, MaterialMetadata.class, COLLECTION_NAME);
-            if (metadata != null) {
-                log.debug("根据文件ID查询素材元数据成功 - 文件ID: {}", fileId);
-            } else {
-                log.warn("未找到素材元数据 - 文件ID: {}", fileId);
-            }
-            return metadata;
-        } catch (Exception e) {
-            log.error("根据文件ID查询素材元数据失败 - 文件ID: {}, 错误: {}", fileId, e.getMessage(), e);
-            throw new RuntimeException("查询素材元数据失败", e);
-        }
-    }
-
-    @Override
     public void update(MaterialMetadata metadata) {
         try {
             MaterialMetadata saved = mongoTemplate.save(metadata, COLLECTION_NAME);
@@ -108,14 +91,54 @@ public class MaterialMetadataRepositoryImpl implements MaterialMetadataRepositor
     }
 
     @Override
-    public void deleteByFileIds(List<String> fileIds) {
+    public List<MaterialMetadata> batchFindByFileIds(List<String> fileIds) {
+        if (fileIds == null || fileIds.isEmpty()) {
+            log.debug("批量查询素材元数据 - 文件ID列表为空，返回空结果");
+            return List.of();
+        }
+        
+        // 🚀 性能优化：限制单次查询数量，避免MongoDB查询过慢
+        if (fileIds.size() > 500) {
+            log.warn("批量查询素材元数据 - 查询数量过多: {}, 限制为500个", fileIds.size());
+            fileIds = fileIds.subList(0, 500);
+        }
+        
         try {
             Query query = new Query(Criteria.where("fileId").in(fileIds));
-            long deletedCount = mongoTemplate.remove(query, MaterialMetadata.class, COLLECTION_NAME).getDeletedCount();
-            log.info("批量删除素材元数据成功 - 删除数量: {}, 文件ID列表: {}", deletedCount, fileIds);
+            List<MaterialMetadata> results = mongoTemplate.find(query, MaterialMetadata.class, COLLECTION_NAME);
+            
+            log.debug("批量查询素材元数据完成 - 请求: {}, 返回: {}", fileIds.size(), results.size());
+            
+            return results;
+            
         } catch (Exception e) {
-            log.error("批量删除素材元数据失败 - 文件ID列表: {}, 错误: {}", fileIds, e.getMessage(), e);
-            throw new RuntimeException("批量删除素材元数据失败", e);
+            log.error("批量查询素材元数据失败 - 文件ID列表: {}, 错误: {}", fileIds, e.getMessage(), e);
+            throw new RuntimeException("批量查询素材元数据失败", e);
+        }
+    }
+
+    @Override
+    public boolean existsByFileId(String fileId) {
+        if (fileId == null || fileId.trim().isEmpty()) {
+            return false;
+        }
+        
+        try {
+            Query query = new Query(Criteria.where("fileId").is(fileId));
+            // 🚀 性能优化：只检查存在性，不返回完整文档
+            query.fields().include("_id");
+            query.limit(1);
+            
+            boolean exists = mongoTemplate.exists(query, MaterialMetadata.class, COLLECTION_NAME);
+            
+            log.debug("检查素材元数据存在性 - 文件ID: {}, 存在: {}", fileId, exists);
+            
+            return exists;
+            
+        } catch (Exception e) {
+            log.warn("检查素材元数据存在性失败 - 文件ID: {}, 错误: {}", fileId, e.getMessage());
+            // 发生异常时返回false，避免影响主流程
+            return false;
         }
     }
 }

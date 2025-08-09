@@ -48,15 +48,6 @@ public interface MaterialService {
     List<ListSharedMaterialResponse> listSharedMaterials(Long oid, Long ugid, Long fid, boolean includeSub);
 
     /**
-     * 按文件夹查询素材（自动判断用户组/公共文件夹）
-     * @param oid 组织ID
-     * @param fid 文件夹ID
-     * @param includeSub 是否包含子文件夹
-     * @return 素材列表
-     */
-    List<ListMaterialResponse> listMaterialsByFolder(Long oid, Long fid, boolean includeSub);
-
-    /**
      * 查询所有可见素材
      * @param oid 组织ID
      * @param ugid 当前用户组ID
@@ -70,18 +61,6 @@ public interface MaterialService {
      * @return 素材详情
      */
     Material getMaterialById(Long mid);
-
-    /**
-     * 创建素材
-     * @param material 素材信息
-     */
-    void createMaterial(Material material);
-
-    /**
-     * 更新素材
-     * @param material 素材信息
-     */
-    void updateMaterial(Material material);
 
     /**
      * 删除素材
