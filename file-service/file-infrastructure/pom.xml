@@ -30,6 +30,10 @@
             <groupId>org.nan</groupId>
             <artifactId>common-mq-producer</artifactId>
         </dependency>
+        <dependency>
+            <groupId>org.nan</groupId>
+            <artifactId>common-mq-consumer</artifactId>
+        </dependency>
         
         <!-- MyBatis Plus - 与其他服务保持一致 -->
         <dependency>
@@ -77,6 +81,12 @@
         <dependency>
             <groupId>com.fasterxml.jackson.core</groupId>
             <artifactId>jackson-databind</artifactId>
+        </dependency>
+        <!-- 使用节目领域模型（ProgramContent, VsnProgram 等） -->
+        <dependency>
+            <groupId>org.nan</groupId>
+            <artifactId>program-domain</artifactId>
+            <version>${project.version}</version>
         </dependency>
 
         <!-- Apache Tika - 文件类型检测 -->

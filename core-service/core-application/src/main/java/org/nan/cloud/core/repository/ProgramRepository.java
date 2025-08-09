@@ -232,4 +232,21 @@ public interface ProgramRepository {
      * @return 版本数量
      */
     long countVersionsBySourceProgramId(Long sourceProgramId);
+
+    /**
+     * 更新VSN生成结果字段
+     * @param programId 节目ID
+     * @param status VSN生成状态
+     * @param vsnFileId VSN文件ID（可空）
+     * @param vsnFilePath VSN文件路径（可空）
+     * @param errorMessage 错误信息（可空）
+     * @param updatedBy 更新者（系统更新可传0）
+     * @return 影响行数
+     */
+    int updateVsnGenerationResult(Long programId,
+                                  org.nan.cloud.program.enums.VsnGenerationStatusEnum status,
+                                  String vsnFileId,
+                                  String vsnFilePath,
+                                  String errorMessage,
+                                  Long updatedBy);
 }

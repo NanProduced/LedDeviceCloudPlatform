@@ -381,4 +381,26 @@ public class ProgramRepositoryImpl implements ProgramRepository {
         
         return programMapper.selectCount(queryWrapper);
     }
+
+    @Override
+    public int updateVsnGenerationResult(Long programId,
+                                         org.nan.cloud.program.enums.VsnGenerationStatusEnum status,
+                                         String vsnFileId,
+                                         String vsnFilePath,
+                                         String errorMessage,
+                                         Long updatedBy) {
+        log.debug("Updating VSN result: programId={}, status={}, fileId={}, path={}",
+                programId, status, vsnFileId, vsnFilePath);
+
+        UpdateWrapper<ProgramDO> updateWrapper = new UpdateWrapper<>();
+        updateWrapper.eq("id", programId)
+                .set("vsn_generation_status", status)
+                .set("vsn_file_id", vsnFileId)
+                .set("vsn_file_path", vsnFilePath)
+                .set("vsn_generation_error", errorMessage)
+                .set("updated_by", updatedBy)
+                .set("updated_time", LocalDateTime.now());
+
+        return programMapper.update(null, updateWrapper);
+    }
 }

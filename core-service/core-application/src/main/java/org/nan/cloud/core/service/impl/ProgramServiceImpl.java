@@ -515,6 +515,7 @@ public class ProgramServiceImpl implements ProgramService {
                 .timestamp(LocalDateTime.now())
                 .build();
 
+        // 触发MQ发布
         vsnEventPublisher.publishVsnGenerationRequest(event);
         log.debug("VSN generation request published for program: {}", program.getId());
     }

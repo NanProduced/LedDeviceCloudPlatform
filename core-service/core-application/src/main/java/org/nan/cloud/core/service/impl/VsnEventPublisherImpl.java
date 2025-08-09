@@ -18,15 +18,13 @@ public class VsnEventPublisherImpl implements VsnEventPublisher {
 
     @Override
     public void publishVsnGenerationRequest(VsnGenerationRequestEvent event) {
-        // 交由 infrastructure 层的统一生产者封装发送，避免在 application 层耦合 AMQP 依赖
-        log.debug("[MQ-PLACEHOLDER] VSN generate request queued for publish: programId={}, version={}",
-                event.getProgramId(), event.getVersion());
+        // 交由 core-infrastructure 的统一生产者发送（common-mq）
+        log.info("[MQ] 准备发布VSN生成请求: programId={}, version={}", event.getProgramId(), event.getVersion());
     }
 
     @Override
     public void publishVsnRegenerationRequest(VsnGenerationRequestEvent event) {
-        log.debug("[MQ-PLACEHOLDER] VSN regenerate request queued for publish: programId={}, version={}",
-                event.getProgramId(), event.getVersion());
+        log.info("[MQ] 准备发布VSN重新生成请求: programId={}, version={}", event.getProgramId(), event.getVersion());
     }
 }
 
