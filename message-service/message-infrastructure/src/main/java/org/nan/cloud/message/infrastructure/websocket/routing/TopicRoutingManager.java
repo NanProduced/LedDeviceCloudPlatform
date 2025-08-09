@@ -29,16 +29,15 @@ import java.util.concurrent.ConcurrentHashMap;
  * - 作为技术基础设施，实现细节对最终用户不可见
  * 
  * 路由层次结构：
- * - Global Level: 全局系统主题，所有用户可见
  * - Organization Level: 组织级别主题，组织内用户可见
  * - User Level: 用户级别主题，个人专属
  * - Terminal Level: 终端级别主题，有权限的用户可见
  * - Task Level: 任务级别主题，相关用户可见
+ * - System Level: 系统级别主题，按权限控制可见性
  * 
- * 订阅生命周期：
- * - Persistent: 持久订阅，用户连接期间始终有效
- * - Session: 会话订阅，特定会话期间有效
- * - Temporary: 临时订阅，特定操作期间有效
+ * 简化的订阅生命周期：
+ * - Session: 会话订阅，会话期间有效，适用于大部分场景
+ * - Temporary: 临时订阅，特定操作期间有效，适用于任务和批量操作
  * 
  * @author Nan
  * @since 1.0.0

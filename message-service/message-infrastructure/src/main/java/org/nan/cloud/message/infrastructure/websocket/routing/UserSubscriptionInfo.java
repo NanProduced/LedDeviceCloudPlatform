@@ -25,11 +25,6 @@ public class UserSubscriptionInfo {
      */
     private final String userId;
     
-    /**
-     * 持久订阅集合
-     * 这些订阅在用户连接期间始终有效
-     */
-    private final Set<String> persistentSubscriptions = new CopyOnWriteArraySet<>();
     
     /**
      * 会话订阅映射
@@ -77,18 +72,7 @@ public class UserSubscriptionInfo {
             boolean added = false;
             
             switch (level) {
-                case PERSISTENT:
-                case GLOBAL:
-                    added = persistentSubscriptions.add(topic);
-                    if (added) {
-                        log.debug("添加持久订阅 - 用户: {}, 主题: {}", userId, topic);
-                    } else {
-                        log.debug("持久订阅已存在 - 用户: {}, 主题: {}", userId, topic);
-                    }
-                    break;
-                    
                 case SESSION:
-                case PAGE:
                     if (sessionId != null) {
                         Set<String> sessionTopics = sessionSubscriptions.computeIfAbsent(sessionId, k -> new CopyOnWriteArraySet<>());
                         added = sessionTopics.add(topic);
@@ -149,12 +133,6 @@ public class UserSubscriptionInfo {
         boolean removed = false;
         
         try {
-            // 尝试从持久订阅中移除
-            if (persistentSubscriptions.remove(topic)) {
-                removed = true;
-                log.debug("移除持久订阅 - 用户: {}, 主题: {}", userId, topic);
-            }
-            
             // 尝试从会话订阅中移除
             if (sessionId != null) {
                 Set<String> sessionTopics = sessionSubscriptions.get(sessionId);
@@ -267,11 +245,6 @@ public class UserSubscriptionInfo {
      * @return true表示已订阅，false表示未订阅
      */
     public boolean isSubscribedTo(String topic) {
-        // 检查持久订阅
-        if (persistentSubscriptions.contains(topic)) {
-            return true;
-        }
-        
         // 检查会话订阅
         for (Set<String> sessionTopics : sessionSubscriptions.values()) {
             if (sessionTopics.contains(topic)) {
@@ -295,9 +268,7 @@ public class UserSubscriptionInfo {
      * @return 所有订阅主题的集合
      */
     public Set<String> getAllSubscribedTopics() {
-
-        // 添加持久订阅
-        Set<String> allTopics = new HashSet<>(persistentSubscriptions);
+        Set<String> allTopics = new HashSet<>();
         
         // 添加会话订阅
         for (Set<String> sessionTopics : sessionSubscriptions.values()) {
@@ -331,7 +302,6 @@ public class UserSubscriptionInfo {
     public UserSubscriptionStats getSubscriptionStatistics() {
         return UserSubscriptionStats.builder()
                 .userId(userId)
-                .persistentSubscriptionCount(persistentSubscriptions.size())
                 .sessionSubscriptionCount(sessionSubscriptions.values().stream().mapToInt(Set::size).sum())
                 .temporarySubscriptionCount(temporarySubscriptions.size())
                 .totalTopicsSubscribed(getAllSubscribedTopics().size())

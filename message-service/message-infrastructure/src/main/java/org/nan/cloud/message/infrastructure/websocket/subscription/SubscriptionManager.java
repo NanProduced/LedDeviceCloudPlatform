@@ -307,40 +307,23 @@ public class SubscriptionManager {
     
     
     /**
-     * 确定订阅层次 (根据极简化Topic结构)
+     * 确定订阅层次 (基于简化的两层设计)
+     * SESSION: 会话期间有效，适用于大部分场景
+     * TEMPORARY: 特定操作期间有效，适用于任务和批量操作
      */
     private SubscriptionLevel determineSubscriptionLevel(String topicPath) {
-        // 个人消息队列使用会话订阅，允许重连后重新订阅
-        if (topicPath.startsWith("/user/queue/")) {
-            return SubscriptionLevel.SESSION;
-        }
-        
-        // 组织消息主题使用持久订阅
-        if (topicPath.startsWith("/topic/org/")) {
-            return SubscriptionLevel.PERSISTENT;
-        }
-        
-        // 系统消息主题使用全局订阅
-        if (topicPath.equals(StompTopic.SYSTEM_TOPIC)) {
-            return SubscriptionLevel.GLOBAL;
-        }
-        
-        // 设备相关主题使用会话订阅（按需订阅）
-        if (topicPath.startsWith("/topic/device/")) {
-            return SubscriptionLevel.SESSION;
-        }
-        
-        // 任务相关主题使用临时订阅
+        // 任务相关主题使用临时订阅 - 操作完成后清理
         if (topicPath.startsWith("/topic/task/")) {
             return SubscriptionLevel.TEMPORARY;
         }
         
-        // 批量聚合相关主题使用临时订阅
+        // 批量聚合相关主题使用临时订阅 - 批量操作完成后清理
         if (topicPath.startsWith("/topic/batch/")) {
             return SubscriptionLevel.TEMPORARY;
         }
         
-        // 默认使用会话订阅
+        // 所有其他主题使用会话订阅（默认）
+        // 包括：个人消息队列、组织消息、系统消息、设备消息
         return SubscriptionLevel.SESSION;
     }
     

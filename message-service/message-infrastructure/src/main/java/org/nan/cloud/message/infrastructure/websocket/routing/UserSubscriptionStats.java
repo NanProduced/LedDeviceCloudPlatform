@@ -7,6 +7,7 @@ import java.time.LocalDateTime;
 
 /**
  * 用户订阅统计信息
+ * 简化版本，基于SESSION和TEMPORARY两种订阅层次
  * 
  * @author Nan
  * @since 1.0.0
@@ -19,11 +20,6 @@ public class UserSubscriptionStats {
      * 用户ID
      */
     private String userId;
-    
-    /**
-     * 持久订阅数量
-     */
-    private int persistentSubscriptionCount;
     
     /**
      * 会话订阅数量
