@@ -1,7 +1,10 @@
 package org.nan.cloud.core.infrastructure.repository.mongo.document;
 
 
+import lombok.AllArgsConstructor;
+import lombok.Builder;
 import lombok.Data;
+import lombok.NoArgsConstructor;
 import org.nan.cloud.core.enums.QuotaOperationType;
 import org.springframework.data.annotation.Id;
 import org.springframework.data.mongodb.core.mapping.Document;
@@ -11,6 +14,9 @@ import java.util.Map;
 
 @Document("org_quota_change_log")
 @Data
+@AllArgsConstructor
+@NoArgsConstructor
+@Builder
 public class OrgQuotaChangeLogDocument {
 
     @Id

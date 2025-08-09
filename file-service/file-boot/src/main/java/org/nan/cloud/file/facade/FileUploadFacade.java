@@ -11,6 +11,8 @@ import org.nan.cloud.file.application.repository.OrgQuotaRepository;
 import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
 
+import java.util.Objects;
+
 /**
  * 文件上传门面服务
  * 
@@ -41,7 +43,9 @@ public class FileUploadFacade {
         RequestUserInfo requestUser = InvocationContextHolder.getContext().getRequestUser();
         uploadRequest.setOid(requestUser.getOid());
         uploadRequest.setUid(requestUser.getUid());
-        uploadRequest.setUgid(requestUser.getUgid());
+        if (Objects.isNull(uploadRequest.getUgid())) {
+            uploadRequest.setUgid(requestUser.getUgid());
+        }
         
         log.debug("填充上传请求上下文 - 组织ID: {} , 用户ID: {}", requestUser.getOid(), requestUser.getUid());
     }

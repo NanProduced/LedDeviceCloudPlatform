@@ -21,6 +21,9 @@ public class FileUploadRequest {
     @Schema(description = "目标文件夹ID", example = "folder001")
     private String folderId;
 
+    @Schema(description = "目标用户组根目录", example = "12")
+    private Long ugid;
+
     @Schema(description = "素材名称", example = "宣传视频")
     @Size(max = 200, message = "素材名称不能超过200个字符")
     private String materialName;
@@ -36,8 +39,5 @@ public class FileUploadRequest {
 
     @Schema(hidden = true)
     private Long uid;
-
-    @Schema(hidden = true)
-    private Long ugid;
 
 }

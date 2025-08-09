@@ -243,7 +243,6 @@ public class FileUploadMessageProcessor implements BusinessMessageProcessor {
         payload.put("taskId", messageData.get("taskId"));
         payload.put("fileId", messageData.get("fileId"));
         payload.put("fileName", messageData.get("originalFilename"));
-        payload.put("materialId", messageData.get("materialId"));
         payload.put("timestamp", timestamp);
         
         return CommonStompMessage.builder()

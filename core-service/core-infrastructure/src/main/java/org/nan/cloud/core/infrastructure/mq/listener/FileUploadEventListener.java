@@ -192,7 +192,8 @@ public class FileUploadEventListener implements MessageConsumer {
 
             // 发组织空间变更事件 - 扣除空间
             applicationEventPublisher.publishEvent(new QuotaChangeEvent(this, QuotaChangeEvent.QuotaChangeEventType.MATERIAL_FILE_UPLOAD, event.getTaskId()));
-            
+            log.error("发布组织空间变更事件 - 组织:{}", existingMaterial.getOid());
+
         } catch (Exception e) {
             log.error("❌ 创建素材业务数据失败 - 任务ID: {}, 错误: {}", 
                     event.getTaskId(), e.getMessage(), e);
