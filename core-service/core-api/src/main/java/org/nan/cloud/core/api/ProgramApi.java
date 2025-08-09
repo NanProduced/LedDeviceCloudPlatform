@@ -93,13 +93,7 @@ public interface ProgramApi {
     @DeleteMapping(PREFIX + "/{programId}")
     ProgramDTO deleteProgram(@PathVariable Long programId);
 
-    /**
-     * 9) 复制节目
-     * POST /core/api/program/{programId}/copy
-     * Resp.data: { programId: "newId" }
-     */
-    @PostMapping(PREFIX + "/{programId}/copy")
-    ProgramDTO copyProgram(@PathVariable Long programId);
+    
 
     /**
      * 10) 版本管理

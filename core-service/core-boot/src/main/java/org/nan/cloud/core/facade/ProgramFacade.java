@@ -176,21 +176,7 @@ public class ProgramFacade {
         return program;
     }
 
-    /**
-     * 复制节目
-     */
-    public ProgramDTO copyProgram(Long programId) {
-        RequestUserInfo userInfo = InvocationContextHolder.getContext().getRequestUser();
-        log.info("Copying program: programId={}, userId={}, oid={}", 
-                programId, userInfo.getUid(), userInfo.getOid());
-
-        // TODO: 实现复制节目逻辑
-        // 1. 获取源节目详情和内容
-        // 2. 创建新节目（名称添加"副本"后缀）
-        // 3. 复制所有内容和素材引用
-        
-        throw new UnsupportedOperationException("复制节目功能待实现");
-    }
+    
 
     /**
      * 获取节目版本列表

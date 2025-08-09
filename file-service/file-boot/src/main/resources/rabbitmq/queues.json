@@ -1,0 +1,13 @@
+[
+  {
+    "name": "business.file.queue",
+    "durable": true,
+    "exclusive": false,
+    "autoDelete": false,
+    "ttl": 900000,
+    "deadLetterExchange": "business.dlx.topic",
+    "deadLetterRoutingKey": "file.business.dlq",
+    "description": "文件服务业务队列 - 接收文件相关请求(含VSN生成)"
+  }
+]
+

@@ -13,4 +13,12 @@
     "autoDelete": false,
     "description": "STOMP推送交换器 - 发布实时消息到message-service"
   }
+  ,
+  {
+    "name": "business.dlx.topic",
+    "type": "topic",
+    "durable": true,
+    "autoDelete": false,
+    "description": "业务死信交换器 - 文件服务DLQ绑定"
+  }
 ]

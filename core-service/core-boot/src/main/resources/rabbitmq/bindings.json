@@ -14,6 +14,13 @@
     "description": "任务进度事件绑定 - 路由键: task.progress.{orgId}.{taskId}，对应@Bean: taskProgressBinding()"
   },
   {
+    "source": "business.topic",
+    "destination": "business.core.queue",
+    "destinationType": "queue",
+    "routingKey": "program.vsn.result.*.*",
+    "description": "VSN生成结果绑定 - 路由键: program.vsn.result.{orgId}.{programId}"
+  },
+  {
     "source": "business.dlx.topic",
     "destination": "business.core.dlq",
     "destinationType": "queue",

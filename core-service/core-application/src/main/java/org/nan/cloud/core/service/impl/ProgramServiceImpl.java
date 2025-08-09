@@ -45,7 +45,7 @@ public class ProgramServiceImpl implements ProgramService {
     private final ProgramMaterialRefRepository programMaterialRefRepository;
     private final ProgramApprovalRepository programApprovalRepository;
     private final ProgramDtoConverter programDtoConverter;
-//    private final VsnEventPublisher vsnEventPublisher; // todo:未实现，先注释避免影响项目启动
+    private final VsnEventPublisher vsnEventPublisher;
     private final MaterialDependencyService materialDependencyService;
 
     @Override
@@ -515,7 +515,7 @@ public class ProgramServiceImpl implements ProgramService {
                 .timestamp(LocalDateTime.now())
                 .build();
 
-//        vsnEventPublisher.publishVsnGenerationRequest(event);
+        vsnEventPublisher.publishVsnGenerationRequest(event);
         log.debug("VSN generation request published for program: {}", program.getId());
     }
 

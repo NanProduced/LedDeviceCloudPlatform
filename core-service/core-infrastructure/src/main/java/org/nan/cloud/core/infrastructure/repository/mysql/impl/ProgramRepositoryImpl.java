@@ -119,7 +119,7 @@ public class ProgramRepositoryImpl implements ProgramRepository {
                    .eq("deleted", 0);
         
         if (status != null) {
-            queryWrapper.eq("status", status);
+            queryWrapper.eq("program_status", status);
         }
         
         return programMapper.selectCount(queryWrapper);
@@ -146,7 +146,7 @@ public class ProgramRepositoryImpl implements ProgramRepository {
                    .eq("deleted", 0);
         
         if (status != null) {
-            queryWrapper.eq("status", status);
+            queryWrapper.eq("program_status", status);
         }
         
         return programMapper.selectCount(queryWrapper);
@@ -171,7 +171,7 @@ public class ProgramRepositoryImpl implements ProgramRepository {
         queryWrapper.eq("org_id", oid).eq("deleted", 0);
         
         if (status != null) {
-            queryWrapper.eq("status", status);
+            queryWrapper.eq("program_status", status);
         }
         
         return programMapper.selectCount(queryWrapper);
@@ -243,7 +243,7 @@ public class ProgramRepositoryImpl implements ProgramRepository {
         
         UpdateWrapper<ProgramDO> updateWrapper = new UpdateWrapper<>();
         updateWrapper.eq("id", programId)
-                    .set("status", status)
+                    .set("program_status", status)
                     .set("updated_by", updatedBy)
                     .set("updated_time", LocalDateTime.now());
         
@@ -264,7 +264,7 @@ public class ProgramRepositoryImpl implements ProgramRepository {
         
         UpdateWrapper<ProgramDO> updateWrapper = new UpdateWrapper<>();
         updateWrapper.in("id", programIds)
-                    .set("status", status)
+                    .set("program_status", status)
                     .set("updated_by", updatedBy)
                     .set("updated_time", LocalDateTime.now());
         

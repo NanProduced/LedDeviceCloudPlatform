@@ -30,7 +30,7 @@ public interface ProgramMapper extends BaseMapper<ProgramDO> {
      */
     @Select("<script>" +
             "SELECT * FROM program WHERE deleted = 0 AND org_id = #{oid} AND user_group_id = #{ugid} " +
-            "<if test='status != null'> AND status = #{status} </if>" +
+            "<if test='status != null'> AND program_status = #{status} </if>" +
             "ORDER BY updated_time DESC" +
             "</script>")
     IPage<ProgramDO> selectPageByUserGroup(Page<?> page, @Param("oid") Long oid, 
@@ -46,7 +46,7 @@ public interface ProgramMapper extends BaseMapper<ProgramDO> {
      */
     @Select("<script>" +
             "SELECT * FROM program WHERE deleted = 0 AND org_id = #{oid} AND created_by = #{createdBy} " +
-            "<if test='status != null'> AND status = #{status} </if>" +
+            "<if test='status != null'> AND program_status = #{status} </if>" +
             "ORDER BY updated_time DESC" +
             "</script>")
     IPage<ProgramDO> selectPageByCreator(Page<?> page, @Param("oid") Long oid, 
@@ -61,7 +61,7 @@ public interface ProgramMapper extends BaseMapper<ProgramDO> {
      */
     @Select("<script>" +
             "SELECT * FROM program WHERE deleted = 0 AND org_id = #{oid} " +
-            "<if test='status != null'> AND status = #{status} </if>" +
+            "<if test='status != null'> AND program_status = #{status} </if>" +
             "ORDER BY updated_time DESC" +
             "</script>")
     IPage<ProgramDO> selectPageByOrganization(Page<?> page, @Param("oid") Long oid, @Param("status") ProgramStatusEnum status);
@@ -100,7 +100,7 @@ public interface ProgramMapper extends BaseMapper<ProgramDO> {
     @Select("<script>" +
             "SELECT * FROM program WHERE deleted = 0 AND org_id = #{oid} " +
             "<if test='ugid != null'> AND user_group_id = #{ugid} </if>" +
-            "AND status = 'PUBLISHED' " +
+            "AND program_status = 'PUBLISHED' " +
             "ORDER BY usage_count DESC, updated_time DESC LIMIT #{limit}" +
             "</script>")
     List<ProgramDO> selectPopularPrograms(@Param("oid") Long oid, @Param("ugid") Long ugid, @Param("limit") int limit);

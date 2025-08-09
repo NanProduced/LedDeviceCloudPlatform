@@ -127,16 +127,7 @@ public class ProgramController implements ProgramApi {
         return programFacade.deleteProgram(programId);
     }
 
-    @Operation(
-            summary = "复制节目",
-            description = "复制现有节目创建新节目",
-            tags = {"节目管理"}
-    )
-    @Override
-    public ProgramDTO copyProgram(@PathVariable Long programId) {
-        log.info("REST API: Copying program: {}", programId);
-        return programFacade.copyProgram(programId);
-    }
+    
 
     @Operation(
             summary = "获取节目版本列表",
