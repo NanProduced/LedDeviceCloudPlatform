@@ -10,6 +10,8 @@ import org.nan.cloud.file.application.service.StorageService;
 import org.nan.cloud.file.application.service.StreamingService;
 import org.nan.cloud.file.application.repository.FileInfoRepository;
 import org.nan.cloud.file.application.service.ThumbnailService;
+import org.nan.cloud.file.application.repository.MaterialMetadataRepository;
+import org.nan.cloud.common.basic.domain.MaterialMetadata;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -20,6 +22,7 @@ import jakarta.servlet.http.HttpServletResponse;
 import java.io.*;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
+import java.util.List;
 
 /**
  * 文件预览服务实现类
@@ -43,6 +46,7 @@ public class FilePreviewServiceImpl implements FilePreviewService {
     private final StreamingService streamingService;
     private final FileInfoRepository fileInfoRepository;
     private final ThumbnailService thumbnailService;
+    private final MaterialMetadataRepository materialMetadataRepository;
 
     // 🔧 缓存配置
     private static final String PREVIEW_CACHE_PREFIX = "file_preview:";
@@ -81,6 +85,13 @@ public class FilePreviewServiceImpl implements FilePreviewService {
             // ⚡ 检查缓存控制头
             if (handleCacheControl(normalizedRequest, fileInfo, response)) {
                 log.debug("缓存命中 - 文件ID: {}, 用时: {}ms", 
+                         normalizedRequest.getFileId(), System.currentTimeMillis() - startTime);
+                return;
+            }
+            
+            // 🎯 尝试302重定向到预生成缩略图
+            if (tryRedirectToPregenerated(normalizedRequest, fileInfo, response)) {
+                log.debug("302重定向到预生成缩略图 - 文件ID: {}, 用时: {}ms", 
                          normalizedRequest.getFileId(), System.currentTimeMillis() - startTime);
                 return;
             }
@@ -613,5 +624,211 @@ public class FilePreviewServiceImpl implements FilePreviewService {
             log.error("生成缩略图流失败 - 文件ID: {}, 错误: {}", request.getFileId(), e.getMessage(), e);
             return null;
         }
+    }
+    
+    // ========================= 302重定向核心逻辑 =========================
+    
+    /**
+     * 尝试302重定向到预生成缩略图
+     */
+    private boolean tryRedirectToPregenerated(PreviewRequest request, FileInfo fileInfo, HttpServletResponse response) {
+        try {
+            // 🔍 获取MaterialMetadata
+            MaterialMetadata metadata = materialMetadataRepository.findByFileId(request.getFileId());
+            if (metadata == null || metadata.getThumbnails() == null || 
+                metadata.getThumbnails().getAllThumbnails() == null || 
+                metadata.getThumbnails().getAllThumbnails().isEmpty()) {
+                log.debug("无预生成缩略图元数据 - 文件ID: {}", request.getFileId());
+                return false;
+            }
+            
+            // 🎯 查找最佳匹配的缩略图
+            MaterialMetadata.ThumbnailInfo bestMatch;
+            String mimeType = fileInfo.getMimeType().toLowerCase();
+            
+            if (mimeType.startsWith("video/") && request.getTimeOffset() != null) {
+                // 视频：根据时间点匹配截帧
+                bestMatch = findBestVideoFrameMatch(metadata.getThumbnails().getAllThumbnails(), request);
+            } else {
+                // 图片/视频默认帧：根据尺寸匹配
+                bestMatch = findBestThumbnailMatch(metadata.getThumbnails().getAllThumbnails(), request);
+            }
+            
+            if (bestMatch == null || !StringUtils.hasText(bestMatch.getStorageUrl())) {
+                log.debug("无合适的预生成缩略图匹配 - 文件ID: {}", request.getFileId());
+                return false;
+            }
+            
+            // 🚀 执行302重定向
+            response.setStatus(HttpServletResponse.SC_FOUND);
+            response.setHeader("Location", bestMatch.getStorageUrl());
+            
+            // 设置预生成资源的长缓存策略
+            setPreGeneratedCacheHeaders(response, request.getFileId());
+            
+            log.info("302重定向成功 - 文件ID: {}, 重定向至: {}, 尺寸: {}x{}", 
+                    request.getFileId(), bestMatch.getStorageUrl(), 
+                    bestMatch.getWidth(), bestMatch.getHeight());
+            
+            return true;
+            
+        } catch (Exception e) {
+            log.warn("302重定向处理失败，降级到动态生成 - 文件ID: {}, 错误: {}", 
+                    request.getFileId(), e.getMessage());
+            return false;
+        }
+    }
+    
+    /**
+     * 查找最佳匹配的缩略图（基于尺寸和适配模式）
+     */
+    private MaterialMetadata.ThumbnailInfo findBestThumbnailMatch(
+            List<MaterialMetadata.ThumbnailInfo> thumbnails, PreviewRequest request) {
+        
+        if (thumbnails == null || thumbnails.isEmpty()) {
+            return null;
+        }
+        
+        return thumbnails.stream()
+                .filter(t -> StringUtils.hasText(t.getStorageUrl()))
+                .min((t1, t2) -> {
+                    double score1 = calculateThumbnailMatchScore(t1, request);
+                    double score2 = calculateThumbnailMatchScore(t2, request);
+                    return Double.compare(score1, score2);
+                })
+                .orElse(getPrimaryThumbnail(thumbnails));
+    }
+    
+    /**
+     * 计算缩略图匹配评分（越小越好）
+     */
+    private double calculateThumbnailMatchScore(MaterialMetadata.ThumbnailInfo thumbnail, PreviewRequest request) {
+        // 如果请求没有指定尺寸，优先返回主缩略图（300x300）
+        if (request.getWidth() == null && request.getHeight() == null) {
+            boolean isPrimary = Boolean.TRUE.equals(thumbnail.getIsPrimary()) || 
+                              (thumbnail.getWidth() != null && thumbnail.getWidth() == 300 && 
+                               thumbnail.getHeight() != null && thumbnail.getHeight() == 300);
+            return isPrimary ? 0.0 : 100.0;
+        }
+        
+        int reqWidth = request.getWidth() != null ? request.getWidth() : 300;
+        int reqHeight = request.getHeight() != null ? request.getHeight() : 300;
+        
+        int thumbWidth = thumbnail.getWidth() != null ? thumbnail.getWidth() : 300;
+        int thumbHeight = thumbnail.getHeight() != null ? thumbnail.getHeight() : 300;
+        
+        // 尺寸差异评分
+        double sizeDiff = Math.abs(thumbWidth - reqWidth) + Math.abs(thumbHeight - reqHeight);
+        
+        // 适配模式权重（cover模式优先）
+        double fitBonus = "cover".equalsIgnoreCase(request.getFit()) ? 0.0 : 10.0;
+        
+        // 主缩略图优先级
+        double primaryBonus = Boolean.TRUE.equals(thumbnail.getIsPrimary()) ? 0.0 : 5.0;
+        
+        return sizeDiff + fitBonus + primaryBonus;
+    }
+    
+    /**
+     * 查找最佳匹配的视频帧缩略图（基于时间点）
+     */
+    private MaterialMetadata.ThumbnailInfo findBestVideoFrameMatch(
+            List<MaterialMetadata.ThumbnailInfo> thumbnails, PreviewRequest request) {
+        
+        if (thumbnails == null || thumbnails.isEmpty() || request.getTimeOffset() == null) {
+            return findBestThumbnailMatch(thumbnails, request);
+        }
+        
+        double requestTime = request.getTimeOffset();
+        
+        // 查找带时间标识的视频帧缩略图
+        List<MaterialMetadata.ThumbnailInfo> videoFrames = thumbnails.stream()
+                .filter(t -> StringUtils.hasText(t.getStoragePath()) && 
+                           t.getStoragePath().contains("_t") && 
+                           t.getStoragePath().contains("s."))
+                .toList();
+        
+        if (videoFrames.isEmpty()) {
+            log.debug("无时间点标识的视频帧，使用默认缩略图匹配");
+            return findBestThumbnailMatch(thumbnails, request);
+        }
+        
+        // 查找时间点最接近的帧
+        return videoFrames.stream()
+                .min((f1, f2) -> {
+                    double time1 = extractTimeFromPath(f1.getStoragePath());
+                    double time2 = extractTimeFromPath(f2.getStoragePath());
+                    double diff1 = Math.abs(time1 - requestTime);
+                    double diff2 = Math.abs(time2 - requestTime);
+                    return Double.compare(diff1, diff2);
+                })
+                .orElse(findBestThumbnailMatch(thumbnails, request));
+    }
+    
+    /**
+     * 从文件路径中提取时间信息
+     * 例如：xxx_t5s.jpg → 5.0
+     */
+    private double extractTimeFromPath(String path) {
+        if (!StringUtils.hasText(path)) {
+            return 0.0;
+        }
+        
+        try {
+            // 查找_t和s之间的数字
+            int tIndex = path.indexOf("_t");
+            int sIndex = path.indexOf("s.", tIndex);
+            
+            if (tIndex != -1 && sIndex != -1 && tIndex < sIndex) {
+                String timeStr = path.substring(tIndex + 2, sIndex);
+                return Double.parseDouble(timeStr);
+            }
+        } catch (Exception e) {
+            log.debug("解析时间信息失败 - 路径: {}, 错误: {}", path, e.getMessage());
+        }
+        
+        return 0.0;
+    }
+    
+    /**
+     * 获取主缩略图
+     */
+    private MaterialMetadata.ThumbnailInfo getPrimaryThumbnail(List<MaterialMetadata.ThumbnailInfo> thumbnails) {
+        if (thumbnails == null || thumbnails.isEmpty()) {
+            return null;
+        }
+        
+        // 优先选择标记为主缩略图的
+        return thumbnails.stream()
+                .filter(t -> Boolean.TRUE.equals(t.getIsPrimary()) && StringUtils.hasText(t.getStorageUrl()))
+                .findFirst()
+                .orElse(thumbnails.stream()
+                        .filter(t -> StringUtils.hasText(t.getStorageUrl()))
+                        .findFirst()
+                        .orElse(null));
+    }
+    
+    /**
+     * 设置预生成资源的缓存头
+     */
+    private void setPreGeneratedCacheHeaders(HttpServletResponse response, String fileId) {
+        // 🚀 预生成资源长缓存策略 - 7天
+        response.setHeader("Cache-Control", "public, max-age=604800, s-maxage=2592000, immutable");
+        
+        // ✅ ETag和Last-Modified
+        response.setHeader("ETag", generateStrongETag(fileId, true));
+        response.setHeader("Last-Modified", getCurrentTimestamp());
+        
+        // 🌐 CORS配置
+        response.setHeader("Access-Control-Allow-Origin", ALLOWED_ORIGINS);
+        response.setHeader("Access-Control-Allow-Methods", ALLOWED_METHODS);
+        response.setHeader("Access-Control-Allow-Headers", ALLOWED_HEADERS);
+        response.setHeader("Access-Control-Expose-Headers", EXPOSED_HEADERS);
+        response.setHeader("Access-Control-Max-Age", String.valueOf(PREFLIGHT_MAX_AGE));
+        
+        // 📊 性能优化头
+        response.setHeader("Vary", "Accept, Accept-Encoding");
+        
+        log.debug("设置预生成资源缓存头 - 文件ID: {}", fileId);
     }
 }
