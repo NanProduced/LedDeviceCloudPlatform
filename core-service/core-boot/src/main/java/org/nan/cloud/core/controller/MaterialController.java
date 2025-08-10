@@ -122,7 +122,7 @@ public class MaterialController implements MaterialApi {
     @Operation(
             summary = "批量查询素材元数据",
             description = "根据素材ID列表批量获取详细元数据信息，专为节目编辑器设计的高性能接口",
-            tags = {"素材元数据"}
+            tags = {"素材管理", "素材元数据"}
     )
     @PostMapping("/metadata/batch")
     public BatchMaterialMetadataResponse batchGetMaterialMetadata(
@@ -134,7 +134,7 @@ public class MaterialController implements MaterialApi {
     @Operation(
             summary = "查询单个素材元数据",
             description = "根据素材ID获取详细元数据信息，包含图片/视频专属信息",
-            tags = {"素材元数据"}
+            tags = {"素材管理", "素材元数据"}
     )
     @GetMapping("/metadata/{materialId}")
     public MaterialMetadataItem getMaterialMetadata(
@@ -152,7 +152,7 @@ public class MaterialController implements MaterialApi {
     @Operation(
             summary = "检查素材元数据存在性",
             description = "快速检查素材是否存在元数据，用于前端状态判断",
-            tags = {"素材元数据"}
+            tags = {"素材管理", "素材元数据"}
     )
     @GetMapping("/metadata/{materialId}/exists")
     public Boolean checkMetadataExists(
@@ -164,7 +164,7 @@ public class MaterialController implements MaterialApi {
     @Operation(
             summary = "获取元数据查询性能统计",
             description = "用于监控和优化查询性能的统计信息",
-            tags = {"素材元数据"}
+            tags = {"素材管理", "素材元数据", "性能监控"}
     )
     @GetMapping("/metadata/performance-stats")
     public String getMetadataPerformanceStats() {

@@ -66,11 +66,11 @@ public class OptimizedAsyncConfiguration {
     }
 
     /**
-     * 文件上传任务执行器（增强版）
-     * 在原有基础上优化参数，提升上传性能
+     * 文件上传任务执行器
+     * 优化的IO密集型线程池，替代原AsyncConfiguration中的fileUploadTaskExecutor
      */
-    @Bean("optimizedFileUploadTaskExecutor")
-    public Executor optimizedFileUploadTaskExecutor() {
+    @Bean("fileUploadTaskExecutor")
+    public Executor fileUploadTaskExecutor() {
         ThreadPoolTaskExecutor executor = new ThreadPoolTaskExecutor();
         
         int cpuCores = Runtime.getRuntime().availableProcessors();
@@ -83,18 +83,42 @@ public class OptimizedAsyncConfiguration {
         executor.setQueueCapacity(200);
         
         executor.setKeepAliveSeconds(60);
-        executor.setThreadNamePrefix("OptimizedFileUpload-");
+        executor.setThreadNamePrefix("FileUpload-");
         
-        // 上传失败时的拒绝策略：丢弃最旧任务
-        executor.setRejectedExecutionHandler(new ThreadPoolExecutor.DiscardOldestPolicy());
+        // 文件上传使用CallerRuns策略，确保任务不丢失
+        executor.setRejectedExecutionHandler(new ThreadPoolExecutor.CallerRunsPolicy());
         
         executor.setWaitForTasksToCompleteOnShutdown(true);
         executor.setAwaitTerminationSeconds(30);
         
         executor.initialize();
         
-        log.info("优化文件上传线程池已初始化 - 核心: {}, 最大: {}, 队列: {}", 
+        log.info("文件上传异步执行器已初始化 - 核心: {}, 最大: {}, 队列: {}", 
                 cpuCores * 2, cpuCores * 4, 200);
+        
+        return executor;
+    }
+
+    /**
+     * 通用任务执行器
+     * 整合原AsyncConfiguration中的commonTaskExecutor
+     */
+    @Bean("commonTaskExecutor")
+    public Executor commonTaskExecutor() {
+        ThreadPoolTaskExecutor executor = new ThreadPoolTaskExecutor();
+        
+        executor.setCorePoolSize(2);
+        executor.setMaxPoolSize(4);
+        executor.setQueueCapacity(50);
+        executor.setKeepAliveSeconds(60);
+        executor.setThreadNamePrefix("Common-");
+        executor.setRejectedExecutionHandler(new ThreadPoolExecutor.CallerRunsPolicy());
+        executor.setWaitForTasksToCompleteOnShutdown(true);
+        executor.setAwaitTerminationSeconds(30);
+        
+        executor.initialize();
+        
+        log.info("通用异步执行器已初始化");
         
         return executor;
     }

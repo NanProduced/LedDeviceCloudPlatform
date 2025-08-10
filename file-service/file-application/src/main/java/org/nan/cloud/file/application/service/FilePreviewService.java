@@ -2,6 +2,7 @@ package org.nan.cloud.file.application.service;
 
 import lombok.Builder;
 import lombok.Data;
+import org.nan.cloud.file.application.domain.FileInfo;
 import org.springframework.http.ResponseEntity;
 
 import jakarta.servlet.http.HttpServletResponse;
@@ -52,7 +53,7 @@ public interface FilePreviewService {
      * @param fileId 文件ID
      * @return 文件信息对象
      */
-    Object getFileInfo(String fileId);
+    FileInfo getFileInfo(String fileId);
 
     /**
      * 检查文件是否支持预览
@@ -158,147 +159,4 @@ public interface FilePreviewService {
         private String userAgent;
     }
 
-    /**
-     * 文件基础信息
-     */
-    @Data
-    @Builder
-    class FileInfo {
-        /** 文件ID */
-        private String fileId;
-        
-        /** 文件名 */
-        private String filename;
-        
-        /** 文件大小（字节） */
-        private Long fileSize;
-        
-        /** MIME类型 */
-        private String mimeType;
-        
-        /** 文件扩展名 */
-        private String extension;
-        
-        /** 最后修改时间 */
-        private String lastModified;
-        
-        /** ETag */
-        private String etag;
-        
-        /** 是否支持预览 */
-        private Boolean previewSupported;
-        
-        /** 是否支持流式播放 */
-        private Boolean streamSupported;
-    }
-
-    /**
-     * 预览处理结果
-     */
-    @Data
-    @Builder
-    class PreviewResult {
-        /** 是否成功 */
-        private boolean success;
-        
-        /** 错误消息 */
-        private String errorMessage;
-        
-        /** 处理耗时（毫秒） */
-        private long processingTime;
-        
-        /** 缓存命中 */
-        private boolean cacheHit;
-        
-        /** 输出字节数 */
-        private long outputBytes;
-        
-        /** 实际输出尺寸 */
-        private String outputDimensions;
-    }
-
-    /**
-     * 支持的图片格式
-     */
-    enum SupportedImageFormat {
-        JPEG("jpg", "image/jpeg", true),
-        PNG("png", "image/png", true),
-        WEBP("webp", "image/webp", true),
-        GIF("gif", "image/gif", true),
-        BMP("bmp", "image/bmp", false),
-        TIFF("tiff", "image/tiff", false);
-
-        private final String extension;
-        private final String mimeType;
-        private final boolean outputSupported;
-
-        SupportedImageFormat(String extension, String mimeType, boolean outputSupported) {
-            this.extension = extension;
-            this.mimeType = mimeType;
-            this.outputSupported = outputSupported;
-        }
-
-        public String getExtension() { return extension; }
-        public String getMimeType() { return mimeType; }
-        public boolean isOutputSupported() { return outputSupported; }
-    }
-
-    /**
-     * 支持的视频格式
-     */
-    enum SupportedVideoFormat {
-        MP4("mp4", "video/mp4", true),
-        AVI("avi", "video/x-msvideo", true),
-        MOV("mov", "video/quicktime", true),
-        WMV("wmv", "video/x-ms-wmv", false),
-        FLV("flv", "video/x-flv", false),
-        WEBM("webm", "video/webm", true);
-
-        private final String extension;
-        private final String mimeType;
-        private final boolean streamSupported;
-
-        SupportedVideoFormat(String extension, String mimeType, boolean streamSupported) {
-            this.extension = extension;
-            this.mimeType = mimeType;
-            this.streamSupported = streamSupported;
-        }
-
-        public String getExtension() { return extension; }
-        public String getMimeType() { return mimeType; }
-        public boolean isStreamSupported() { return streamSupported; }
-    }
-
-    /**
-     * 适应方式枚举
-     */
-    enum ResizeFit {
-        /** 覆盖整个区域，可能裁剪 */
-        COVER("cover"),
-        /** 完全包含，可能留白 */
-        CONTAIN("contain"),
-        /** 填充整个区域，可能变形 */
-        FILL("fill"),
-        /** 缩小到内部，不放大 */
-        INSIDE("inside"),
-        /** 放大到外部，不缩小 */
-        OUTSIDE("outside");
-
-        private final String value;
-
-        ResizeFit(String value) {
-            this.value = value;
-        }
-
-        public String getValue() { return value; }
-
-        public static ResizeFit fromString(String value) {
-            for (ResizeFit fit : values()) {
-                if (fit.value.equalsIgnoreCase(value)) {
-                    return fit;
-                }
-            }
-            return COVER; // 默认值
-        }
-    }
 }

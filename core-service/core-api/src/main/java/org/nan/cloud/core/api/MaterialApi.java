@@ -1,11 +1,9 @@
 package org.nan.cloud.core.api;
 
+import org.nan.cloud.core.api.DTO.req.BatchMaterialMetadataRequest;
 import org.nan.cloud.core.api.DTO.req.CreateFolderRequest;
-import org.nan.cloud.core.api.DTO.res.ListMaterialResponse;
-import org.nan.cloud.core.api.DTO.res.ListSharedMaterialResponse;
-import org.nan.cloud.core.api.DTO.res.MaterialNodeTreeResponse;
-import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.PostMapping;
+import org.nan.cloud.core.api.DTO.res.*;
+import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
 
@@ -31,9 +29,22 @@ public interface MaterialApi {
     @GetMapping(prefix + "/list/shared")
     List<ListSharedMaterialResponse> listSharedMaterials(Long fid, boolean includeSub);
 
+    @PostMapping(prefix + "/metadata/batch")
+    BatchMaterialMetadataResponse batchGetMaterialMetadata(BatchMaterialMetadataRequest request);
 
+    @GetMapping(prefix + "/metadata/{materialId}")
+    MaterialMetadataItem getMaterialMetadata(
+            @PathVariable Long materialId,
+            Boolean includeThumbnails,
+            Boolean includeBasicInfo,
+            Boolean includeImageMetadata,
+            Boolean includeVideoMetadata);
 
+    @GetMapping(prefix + "/metadata/{materialId}/exists")
+    Boolean checkMetadataExists(@PathVariable Long materialId);
 
+    @GetMapping(prefix + "/metadata/performance-stats")
+    String getMetadataPerformanceStats();
 
 
 }

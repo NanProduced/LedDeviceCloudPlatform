@@ -51,15 +51,6 @@ public interface ProgramApi {
                       @RequestBody SaveDraftRequest request);
 
     /**
-     * 4) 发布节目（从当前准备好的版本发布）
-     * POST /core/api/program/{programId}/publish
-     * Resp.data: { programId, versionId, publishedAt }
-     */
-    @PostMapping(PREFIX + "/{programId}/publish")
-    ProgramDTO publishProgram(@PathVariable Long programId, 
-                            @RequestBody PublishDraftRequest request);
-
-    /**
      * 5) 获取节目详情（基础元数据）
      * GET /core/api/program/{programId}
      * Resp.data: { programId, name, description, width, height, duration, status, thumbnailUrl, latestVersionId, createdAt, updatedAt }

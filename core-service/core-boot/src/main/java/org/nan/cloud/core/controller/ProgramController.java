@@ -61,7 +61,7 @@ public class ProgramController implements ProgramApi {
     @Operation(
             summary = "保存草稿",
             description = "保存节目编辑器状态为草稿，不进入审核流程",
-            tags = {"草稿管理"}
+            tags = {"节目管理", "草稿管理"}
     )
     @Override
     public DraftDTO saveDraft(@PathVariable Long programId, 
@@ -71,21 +71,9 @@ public class ProgramController implements ProgramApi {
     }
 
     @Operation(
-            summary = "发布节目",
-            description = "将草稿转换为正式节目并进入审核流程",
-            tags = {"节目管理"}
-    )
-    @Override
-    public ProgramDTO publishProgram(@PathVariable Long programId, 
-                                   @RequestBody @Validated PublishDraftRequest request) {
-        log.info("REST API: Publishing program: {}", programId);
-        return programFacade.publishProgram(programId, request);
-    }
-
-    @Operation(
             summary = "获取节目详情",
             description = "获取节目基础元数据信息",
-            tags = {"节目查询"}
+            tags = {"节目管理", "节目查询"}
     )
     @Override
     public ProgramDTO getProgramDetails(@PathVariable Long programId) {
@@ -96,7 +84,7 @@ public class ProgramController implements ProgramApi {
     @Operation(
             summary = "获取节目内容",
             description = "获取节目编辑器内容数据，用于前端回显",
-            tags = {"节目查询"}
+            tags = {"节目管理", "节目查询"}
     )
     @Override
     public ProgramContentDTO getProgramContent(@PathVariable Long programId, 
@@ -108,7 +96,7 @@ public class ProgramController implements ProgramApi {
     @Operation(
             summary = "节目列表",
             description = "分页查询节目列表，支持关键词和状态过滤",
-            tags = {"节目查询"}
+            tags = {"节目管理", "节目查询"}
     )
     @Override
     public PageVO<ProgramDTO> listPrograms(@RequestBody PageRequestDTO<QueryProgramListRequest> pageRequestDTO) {

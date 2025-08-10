@@ -10,7 +10,6 @@ import org.nan.cloud.file.application.service.StorageService;
 import org.nan.cloud.file.application.service.StreamingService;
 import org.nan.cloud.file.application.repository.FileInfoRepository;
 import org.nan.cloud.file.application.service.ThumbnailService;
-import org.springframework.cache.annotation.Cacheable;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -113,7 +112,7 @@ public class FilePreviewServiceImpl implements FilePreviewService {
     @Override
     public ResponseEntity<?> handleStreamRequest(StreamRequest request, HttpServletResponse response) {
         // 🔍 获取文件信息
-        org.nan.cloud.file.application.domain.FileInfo fileInfo = getFileInfoInternal(request.getFileId());
+        FileInfo fileInfo = getFileInfoInternal(request.getFileId());
         if (fileInfo == null) {
             throw new BaseException(ExceptionEnum.FILE_NOT_FOUND, 
                 "File not found: " + request.getFileId(), HttpStatus.NOT_FOUND);
@@ -193,24 +192,8 @@ public class FilePreviewServiceImpl implements FilePreviewService {
     }
 
     @Override
-    @Cacheable(value = "fileInfo", key = "#fileId")
-    public Object getFileInfo(String fileId) {
-        org.nan.cloud.file.application.domain.FileInfo fileInfo = getFileInfoInternal(fileId);
-        if (fileInfo == null) {
-            return null;
-        }
-        
-        return FilePreviewService.FileInfo.builder()
-                .fileId(fileId)
-                .filename(fileInfo.getOriginalFilename())
-                .fileSize(fileInfo.getFileSize())
-                .mimeType(fileInfo.getMimeType())
-                .extension(getFileExtension(fileInfo.getOriginalFilename()))
-                .lastModified(getCurrentTimestamp())
-                .etag(generateETag(fileId))
-                .previewSupported(isPreviewSupported(fileId))
-                .streamSupported(isStreamSupported(fileInfo.getMimeType()))
-                .build();
+    public FileInfo getFileInfo(String fileId) {
+        return getFileInfoInternal(fileId);
     }
 
     @Override
@@ -360,7 +343,7 @@ public class FilePreviewServiceImpl implements FilePreviewService {
     /**
      * 获取文件信息（内部方法）
      */
-    private org.nan.cloud.file.application.domain.FileInfo getFileInfoInternal(String fileId) {
+    private FileInfo getFileInfoInternal(String fileId) {
         try {
             // 🔍 通过FileInfoRepository获取文件信息
             var fileInfoOpt = fileInfoRepository.findByFileId(fileId);
@@ -381,7 +364,7 @@ public class FilePreviewServiceImpl implements FilePreviewService {
     /**
      * 处理缓存控制
      */
-    private boolean handleCacheControl(PreviewRequest request, org.nan.cloud.file.application.domain.FileInfo fileInfo, HttpServletResponse response) {
+    private boolean handleCacheControl(PreviewRequest request, FileInfo fileInfo, HttpServletResponse response) {
         // 🔍 检查客户端缓存有效性
         if (isClientCacheValid(request, request.getFileId(), true)) {
             sendNotModifiedResponse(response, request.getFileId(), true);
@@ -557,12 +540,12 @@ public class FilePreviewServiceImpl implements FilePreviewService {
     }
 
     private String getOutputMimeType(String format) {
-        switch (format.toLowerCase()) {
-            case "png": return "image/png";
-            case "webp": return "image/webp";
-            case "gif": return "image/gif";
-            default: return "image/jpeg";
-        }
+        return switch (format.toLowerCase()) {
+            case "png" -> "image/png";
+            case "webp" -> "image/webp";
+            case "gif" -> "image/gif";
+            default -> "image/jpeg";
+        };
     }
 
     private String getFileExtension(String filename) {
@@ -592,16 +575,6 @@ public class FilePreviewServiceImpl implements FilePreviewService {
         response.setHeader("Cache-Control", "public, max-age=" + DEFAULT_CACHE_DURATION);
         response.setHeader("ETag", generateETag(fileInfo.getFileId()));
     }
-
-    // 🗑️ 已移除：sendJsonErrorResponse 方法（使用GlobalExceptionHandler统一处理异常）
-
-    // 🗑️ 已移除：writeDefaultPlaceholder 方法（由前端处理占位图）
-
-    // 🗑️ 已移除：writeVideoPlaceholder 方法（由前端处理占位图）
-    
-    // 🗑️ 已移除：createTransparentPng 方法（由前端处理占位图）
-    
-    // 🗑️ 已移除：createVideoPlaceholderPng 方法（由前端处理占位图）
 
 
     /**

@@ -3,7 +3,10 @@ package org.nan.cloud.file.controller;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.tags.Tag;
+import lombok.Data;
+import lombok.Getter;
 import lombok.RequiredArgsConstructor;
+import lombok.Setter;
 import lombok.extern.slf4j.Slf4j;
 import org.nan.cloud.common.web.DynamicResponse;
 import org.nan.cloud.file.api.FileUploadApi;
@@ -39,7 +42,12 @@ public class FileUploadController implements FileUploadApi {
      * @param uploadRequest 上传参数
      * @return 任务初始化响应
      */
-    @Operation(summary = "异步上传单个文件", description = "异步上传单个文件，立即返回任务ID")
+    @Operation(
+            summary = "异步上传单个文件",
+            description = "异步上传单个文件，立即返回任务ID",
+            tags = {"素材管理", "文件上传"}
+    )
+    @Override
     public TaskInitResponse uploadSingleAsync(
             @Parameter(description = "上传的文件") @RequestParam("file") MultipartFile file,
             @Parameter(description = "上传参数") @ModelAttribute FileUploadRequest uploadRequest) {
@@ -56,6 +64,11 @@ public class FileUploadController implements FileUploadApi {
     }
 
 
+    @Operation(
+            summary = "查询上传进度",
+            description = "根据任务Id查询任务具体进度",
+            tags = {"素材管理", "文件上传"}
+    )
     @Override
     public UploadProgressResponse getUploadProgress(
             @Parameter(description = "上传任务ID") @PathVariable String taskId) {
@@ -65,6 +78,11 @@ public class FileUploadController implements FileUploadApi {
         return fileUploadService.getUploadProgress(taskId);
     }
 
+    @Operation(
+            summary = "服务器支持的文件类型",
+            description = "获取服务器支持的文件类型列表",
+            tags = {"文件上传"}
+    )
     @Override
     public SupportedFileTypesResponse getSupportedFileTypes() {
         
@@ -74,36 +92,16 @@ public class FileUploadController implements FileUploadApi {
     }
 
     /**
-     * 获取文件上传统计信息
-     * 
-     * @param organizationId 组织ID
-     * @return 上传统计信息
-     */
-    @Operation(summary = "获取上传统计", description = "获取组织的文件上传统计信息")
-    @GetMapping("/file/upload/statistics/{organizationId}")
-    public FileUploadStatistics getUploadStatistics(
-            @Parameter(description = "组织ID") @PathVariable String organizationId) {
-        
-        log.info("获取上传统计信息 - 组织: {}", organizationId);
-
-        // TODO: 实现上传统计功能
-        return FileUploadStatistics.builder()
-                .organizationId(organizationId)
-                .totalFiles(0L)
-                .totalSize(0L)
-                .todayUploads(0L)
-                .thisWeekUploads(0L)
-                .thisMonthUploads(0L)
-                .build();
-    }
-
-    /**
      * 检查文件是否已存在（基于MD5去重）
      * 
      * @param request MD5检查请求
      * @return 文件存在性检查结果
      */
-    @Operation(summary = "MD5文件去重检查", description = "检查文件是否已存在以实现去重")
+    @Operation(
+            summary = "MD5文件去重检查",
+            description = "检查文件是否已存在以实现去重",
+            tags = {"内部接口"}
+    )
     @PostMapping("/file/upload/check-duplicate")
     public FileExistenceCheckResponse checkFileDuplicate(
             @RequestBody FileExistenceCheckRequest request) {
@@ -120,86 +118,22 @@ public class FileUploadController implements FileUploadApi {
     }
 
     /**
-     * 文件上传统计信息
-     */
-    public static class FileUploadStatistics {
-        private String organizationId;
-        private Long totalFiles;
-        private Long totalSize;
-        private Long todayUploads;
-        private Long thisWeekUploads;
-        private Long thisMonthUploads;
-
-        public static Builder builder() {
-            return new Builder();
-        }
-
-        public static class Builder {
-            private final FileUploadStatistics statistics = new FileUploadStatistics();
-
-            public Builder organizationId(String organizationId) {
-                statistics.organizationId = organizationId;
-                return this;
-            }
-
-            public Builder totalFiles(Long totalFiles) {
-                statistics.totalFiles = totalFiles;
-                return this;
-            }
-
-            public Builder totalSize(Long totalSize) {
-                statistics.totalSize = totalSize;
-                return this;
-            }
-
-            public Builder todayUploads(Long todayUploads) {
-                statistics.todayUploads = todayUploads;
-                return this;
-            }
-
-            public Builder thisWeekUploads(Long thisWeekUploads) {
-                statistics.thisWeekUploads = thisWeekUploads;
-                return this;
-            }
-
-            public Builder thisMonthUploads(Long thisMonthUploads) {
-                statistics.thisMonthUploads = thisMonthUploads;
-                return this;
-            }
-
-            public FileUploadStatistics build() {
-                return statistics;
-            }
-        }
-
-        // Getters
-        public String getOrganizationId() { return organizationId; }
-        public Long getTotalFiles() { return totalFiles; }
-        public Long getTotalSize() { return totalSize; }
-        public Long getTodayUploads() { return todayUploads; }
-        public Long getThisWeekUploads() { return thisWeekUploads; }
-        public Long getThisMonthUploads() { return thisMonthUploads; }
-    }
-
-    /**
      * 文件存在性检查请求
      */
+    @Data
     public static class FileExistenceCheckRequest {
+        // Getters and Setters
         private String md5Hash;
         private String organizationId;
 
-        // Getters and Setters
-        public String getMd5Hash() { return md5Hash; }
-        public void setMd5Hash(String md5Hash) { this.md5Hash = md5Hash; }
-
-        public String getOrganizationId() { return organizationId; }
-        public void setOrganizationId(String organizationId) { this.organizationId = organizationId; }
     }
 
     /**
      * 文件存在性检查响应
      */
+    @Data
     public static class FileExistenceCheckResponse {
+        // Getters
         private boolean exists;
         private FileUploadResponse existingFile;
 
@@ -225,8 +159,5 @@ public class FileUploadController implements FileUploadApi {
             }
         }
 
-        // Getters
-        public boolean isExists() { return exists; }
-        public FileUploadResponse getExistingFile() { return existingFile; }
     }
 }

@@ -8,19 +8,13 @@ import com.github.benmanes.caffeine.cache.AsyncCache;
 import com.github.benmanes.caffeine.cache.Caffeine;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnMissingBean;
-import org.springframework.cache.CacheManager;
-import org.springframework.cache.annotation.EnableCaching;
-import org.springframework.cache.caffeine.CaffeineCacheManager;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.context.annotation.Primary;
-import org.springframework.data.redis.cache.RedisCacheConfiguration;
-import org.springframework.data.redis.cache.RedisCacheManager;
 import org.springframework.data.redis.connection.RedisConnectionFactory;
 import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.data.redis.listener.RedisMessageListenerContainer;
 import org.springframework.data.redis.serializer.Jackson2JsonRedisSerializer;
-import org.springframework.data.redis.serializer.RedisSerializationContext;
 import org.springframework.data.redis.serializer.StringRedisSerializer;
 import org.springframework.scheduling.concurrent.ThreadPoolTaskExecutor;
 
@@ -44,8 +38,7 @@ import java.util.concurrent.TimeUnit;
  * @since 1.0.0
  */
 @Slf4j
-@Configuration
-@EnableCaching
+@Configuration  
 public class FileServiceCacheConfig {
     
     /**
@@ -130,61 +123,7 @@ public class FileServiceCacheConfig {
                 .buildAsync();
     }
     
-    /**
-     * Redis缓存管理器 - 用于@Cacheable注解
-     */
-    @Bean("fileServiceRedisCacheManager")
-    @Primary
-    public CacheManager fileServiceRedisCacheManager(RedisConnectionFactory connectionFactory, 
-                                                    ObjectMapper objectMapper) {
-        // 配置支持类型信息的ObjectMapper
-        ObjectMapper cacheObjectMapper = objectMapper.copy();
-        cacheObjectMapper.activateDefaultTyping(
-            LaissezFaireSubTypeValidator.instance, 
-            DefaultTyping.NON_FINAL, 
-            JsonTypeInfo.As.PROPERTY
-        );
-        
-        Jackson2JsonRedisSerializer<Object> serializer = new Jackson2JsonRedisSerializer<>(cacheObjectMapper, Object.class);
-        
-        // Redis缓存配置
-        RedisCacheConfiguration config = RedisCacheConfiguration.defaultCacheConfig()
-                // 默认TTL - 文件服务30分钟
-                .entryTtl(Duration.ofMinutes(30))
-                // 键序列化
-                .serializeKeysWith(RedisSerializationContext.SerializationPair.fromSerializer(new StringRedisSerializer()))
-                // 值序列化
-                .serializeValuesWith(RedisSerializationContext.SerializationPair.fromSerializer(serializer))
-                // 不缓存null值
-                .disableCachingNullValues()
-                // 键前缀
-                .prefixCacheNameWith("file:cache:");
-        
-        // 构建缓存管理器
-        return RedisCacheManager.builder(connectionFactory)
-                .cacheDefaults(config)
-                .transactionAware()
-                .build();
-    }
     
-    /**
-     * 本地缓存管理器 - 备用缓存管理器
-     */
-    @Bean("fileServiceLocalCacheManager")
-    public CacheManager fileServiceLocalCacheManager() {
-        CaffeineCacheManager cacheManager = new CaffeineCacheManager();
-        
-        // Caffeine缓存配置
-        cacheManager.setCaffeine(Caffeine.newBuilder()
-                .maximumSize(5000)
-                .expireAfterWrite(20, TimeUnit.MINUTES)
-                .expireAfterAccess(10, TimeUnit.MINUTES)
-                .recordStats());
-                
-        cacheManager.setAllowNullValues(false);
-        
-        return cacheManager;
-    }
     
     /**
      * Redis消息监听容器 - 支持缓存同步
@@ -222,52 +161,5 @@ public class FileServiceCacheConfig {
         };
     }
     
-    /**
-     * 缓存解析器 - 动态选择缓存管理器
-     */
-    @Bean("fileServiceCacheResolver")
-    public org.springframework.cache.interceptor.CacheResolver fileServiceCacheResolver(
-            CacheManager redisCacheManager, CacheManager localCacheManager) {
-        return new org.springframework.cache.interceptor.SimpleCacheResolver() {
-            @Override
-            protected java.util.Collection<String> getCacheNames(org.springframework.cache.interceptor.CacheOperationInvocationContext<?> context) {
-                // 根据方法或类的注解选择不同的缓存管理器
-                // 这里简化实现，实际可以根据业务需求动态选择
-                return super.getCacheNames(context);
-            }
-        };
-    }
     
-    /**
-     * 缓存错误处理器 - 处理缓存操作异常
-     */
-    @Bean("fileServiceCacheErrorHandler") 
-    public org.springframework.cache.interceptor.CacheErrorHandler fileServiceCacheErrorHandler() {
-        return new org.springframework.cache.interceptor.CacheErrorHandler() {
-            @Override
-            public void handleCacheGetError(RuntimeException exception, 
-                    org.springframework.cache.Cache cache, Object key) {
-                log.warn("缓存获取失败 - cache: {}, key: {}", cache.getName(), key, exception);
-                // 不抛出异常，降级到直接调用方法
-            }
-
-            @Override
-            public void handleCachePutError(RuntimeException exception, 
-                    org.springframework.cache.Cache cache, Object key, Object value) {
-                log.warn("缓存存储失败 - cache: {}, key: {}", cache.getName(), key, exception);
-            }
-
-            @Override
-            public void handleCacheEvictError(RuntimeException exception, 
-                    org.springframework.cache.Cache cache, Object key) {
-                log.warn("缓存删除失败 - cache: {}, key: {}", cache.getName(), key, exception);
-            }
-
-            @Override
-            public void handleCacheClearError(RuntimeException exception, 
-                    org.springframework.cache.Cache cache) {
-                log.warn("缓存清空失败 - cache: {}", cache.getName(), exception);
-            }
-        };
-    }
 }

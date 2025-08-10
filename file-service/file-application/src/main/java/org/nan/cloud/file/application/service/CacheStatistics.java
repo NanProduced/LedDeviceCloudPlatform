@@ -4,6 +4,8 @@ import lombok.Data;
 import lombok.Builder;
 
 import java.time.LocalDateTime;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Map;
 
 /**
@@ -228,8 +230,8 @@ public class CacheStatistics {
      * 获取性能建议
      * @return 性能建议列表
      */
-    public java.util.List<String> getPerformanceSuggestions() {
-        java.util.List<String> suggestions = new java.util.ArrayList<>();
+    public List<String> getPerformanceSuggestions() {
+        List<String> suggestions = new ArrayList<>();
         
         if (hitRate < 0.7) {
             suggestions.add("缓存命中率偏低，建议检查缓存策略和TTL配置");

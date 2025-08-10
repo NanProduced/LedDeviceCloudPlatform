@@ -51,4 +51,6 @@ public interface FileUploadApi {
      */
     @GetMapping(prefix + "/supported-types")
     SupportedFileTypesResponse getSupportedFileTypes();
+
+
 }

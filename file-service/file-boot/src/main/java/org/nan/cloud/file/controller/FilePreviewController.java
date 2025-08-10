@@ -5,6 +5,8 @@ import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.nan.cloud.file.api.FilePreviewApi;
+import org.nan.cloud.file.application.domain.FileInfo;
 import org.nan.cloud.file.application.service.FilePreviewService;
 import org.nan.cloud.common.web.IgnoreDynamicResponse;
 import org.nan.cloud.common.basic.exception.BaseException;
@@ -31,7 +33,7 @@ import jakarta.servlet.http.HttpServletResponse;
 @RestController
 @RequiredArgsConstructor
 @Tag(name = "文件预览", description = "统一文件预览接口")
-public class FilePreviewController {
+public class FilePreviewController implements FilePreviewApi {
 
     private final FilePreviewService filePreviewService;
 
@@ -52,10 +54,11 @@ public class FilePreviewController {
      * @param response HTTP响应
      */
     @Operation(
-        summary = "统一文件预览接口",
-        description = "支持图片直接预览和视频截帧预览，专为节目编辑器设计的高性能接口"
+        summary = "统一素材预览接口",
+        description = "支持图片直接预览和视频截帧预览，专为节目编辑器设计的高性能接口",
+            tags = {"素材管理", "素材预览"}
     )
-    @GetMapping("/file/api/file/preview/{fileId}")
+    @Override
     @IgnoreDynamicResponse // 直接操作response，跳过统一包装
     public void previewFile(
             @Parameter(description = "文件ID", required = true) 
@@ -117,10 +120,11 @@ public class FilePreviewController {
      * @param response HTTP响应
      */
     @Operation(
-        summary = "流式文件播放",
-        description = "支持Range请求的视频流式播放接口，用于视频预览播放"
+        summary = "素材流式文件播放",
+        description = "支持Range请求的视频流式播放接口，用于视频预览播放",
+        tags = {"素材管理", "素材预览"}
     )
-    @GetMapping("/file/api/file/stream/{fileId}")
+    @Override
     @IgnoreDynamicResponse // 直接操作response，跳过统一包装
     public ResponseEntity<?> streamFile(
             @Parameter(description = "文件ID", required = true) 
@@ -155,9 +159,9 @@ public class FilePreviewController {
      */
     @Operation(
         summary = "原始文件下载",
-        description = "下载文件的原始版本，保持原有格式和质量"
+        description = "下载文件的原始版本，保持原有格式和质量",
+        tags = {"素材管理"}
     )
-    @GetMapping("/file/api/file/download/{fileId}")
     @IgnoreDynamicResponse // 直接操作response，跳过统一包装
     public void downloadFile(
             @Parameter(description = "文件ID", required = true) 
@@ -192,17 +196,18 @@ public class FilePreviewController {
      */
     @Operation(
         summary = "获取文件信息",
-        description = "获取文件的基础信息，不返回文件内容"
+        description = "获取文件的基础信息，不返回文件内容",
+        tags = {"素材管理"}
     )
-    @GetMapping("/file/api/file/info/{fileId}")
-    public Object getFileInfo(
+    @GetMapping("/file/preview/info/{fileId}")
+    public FileInfo getFileInfo(
             @Parameter(description = "文件ID", required = true) 
             @PathVariable String fileId) {
         
         log.debug("获取文件信息 - 文件ID: {}", fileId);
         
         // 🔧 调用文件信息服务
-        Object fileInfo = filePreviewService.getFileInfo(fileId);
+        FileInfo fileInfo = filePreviewService.getFileInfo(fileId);
         
         // 如果文件不存在，抛出标准异常，由GlobalExceptionHandler处理
         if (fileInfo == null) {

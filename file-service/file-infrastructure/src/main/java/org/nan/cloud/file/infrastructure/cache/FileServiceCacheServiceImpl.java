@@ -12,7 +12,6 @@ import org.nan.cloud.file.application.service.CacheStatistics;
 import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.data.redis.core.ZSetOperations;
 import org.springframework.stereotype.Service;
-import org.springframework.util.StringUtils;
 
 import java.time.Duration;
 import java.time.LocalDateTime;
@@ -35,7 +34,7 @@ import java.util.stream.Collectors;
  * 5. 统计监控：详细的缓存性能统计
  * 6. 自动清理：过期缓存自动清理机制
  * 
- * @author LedDeviceCloudPlatform Team
+ * @author Nan
  * @since 1.0.0
  */
 @Slf4j

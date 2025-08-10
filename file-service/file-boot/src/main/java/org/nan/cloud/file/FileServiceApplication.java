@@ -4,7 +4,6 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
 import org.springframework.cloud.client.discovery.EnableDiscoveryClient;
-import org.springframework.scheduling.annotation.EnableAsync;
 
 /**
  * 文件服务启动类
@@ -39,7 +38,6 @@ import org.springframework.scheduling.annotation.EnableAsync;
  * @since 1.0.0
  */
 @Slf4j
-@EnableAsync
 @SpringBootApplication(scanBasePackages = "org.nan.cloud")
 @EnableDiscoveryClient
 public class FileServiceApplication {

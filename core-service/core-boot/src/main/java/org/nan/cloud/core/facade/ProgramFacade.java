@@ -79,17 +79,6 @@ public class ProgramFacade {
     }
 
     /**
-     * 发布节目（从草稿转换为正式节目）
-     */
-    public ProgramDTO publishProgram(Long programId, PublishDraftRequest request) {
-        RequestUserInfo userInfo = InvocationContextHolder.getContext().getRequestUser();
-        log.info("Publishing program: programId={}, userId={}, oid={}", 
-                programId, userInfo.getUid(), userInfo.getOid());
-
-        return programDraftService.publishDraft(programId, request, userInfo.getUid(), userInfo.getOid());
-    }
-
-    /**
      * 获取节目详情
      */
     public ProgramDTO getProgramDetails(Long programId) {
