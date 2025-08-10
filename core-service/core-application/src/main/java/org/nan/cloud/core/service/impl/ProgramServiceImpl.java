@@ -12,6 +12,7 @@ import org.nan.cloud.core.repository.ProgramMaterialRefRepository;
 import org.nan.cloud.core.repository.ProgramRepository;
 import org.nan.cloud.core.service.MaterialDependencyService;
 import org.nan.cloud.core.service.ProgramService;
+import org.nan.cloud.core.service.ProgramApprovalService;
 import org.nan.cloud.core.service.VsnEventPublisher;
 import org.nan.cloud.program.document.ProgramContent;
 import org.nan.cloud.program.dto.request.CreateProgramRequest;
@@ -45,6 +46,7 @@ public class ProgramServiceImpl implements ProgramService {
     private final ProgramDtoConverter programDtoConverter;
     private final VsnEventPublisher vsnEventPublisher;
     private final MaterialDependencyService materialDependencyService;
+    private final ProgramApprovalService programApprovalService;
 
     @Override
     @Transactional
@@ -72,6 +74,9 @@ public class ProgramServiceImpl implements ProgramService {
 
         // 6. 发送VSN生成请求
         publishVsnGenerationRequest(program, VsnGenerationRequestEvent.EventType.GENERATE);
+
+        // 7. 自动提交审核申请（节目创建后自动进入审核流程）
+        createApprovalRecord(program.getId(), program.getVersion(), userId, oid);
 
         log.info("Program created successfully: id={}, name={}", program.getId(), program.getName());
         return programDtoConverter.toProgramDTO(program);
@@ -531,5 +536,30 @@ public class ProgramServiceImpl implements ProgramService {
         // programApprovalRepository.deleteByProgramId(programId);
         
         log.debug("Cleaned up related data for program: {}", programId);
+    }
+    
+    /**
+     * 创建审核记录
+     * 节目创建后自动进入审核流程
+     * @param programId 节目ID
+     * @param programVersion 节目版本
+     * @param userId 提交者用户ID
+     * @param oid 组织ID
+     */
+    private void createApprovalRecord(Long programId, Integer programVersion, Long userId, Long oid) {
+        try {
+            log.debug("🔄 创建节目审核记录 - programId: {}, version: {}, userId: {}, oid: {}", 
+                    programId, programVersion, userId, oid);
+            
+            // 调用审核服务创建审核申请
+            programApprovalService.submitApproval(programId, programVersion, userId, oid);
+            
+            log.info("✅ 节目审核记录创建成功 - programId: {}, version: {}", programId, programVersion);
+        } catch (Exception e) {
+            log.error("❌ 创建节目审核记录失败 - programId: {}, version: {}, error: {}", 
+                    programId, programVersion, e.getMessage(), e);
+            // 不抛出异常，避免影响节目创建流程
+            // 审核记录创建失败不应该阻止节目创建
+        }
     }
 }

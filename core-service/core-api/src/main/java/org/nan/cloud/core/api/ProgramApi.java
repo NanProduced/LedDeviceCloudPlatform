@@ -11,6 +11,9 @@ import org.nan.cloud.program.dto.response.DraftDTO;
 import org.nan.cloud.program.dto.response.ProgramContentDTO;
 import org.nan.cloud.program.dto.response.ProgramDTO;
 import org.nan.cloud.program.dto.response.ProgramVersionDTO;
+import org.nan.cloud.program.dto.request.ApprovalRequest;
+import org.nan.cloud.program.dto.response.ProgramApprovalDTO;
+import org.nan.cloud.program.enums.ProgramApprovalStatusEnum;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -85,4 +88,64 @@ public interface ProgramApi {
     @PostMapping(PREFIX + "/{programId}/versions/{versionId}/revert")
     ProgramDTO revertToVersion(@PathVariable Long programId, 
                              @PathVariable Integer versionId);
+
+    // ===== 节目审核相关API =====
+    
+    /**
+     * 提交节目审核申请
+     */
+    @PostMapping(PREFIX + "/{programId}/versions/{versionId}/approval/submit")
+    ProgramApprovalDTO submitProgramApproval(@PathVariable Long programId,
+                                           @PathVariable Integer versionId);
+    
+    /**
+     * 审核通过
+     */
+    @PostMapping(PREFIX + "/approval/{approvalId}/approve")
+    boolean approveProgramApproval(@PathVariable Long approvalId,
+                                 @RequestBody ApprovalRequest request);
+    
+    /**
+     * 审核拒绝
+     */
+    @PostMapping(PREFIX + "/approval/{approvalId}/reject")
+    boolean rejectProgramApproval(@PathVariable Long approvalId,
+                                @RequestBody ApprovalRequest request);
+    
+    /**
+     * 查询节目审核历史
+     */
+    @GetMapping(PREFIX + "/{programId}/approval/history")
+    List<ProgramApprovalDTO> getProgramApprovalHistory(@PathVariable Long programId);
+    
+    /**
+     * 查询节目版本审核状态
+     */
+    @GetMapping(PREFIX + "/{programId}/versions/{versionId}/approval")
+    ProgramApprovalDTO getProgramVersionApproval(@PathVariable Long programId,
+                                               @PathVariable Integer versionId);
+    
+    /**
+     * 查询组织待审核列表
+     */
+    @GetMapping(PREFIX + "/approval/pending")
+    PageVO<ProgramApprovalDTO> getPendingApprovals(
+            @RequestParam(defaultValue = "1") int page,
+            @RequestParam(defaultValue = "20") int size);
+    
+    /**
+     * 查询审核人员的审核记录
+     */
+    @GetMapping(PREFIX + "/approval/reviewer/{reviewerId}")
+    PageVO<ProgramApprovalDTO> getReviewerApprovals(
+            @PathVariable Long reviewerId,
+            @RequestParam(required = false) ProgramApprovalStatusEnum status,
+            @RequestParam(defaultValue = "1") int page,
+            @RequestParam(defaultValue = "20") int size);
+    
+    /**
+     * 撤销审核申请
+     */
+    @DeleteMapping(PREFIX + "/approval/{approvalId}")
+    boolean withdrawProgramApproval(@PathVariable Long approvalId);
 }

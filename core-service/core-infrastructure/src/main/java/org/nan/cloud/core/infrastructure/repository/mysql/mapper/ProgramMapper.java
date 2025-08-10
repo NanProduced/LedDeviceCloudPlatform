@@ -22,6 +22,7 @@ public interface ProgramMapper extends BaseMapper<ProgramDO> {
     
     /**
      * 根据用户组查询节目列表
+     * 只返回审核通过的节目（status不为null且不为DRAFT和TEMPLATE）
      * @param page 分页参数
      * @param oid 组织ID
      * @param ugid 用户组ID
@@ -30,6 +31,8 @@ public interface ProgramMapper extends BaseMapper<ProgramDO> {
      */
     @Select("<script>" +
             "SELECT * FROM program WHERE deleted = 0 AND org_id = #{oid} AND user_group_id = #{ugid} " +
+            "AND program_status IS NOT NULL " +
+            "AND program_status NOT IN ('DRAFT', 'TEMPLATE') " +
             "<if test='status != null'> AND program_status = #{status} </if>" +
             "ORDER BY updated_time DESC" +
             "</script>")
@@ -38,6 +41,7 @@ public interface ProgramMapper extends BaseMapper<ProgramDO> {
     
     /**
      * 根据创建者查询节目列表
+     * 只返回审核通过的节目（status不为null且不为DRAFT和TEMPLATE）
      * @param page 分页参数
      * @param oid 组织ID
      * @param createdBy 创建者用户ID
@@ -46,6 +50,8 @@ public interface ProgramMapper extends BaseMapper<ProgramDO> {
      */
     @Select("<script>" +
             "SELECT * FROM program WHERE deleted = 0 AND org_id = #{oid} AND created_by = #{createdBy} " +
+            "AND program_status IS NOT NULL " +
+            "AND program_status NOT IN ('DRAFT', 'TEMPLATE') " +
             "<if test='status != null'> AND program_status = #{status} </if>" +
             "ORDER BY updated_time DESC" +
             "</script>")
@@ -54,6 +60,7 @@ public interface ProgramMapper extends BaseMapper<ProgramDO> {
     
     /**
      * 根据组织查询节目列表（管理员视图）
+     * 只返回审核通过的节目（status不为null且不为DRAFT和TEMPLATE）
      * @param page 分页参数
      * @param oid 组织ID
      * @param status 节目状态（可选）
@@ -61,6 +68,8 @@ public interface ProgramMapper extends BaseMapper<ProgramDO> {
      */
     @Select("<script>" +
             "SELECT * FROM program WHERE deleted = 0 AND org_id = #{oid} " +
+            "AND program_status IS NOT NULL " +
+            "AND program_status NOT IN ('DRAFT', 'TEMPLATE') " +
             "<if test='status != null'> AND program_status = #{status} </if>" +
             "ORDER BY updated_time DESC" +
             "</script>")

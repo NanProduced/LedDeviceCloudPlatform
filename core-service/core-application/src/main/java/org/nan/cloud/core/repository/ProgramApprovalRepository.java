@@ -11,7 +11,14 @@ import java.util.Optional;
  * 处理节目审核记录的MySQL数据访问
  */
 public interface ProgramApprovalRepository {
-    
+
+    /**
+     * 根据审核id查审核记录
+     * @param approvalId
+     * @return
+     */
+    ProgramApproval findByApprovalId(Long approvalId);
+
     /**
      * 根据节目ID查询审核记录
      * @param programId 节目ID
@@ -80,12 +87,11 @@ public interface ProgramApprovalRepository {
      * @param approvalId 审核记录ID
      * @param status 新状态
      * @param reviewerId 审核人员ID
-     * @param reviewerName 审核人员姓名
      * @param comment 审核意见
      * @return 更新的记录数
      */
     int updateApprovalStatus(Long approvalId, ProgramApprovalStatusEnum status, 
-                           Long reviewerId, String reviewerName, String comment);
+                           Long reviewerId, String comment);
     
     /**
      * 检查节目版本是否已通过审核

@@ -17,6 +17,9 @@ import org.nan.cloud.program.dto.response.DraftDTO;
 import org.nan.cloud.program.dto.response.ProgramContentDTO;
 import org.nan.cloud.program.dto.response.ProgramDTO;
 import org.nan.cloud.program.dto.response.ProgramVersionDTO;
+import org.nan.cloud.program.dto.request.ApprovalRequest;
+import org.nan.cloud.program.dto.response.ProgramApprovalDTO;
+import org.nan.cloud.program.enums.ProgramApprovalStatusEnum;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
 
@@ -138,5 +141,105 @@ public class ProgramController implements ProgramApi {
                                     @PathVariable Integer versionId) {
         log.info("REST API: Reverting program {} to version: {}", programId, versionId);
         return programFacade.revertToVersion(programId, versionId);
+    }
+
+    // ===== 节目审核相关API实现 =====
+
+    @Operation(
+            summary = "提交节目审核申请",
+            description = "提交指定版本的节目审核申请",
+            tags = {"节目审核"}
+    )
+    @Override
+    public ProgramApprovalDTO submitProgramApproval(@PathVariable Long programId,
+                                                  @PathVariable Integer versionId) {
+        log.info("REST API: Submitting program approval - programId: {}, versionId: {}", programId, versionId);
+        return programFacade.submitProgramApproval(programId, versionId);
+    }
+
+    @Operation(
+            summary = "审核通过",
+            description = "审核通过指定的节目申请",
+            tags = {"节目审核"}
+    )
+    @Override
+    public boolean approveProgramApproval(@PathVariable Long approvalId,
+                                        @RequestBody @Validated ApprovalRequest request) {
+        log.info("REST API: Approving program - approvalId: {}", approvalId);
+        return programFacade.approveProgramApproval(approvalId, request);
+    }
+
+    @Operation(
+            summary = "审核拒绝",
+            description = "审核拒绝指定的节目申请",
+            tags = {"节目审核"}
+    )
+    @Override
+    public boolean rejectProgramApproval(@PathVariable Long approvalId,
+                                       @RequestBody @Validated ApprovalRequest request) {
+        log.info("REST API: Rejecting program - approvalId: {}", approvalId);
+        return programFacade.rejectProgramApproval(approvalId, request);
+    }
+
+    @Operation(
+            summary = "查询节目审核历史",
+            description = "查询指定节目的所有审核记录",
+            tags = {"节目审核"}
+    )
+    @Override
+    public List<ProgramApprovalDTO> getProgramApprovalHistory(@PathVariable Long programId) {
+        log.debug("REST API: Getting program approval history - programId: {}", programId);
+        return programFacade.getProgramApprovalHistory(programId);
+    }
+
+    @Operation(
+            summary = "查询节目版本审核状态",
+            description = "查询指定节目版本的审核状态",
+            tags = {"节目审核"}
+    )
+    @Override
+    public ProgramApprovalDTO getProgramVersionApproval(@PathVariable Long programId,
+                                                      @PathVariable Integer versionId) {
+        log.debug("REST API: Getting program version approval - programId: {}, versionId: {}", 
+                programId, versionId);
+        return programFacade.getProgramVersionApproval(programId, versionId);
+    }
+
+    @Operation(
+            summary = "查询组织待审核列表",
+            description = "分页查询当前组织下的待审核节目列表",
+            tags = {"节目审核"}
+    )
+    @Override
+    public PageVO<ProgramApprovalDTO> getPendingApprovals(@RequestParam(defaultValue = "1") int page,
+                                                         @RequestParam(defaultValue = "20") int size) {
+        log.debug("REST API: Getting pending approvals - page: {}, size: {}", page, size);
+        return programFacade.getPendingApprovals(page, size);
+    }
+
+    @Operation(
+            summary = "查询审核人员的审核记录",
+            description = "分页查询指定审核人员的审核记录",
+            tags = {"节目审核"}
+    )
+    @Override
+    public PageVO<ProgramApprovalDTO> getReviewerApprovals(@PathVariable Long reviewerId,
+                                                          @RequestParam(required = false) ProgramApprovalStatusEnum status,
+                                                          @RequestParam(defaultValue = "1") int page,
+                                                          @RequestParam(defaultValue = "20") int size) {
+        log.debug("REST API: Getting reviewer approvals - reviewerId: {}, status: {}, page: {}, size: {}", 
+                reviewerId, status, page, size);
+        return programFacade.getReviewerApprovals(reviewerId, status, page, size);
+    }
+
+    @Operation(
+            summary = "撤销审核申请",
+            description = "撤销指定的节目审核申请",
+            tags = {"节目审核"}
+    )
+    @Override
+    public boolean withdrawProgramApproval(@PathVariable Long approvalId) {
+        log.info("REST API: Withdrawing program approval - approvalId: {}", approvalId);
+        return programFacade.withdrawProgramApproval(approvalId);
     }
 }

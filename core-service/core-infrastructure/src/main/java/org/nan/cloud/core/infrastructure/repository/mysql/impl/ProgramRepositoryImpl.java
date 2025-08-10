@@ -12,6 +12,7 @@ import org.nan.cloud.core.infrastructure.repository.mysql.converter.ProgramDomai
 import org.nan.cloud.core.infrastructure.repository.mysql.mapper.ProgramMapper;
 import org.nan.cloud.core.repository.ProgramRepository;
 import org.nan.cloud.program.entity.ProgramDO;
+import org.nan.cloud.program.enums.ProgramApprovalStatusEnum;
 import org.nan.cloud.program.enums.ProgramStatusEnum;
 import org.springframework.stereotype.Repository;
 import org.springframework.util.CollectionUtils;
@@ -249,6 +250,23 @@ public class ProgramRepositoryImpl implements ProgramRepository {
         
         int updatedRows = programMapper.update(null, updateWrapper);
         log.debug("Program status updated: id={}, affected rows={}", programId, updatedRows);
+        
+        return updatedRows;
+    }
+    
+    @Override
+    public int updateApprovalStatus(Long programId, ProgramApprovalStatusEnum approvalStatus, Long updatedBy) {
+        log.debug("Updating program approval status: id={}, approvalStatus={}, updatedBy={}", 
+                programId, approvalStatus, updatedBy);
+        
+        UpdateWrapper<ProgramDO> updateWrapper = new UpdateWrapper<>();
+        updateWrapper.eq("id", programId)
+                    .set("program_approval_status", approvalStatus)
+                    .set("updated_by", updatedBy)
+                    .set("updated_time", LocalDateTime.now());
+        
+        int updatedRows = programMapper.update(null, updateWrapper);
+        log.debug("Program approval status updated: id={}, affected rows={}", programId, updatedRows);
         
         return updatedRows;
     }

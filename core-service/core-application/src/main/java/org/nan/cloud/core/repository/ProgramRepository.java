@@ -2,6 +2,7 @@ package org.nan.cloud.core.repository;
 
 import org.nan.cloud.common.basic.model.PageVO;
 import org.nan.cloud.core.domain.Program;
+import org.nan.cloud.program.enums.ProgramApprovalStatusEnum;
 import org.nan.cloud.program.enums.ProgramStatusEnum;
 
 import java.util.List;
@@ -138,6 +139,15 @@ public interface ProgramRepository {
      * @return 更新的记录数
      */
     int updateStatus(Long programId, ProgramStatusEnum status, Long updatedBy);
+    
+    /**
+     * 更新节目审核状态
+     * @param programId 节目ID
+     * @param approvalStatus 审核状态
+     * @param updatedBy 更新者ID
+     * @return 更新的记录数
+     */
+    int updateApprovalStatus(Long programId, ProgramApprovalStatusEnum approvalStatus, Long updatedBy);
     
     /**
      * 批量更新节目状态

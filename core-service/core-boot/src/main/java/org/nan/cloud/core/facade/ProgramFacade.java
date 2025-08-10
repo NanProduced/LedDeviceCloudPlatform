@@ -11,6 +11,7 @@ import org.nan.cloud.core.service.ProgramDraftService;
 import org.nan.cloud.core.repository.ProgramContentRepository;
 import org.nan.cloud.program.document.ProgramContent;
 import org.nan.cloud.core.service.ProgramService;
+import org.nan.cloud.core.service.ProgramApprovalService;
 import org.nan.cloud.program.dto.request.CreateProgramRequest;
 import org.nan.cloud.program.dto.request.SaveDraftRequest;
 import org.nan.cloud.program.dto.request.UpdateProgramRequest;
@@ -18,7 +19,10 @@ import org.nan.cloud.program.dto.response.DraftDTO;
 import org.nan.cloud.program.dto.response.ProgramContentDTO;
 import org.nan.cloud.program.dto.response.ProgramDTO;
 import org.nan.cloud.program.dto.response.ProgramVersionDTO;
+import org.nan.cloud.program.dto.request.ApprovalRequest;
+import org.nan.cloud.program.dto.response.ProgramApprovalDTO;
 import org.nan.cloud.program.enums.ProgramStatusEnum;
+import org.nan.cloud.program.enums.ProgramApprovalStatusEnum;
 import org.springframework.stereotype.Component;
 
 import java.util.List;
@@ -37,6 +41,7 @@ public class ProgramFacade {
     private final ProgramService programService;
     private final ProgramDraftService programDraftService;
     private final ProgramContentRepository programContentRepository;
+    private final ProgramApprovalService programApprovalService;
 
     /**
      * 创建节目
@@ -220,6 +225,99 @@ public class ProgramFacade {
                 programId, versionId, userInfo.getUid(), userInfo.getOid());
 
         return programService.rollbackToVersion(programId, versionId, userInfo.getUid(), userInfo.getOid());
+    }
+
+    // ===== 节目审核相关方法 =====
+    
+    /**
+     * 提交节目审核申请
+     */
+    public ProgramApprovalDTO submitProgramApproval(Long programId, Integer versionId) {
+        RequestUserInfo userInfo = InvocationContextHolder.getContext().getRequestUser();
+        log.info("Submitting program approval: programId={}, versionId={}, userId={}, oid={}", 
+                programId, versionId, userInfo.getUid(), userInfo.getOid());
+        
+        return programApprovalService.submitApproval(programId, versionId, userInfo.getUid(), userInfo.getOid());
+    }
+    
+    /**
+     * 审核通过
+     */
+    public boolean approveProgramApproval(Long approvalId, ApprovalRequest request) {
+        RequestUserInfo userInfo = InvocationContextHolder.getContext().getRequestUser();
+        log.info("Approving program: approvalId={}, reviewerId={}, oid={}",
+                approvalId, userInfo.getUid(), userInfo.getOid());
+        
+        return programApprovalService.approveProgram(approvalId, request, userInfo.getUid(), userInfo.getOid());
+    }
+    
+    /**
+     * 审核拒绝
+     */
+    public boolean rejectProgramApproval(Long approvalId, ApprovalRequest request) {
+        RequestUserInfo userInfo = InvocationContextHolder.getContext().getRequestUser();
+        log.info("Rejecting program: approvalId={}, reviewerId={}, oid={}",
+                approvalId, userInfo.getUid(), userInfo.getOid());
+        
+        return programApprovalService.rejectProgram(approvalId, request, userInfo.getUid(), userInfo.getOid());
+    }
+    
+    /**
+     * 查询节目审核历史
+     */
+    public List<ProgramApprovalDTO> getProgramApprovalHistory(Long programId) {
+        RequestUserInfo userInfo = InvocationContextHolder.getContext().getRequestUser();
+        log.debug("Getting program approval history: programId={}, oid={}", programId, userInfo.getOid());
+        
+        return programApprovalService.getProgramApprovalHistory(programId, userInfo.getOid());
+    }
+    
+    /**
+     * 查询节目版本审核状态
+     */
+    public ProgramApprovalDTO getProgramVersionApproval(Long programId, Integer versionId) {
+        RequestUserInfo userInfo = InvocationContextHolder.getContext().getRequestUser();
+        log.debug("Getting program version approval: programId={}, versionId={}, oid={}", 
+                programId, versionId, userInfo.getOid());
+        
+        Optional<ProgramApprovalDTO> approval = programApprovalService.getProgramVersionApproval(
+                programId, versionId, userInfo.getOid());
+        
+        return approval.orElse(null);
+    }
+    
+    /**
+     * 查询组织待审核列表
+     */
+    public PageVO<ProgramApprovalDTO> getPendingApprovals(int page, int size) {
+        RequestUserInfo userInfo = InvocationContextHolder.getContext().getRequestUser();
+        log.debug("Getting pending approvals: oid={}, page={}, size={}", userInfo.getOid(), page, size);
+        
+        return programApprovalService.getPendingApprovals(userInfo.getOid(), page, size);
+    }
+    
+    /**
+     * 查询审核人员的审核记录
+     */
+    public PageVO<ProgramApprovalDTO> getReviewerApprovals(Long reviewerId, 
+                                                          ProgramApprovalStatusEnum status, 
+                                                          int page, int size) {
+        RequestUserInfo userInfo = InvocationContextHolder.getContext().getRequestUser();
+        log.debug("Getting reviewer approvals: reviewerId={}, status={}, oid={}, page={}, size={}", 
+                reviewerId, status, userInfo.getOid(), page, size);
+        
+        return programApprovalService.getReviewerApprovals(reviewerId, status, userInfo.getOid(), page, size);
+    }
+    
+    /**
+     * 撤销审核申请
+     */
+    public boolean withdrawProgramApproval(Long approvalId) {
+        RequestUserInfo userInfo = InvocationContextHolder.getContext().getRequestUser();
+        log.info("Withdrawing program approval: approvalId={}, userId={}, oid={}", 
+                approvalId, userInfo.getUid(), userInfo.getOid());
+        
+        return programApprovalService.withdrawApproval(approvalId, userInfo.getUid(), userInfo.getOid());
     }
 
     // ===== 私有辅助方法 =====
