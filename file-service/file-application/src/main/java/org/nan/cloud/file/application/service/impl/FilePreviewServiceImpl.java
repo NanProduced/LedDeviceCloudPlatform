@@ -6,7 +6,9 @@ import org.nan.cloud.file.application.domain.FileInfo;
 import org.nan.cloud.file.application.service.FilePreviewService;
 import org.nan.cloud.common.basic.exception.BaseException;
 import org.nan.cloud.common.basic.exception.ExceptionEnum;
-import org.nan.cloud.file.application.service.FileStorageService;
+import org.nan.cloud.file.application.service.StorageService;
+import org.nan.cloud.file.application.service.StreamingService;
+import org.nan.cloud.file.application.repository.FileInfoRepository;
 import org.nan.cloud.file.application.service.ThumbnailService;
 import org.springframework.cache.annotation.Cacheable;
 import org.springframework.http.HttpHeaders;
@@ -19,7 +21,6 @@ import jakarta.servlet.http.HttpServletResponse;
 import java.io.*;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
-import java.util.concurrent.ThreadLocalRandom;
 
 /**
  * 文件预览服务实现类
@@ -39,7 +40,9 @@ import java.util.concurrent.ThreadLocalRandom;
 @RequiredArgsConstructor
 public class FilePreviewServiceImpl implements FilePreviewService {
 
-    private final FileStorageService fileStorageService;
+    private final StorageService storageService;
+    private final StreamingService streamingService;
+    private final FileInfoRepository fileInfoRepository;
     private final ThumbnailService thumbnailService;
 
     // 🔧 缓存配置
@@ -123,9 +126,27 @@ public class FilePreviewServiceImpl implements FilePreviewService {
                 HttpStatus.UNSUPPORTED_MEDIA_TYPE);
         }
         
-        // 📊 处理Range请求
+        // 📊 使用NIO流式服务处理Range请求
         try {
-            return handleRangeRequest(request, fileInfo, response);
+            // 解析Range头中的范围参数
+            Long rangeStart = null;
+            Long rangeEnd = null;
+            if (request.getRangeHeader() != null && request.getRangeHeader().startsWith("bytes=")) {
+                String rangeValue = request.getRangeHeader().substring(6);
+                String[] parts = rangeValue.split("-");
+                if (parts.length > 0 && !parts[0].isEmpty()) {
+                    rangeStart = Long.parseLong(parts[0]);
+                }
+                if (parts.length > 1 && !parts[1].isEmpty()) {
+                    rangeEnd = Long.parseLong(parts[1]);
+                }
+            }
+            
+            // 使用NIO流式服务处理
+            ResponseEntity<?> streamResponse = streamingService.streamDownload(request.getFileId(), rangeStart, rangeEnd);
+            
+            // 由于streamDownload返回ResponseEntity<Resource>，我们需要适配
+            return streamResponse;
         } catch (Exception e) {
             log.error("流式播放处理失败 - 文件ID: {}, 错误: {}", request.getFileId(), e.getMessage(), e);
             throw new BaseException(ExceptionEnum.FILE_SERVICE_UNAVAILABLE, 
@@ -148,7 +169,13 @@ public class FilePreviewServiceImpl implements FilePreviewService {
             setDownloadHeaders(fileInfo, request.getForceAttachment(), response);
             
             // 📁 输出文件内容
-            try (InputStream inputStream = fileStorageService.getFileStream(request.getFileId());
+            var fileInfoOpt = fileInfoRepository.findByFileId(request.getFileId());
+            if (fileInfoOpt.isEmpty()) {
+                throw new BaseException(ExceptionEnum.FILE_NOT_FOUND, 
+                    "文件信息未找到: " + request.getFileId(), HttpStatus.NOT_FOUND);
+            }
+            String storagePath = fileInfoOpt.get().getStoragePath();
+            try (InputStream inputStream = getInputStreamFromStoragePath(storagePath);
                  OutputStream outputStream = response.getOutputStream()) {
                 
                 inputStream.transferTo(outputStream);
@@ -335,20 +362,15 @@ public class FilePreviewServiceImpl implements FilePreviewService {
      */
     private org.nan.cloud.file.application.domain.FileInfo getFileInfoInternal(String fileId) {
         try {
-            // 🔍 调用文件存储服务获取文件信息
-            FileStorageService.FileStorageInfo storageInfo = fileStorageService.getFileStorageInfo(fileId);
-            if (storageInfo == null) {
+            // 🔍 通过FileInfoRepository获取文件信息
+            var fileInfoOpt = fileInfoRepository.findByFileId(fileId);
+            if (fileInfoOpt.isEmpty()) {
                 log.warn("文件不存在或无法访问 - 文件ID: {}", fileId);
                 return null;
             }
             
-            // 转换为内部FileInfo对象
-            return org.nan.cloud.file.application.domain.FileInfo.builder()
-                .fileId(fileId)
-                .originalFilename(storageInfo.getOriginalFilename())
-                .fileSize(storageInfo.getFileSize())
-                .mimeType(storageInfo.getMimeType())
-                .build();
+            // 返回文件信息
+            return fileInfoOpt.get();
             
         } catch (Exception e) {
             log.error("获取文件信息失败 - 文件ID: {}, 错误: {}", fileId, e.getMessage(), e);
@@ -427,102 +449,6 @@ public class FilePreviewServiceImpl implements FilePreviewService {
         }
     }
 
-    /**
-     * 处理Range请求（流式播放）
-     */
-    private ResponseEntity<?> handleRangeRequest(StreamRequest request, org.nan.cloud.file.application.domain.FileInfo fileInfo, HttpServletResponse response) {
-        try {
-            // 📊 解析Range头
-            String rangeHeader = request.getRangeHeader();
-            if (!StringUtils.hasText(rangeHeader) || !rangeHeader.startsWith("bytes=")) {
-                // 无Range请求，返回完整文件
-                return handleFullFileResponse(request, fileInfo);
-            }
-            
-            // 🔧 解析Range头
-            RangeInfo rangeInfo = parseRangeHeader(rangeHeader, fileInfo.getFileSize());
-            if (rangeInfo == null) {
-                log.warn("无效的Range头格式 - 文件ID: {}, Range: {}", request.getFileId(), rangeHeader);
-                return ResponseEntity.status(HttpStatus.REQUESTED_RANGE_NOT_SATISFIABLE)
-                        .header("Content-Range", "bytes */" + fileInfo.getFileSize())
-                        .build();
-            }
-            
-            // ✅ 验证范围有效性
-            if (!rangeInfo.isValid()) {
-                return ResponseEntity.status(HttpStatus.REQUESTED_RANGE_NOT_SATISFIABLE)
-                        .header("Content-Range", "bytes */" + fileInfo.getFileSize())
-                        .build();
-            }
-            
-            // 📊 设置206 Partial Content响应
-            long start = rangeInfo.getStart();
-            long end = rangeInfo.getEnd();
-            long contentLength = rangeInfo.getContentLength();
-            
-            HttpHeaders headers = new HttpHeaders();
-            headers.set("Content-Type", fileInfo.getMimeType());
-            headers.set("Content-Range", String.format("bytes %d-%d/%d", start, end, fileInfo.getFileSize()));
-            headers.set("Content-Length", String.valueOf(contentLength));
-            headers.set("Accept-Ranges", "bytes");
-            headers.set("Cache-Control", "public, max-age=" + DEFAULT_CACHE_DURATION);
-            
-            log.debug("Range请求处理 - 文件ID: {}, 范围: {}-{}/{}", 
-                     request.getFileId(), start, end, fileInfo.getFileSize());
-            
-            // 🔧 读取指定范围的文件内容
-            byte[] rangeContent = readFileRange(request.getFileId(), start, contentLength);
-            if (rangeContent == null) {
-                return ResponseEntity.notFound().build();
-            }
-            
-            return ResponseEntity.status(HttpStatus.PARTIAL_CONTENT)
-                    .headers(headers)
-                    .body(rangeContent);
-            
-        } catch (Exception e) {
-            log.error("Range请求处理失败 - 文件ID: {}, 错误: {}", request.getFileId(), e.getMessage(), e);
-            return ResponseEntity.internalServerError().body("Range请求处理失败");
-        }
-    }
-
-    /**
-     * 处理完整文件响应
-     */
-    private ResponseEntity<?> handleFullFileResponse(StreamRequest request, org.nan.cloud.file.application.domain.FileInfo fileInfo) {
-        try {
-            HttpHeaders headers = new HttpHeaders();
-            headers.set("Content-Type", fileInfo.getMimeType());
-            headers.set("Content-Length", String.valueOf(fileInfo.getFileSize()));
-            headers.set("Accept-Ranges", "bytes");
-            headers.set("Cache-Control", "public, max-age=" + DEFAULT_CACHE_DURATION);
-            headers.set("ETag", generateETag(request.getFileId()));
-            headers.set("Last-Modified", getCurrentTimestamp());
-            
-            // 🔧 获取完整文件流
-            try (InputStream fileStream = fileStorageService.getFileStream(request.getFileId())) {
-                if (fileStream == null) {
-                    return ResponseEntity.notFound().build();
-                }
-                
-                // 📊 读取文件内容到字节数组
-                byte[] fileContent = fileStream.readAllBytes();
-                
-                log.debug("完整文件响应 - 文件ID: {}, 大小: {} bytes", request.getFileId(), fileContent.length);
-                
-                return ResponseEntity.ok()
-                        .headers(headers)
-                        .body(fileContent);
-                
-            } catch (IOException e) {
-                log.error("读取完整文件失败 - 文件ID: {}, 错误: {}", request.getFileId(), e.getMessage(), e);
-                return ResponseEntity.internalServerError().body("文件读取失败");
-            }
-        } catch (Exception e) {
-            log.error("处理完整文件响应失败 - 文件ID: {}, 错误: {}", request.getFileId(), e.getMessage(), e);
-            return ResponseEntity.internalServerError().body("服务暂时不可用");
-        }
-    }
 
     /**
      * 获取图片预览流
@@ -542,7 +468,12 @@ public class FilePreviewServiceImpl implements FilePreviewService {
                 return generateThumbnailStream(request, fileInfo);
             } else {
                 // 直接返回原始文件流
-                return fileStorageService.getFileStream(request.getFileId());
+                var fileInfoOpt = fileInfoRepository.findByFileId(request.getFileId());
+                if (fileInfoOpt.isEmpty()) {
+                    return null;
+                }
+                String storagePath = fileInfoOpt.get().getStoragePath();
+                return getInputStreamFromStoragePath(storagePath);
             }
             
         } catch (Exception e) {
@@ -580,6 +511,14 @@ public class FilePreviewServiceImpl implements FilePreviewService {
     }
 
     // ========================= 工具方法 =========================
+    
+    /**
+     * 根据存储路径获取输入流
+     */
+    private InputStream getInputStreamFromStoragePath(String storagePath) throws IOException {
+        String absolutePath = storageService.getAbsolutePath(storagePath);
+        return new FileInputStream(absolutePath);
+    }
 
     private Integer normalizeSize(Integer size) {
         if (size == null || size <= 0) {
@@ -664,122 +603,6 @@ public class FilePreviewServiceImpl implements FilePreviewService {
     
     // 🗑️ 已移除：createVideoPlaceholderPng 方法（由前端处理占位图）
 
-    /**
-     * 解析Range头，返回范围信息
-     */
-    private RangeInfo parseRangeHeader(String rangeHeader, long fileSize) {
-        if (!StringUtils.hasText(rangeHeader) || !rangeHeader.startsWith("bytes=")) {
-            return null;
-        }
-        
-        String rangeValue = rangeHeader.substring(6);
-        try {
-            long start = 0;
-            long end = fileSize - 1;
-            
-            if (rangeValue.startsWith("-")) {
-                // 后缀范围：bytes=-500
-                long suffixLength = Long.parseLong(rangeValue.substring(1));
-                start = Math.max(0, fileSize - suffixLength);
-                end = fileSize - 1;
-            } else if (rangeValue.endsWith("-")) {
-                // 前缀范围：bytes=500-
-                start = Long.parseLong(rangeValue.substring(0, rangeValue.length() - 1));
-                end = fileSize - 1;
-            } else if (rangeValue.contains("-")) {
-                // 完整范围：bytes=0-499
-                String[] parts = rangeValue.split("-", 2);
-                if (StringUtils.hasText(parts[0])) {
-                    start = Long.parseLong(parts[0]);
-                }
-                if (StringUtils.hasText(parts[1])) {
-                    end = Long.parseLong(parts[1]);
-                }
-            } else {
-                // 单一位置：bytes=500
-                start = Long.parseLong(rangeValue);
-                end = fileSize - 1;
-            }
-            
-            // 确保end不超过文件大小
-            end = Math.min(end, fileSize - 1);
-            
-            return new RangeInfo(start, end, fileSize);
-            
-        } catch (NumberFormatException e) {
-            log.warn("Range头格式无效: {}", rangeHeader);
-            return null;
-        }
-    }
-    
-    /**
-     * Range信息封装类
-     */
-    private static class RangeInfo {
-        private final long start;
-        private final long end;
-        private final long fileSize;
-        
-        public RangeInfo(long start, long end, long fileSize) {
-            this.start = start;
-            this.end = end;
-            this.fileSize = fileSize;
-        }
-        
-        public long getStart() { return start; }
-        public long getEnd() { return end; }
-        public long getFileSize() { return fileSize; }
-        public long getContentLength() { return end - start + 1; }
-        
-        public boolean isValid() {
-            return start >= 0 && end >= start && start < fileSize;
-        }
-    }
-
-    /**
-     * 读取文件指定范围的内容
-     */
-    private byte[] readFileRange(String fileId, long startPos, long length) {
-        try (InputStream fileStream = fileStorageService.getFileStream(fileId)) {
-            if (fileStream == null) {
-                log.warn("文件不存在或无法访问 - 文件ID: {}", fileId);
-                return null;
-            }
-            
-            // 🚀 跳过开始位置之前的字节
-            long skipped = fileStream.skip(startPos);
-            if (skipped != startPos) {
-                log.warn("文件跳过字节数不匹配 - 期望: {}, 实际: {}", startPos, skipped);
-            }
-            
-            // 📊 读取指定长度的内容
-            byte[] buffer = new byte[(int) length];
-            int totalRead = 0;
-            int currentRead;
-            
-            while (totalRead < length && (currentRead = fileStream.read(buffer, totalRead, 
-                    (int) (length - totalRead))) != -1) {
-                totalRead += currentRead;
-            }
-            
-            if (totalRead < length) {
-                // 实际读取的字节数少于请求的长度，调整数组大小
-                byte[] actualContent = new byte[totalRead];
-                System.arraycopy(buffer, 0, actualContent, 0, totalRead);
-                return actualContent;
-            }
-            
-            log.debug("文件范围读取完成 - 文件ID: {}, 开始: {}, 长度: {}, 实际读取: {}", 
-                     fileId, startPos, length, totalRead);
-            
-            return buffer;
-            
-        } catch (IOException e) {
-            log.error("读取文件范围失败 - 文件ID: {}, 开始: {}, 长度: {}, 错误: {}", 
-                     fileId, startPos, length, e.getMessage(), e);
-            return null;
-        }
-    }
 
     /**
      * 获取原始文件格式

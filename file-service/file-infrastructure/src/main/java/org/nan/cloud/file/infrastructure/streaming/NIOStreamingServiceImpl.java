@@ -5,6 +5,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.nan.cloud.file.application.service.StreamingService;
 import org.nan.cloud.file.application.service.StorageService;
 import org.nan.cloud.file.application.service.CacheService;
+import org.nan.cloud.file.application.repository.FileInfoRepository;
 import org.nan.cloud.file.application.enums.FileCacheType;
 import org.springframework.core.io.FileSystemResource;
 import org.springframework.core.io.Resource;
@@ -50,6 +51,7 @@ public class NIOStreamingServiceImpl implements StreamingService {
 
     private final StorageService storageService;
     private final CacheService cacheService;
+    private final FileInfoRepository fileInfoRepository;
     
     // 性能统计
     private final AtomicLong totalTransferredBytes = new AtomicLong(0);
@@ -255,19 +257,25 @@ public class NIOStreamingServiceImpl implements StreamingService {
     }
     
     /**
-     * 获取文件路径
+     * 获取文件绝对路径
      */
     private String getFilePath(String fileId) {
-        // 这里应该通过StorageService获取文件路径
-        // 临时实现，实际应该调用storageService.getFilePath(fileId)
-        return storageService.generateAccessUrl(fileId);
+        var fileInfoOpt = fileInfoRepository.findByFileId(fileId);
+        if (fileInfoOpt.isEmpty()) {
+            return null;
+        }
+        String storagePath = fileInfoOpt.get().getStoragePath();
+        return storageService.getAbsolutePath(storagePath);
     }
     
     /**
      * 获取内容类型
      */
     private String getContentType(String fileId) {
-        // 简化实现，实际应该从文件信息中获取
+        var fileInfoOpt = fileInfoRepository.findByFileId(fileId);
+        if (fileInfoOpt.isPresent() && fileInfoOpt.get().getMimeType() != null) {
+            return fileInfoOpt.get().getMimeType();
+        }
         return MediaType.APPLICATION_OCTET_STREAM_VALUE;
     }
     

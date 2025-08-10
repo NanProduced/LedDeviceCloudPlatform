@@ -78,8 +78,8 @@ public class MemoryMonitor {
         
         // 内存使用率过高时发出警告
         if (snapshot.getHeapUsagePercent() > 80) {
-            log.warn("[内存警告] 堆内存使用率过高: {:.2f}%, 建议执行GC或优化内存使用", 
-                    snapshot.getHeapUsagePercent());
+            log.warn("[内存警告] 堆内存使用率过高: {}%, 建议执行GC或优化内存使用", 
+                    String.format("%.2f", snapshot.getHeapUsagePercent()));
         }
     }
     

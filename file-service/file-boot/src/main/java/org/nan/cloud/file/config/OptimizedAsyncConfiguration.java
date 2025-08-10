@@ -7,6 +7,7 @@ import org.springframework.scheduling.annotation.EnableAsync;
 import org.springframework.scheduling.concurrent.ThreadPoolTaskExecutor;
 
 import java.util.concurrent.Executor;
+import java.util.concurrent.ExecutorService;
 import java.util.concurrent.ThreadPoolExecutor;
 
 /**
@@ -31,7 +32,7 @@ public class OptimizedAsyncConfiguration {
      * 针对CPU密集型任务优化，限制并发避免系统过载
      */
     @Bean("thumbnailExecutor")
-    public Executor thumbnailExecutor() {
+    public ExecutorService thumbnailExecutor() {
         ThreadPoolTaskExecutor executor = new ThreadPoolTaskExecutor();
         
         int cpuCores = Runtime.getRuntime().availableProcessors();
@@ -61,7 +62,7 @@ public class OptimizedAsyncConfiguration {
         log.info("缩略图线程池已初始化 - 核心: {}, 最大: {}, 队列: {}", 
                 cpuCores, cpuCores + 2, 50);
         
-        return executor;
+        return executor.getThreadPoolExecutor();
     }
 
     /**

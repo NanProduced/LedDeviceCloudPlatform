@@ -5,6 +5,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.nan.cloud.file.application.domain.FileInfo;
 import org.nan.cloud.file.application.enums.FileCacheType;
 import org.springframework.beans.factory.annotation.Qualifier;
+import org.springframework.beans.factory.DisposableBean;
 import org.springframework.stereotype.Service;
 
 import java.time.Duration;
@@ -36,7 +37,7 @@ import java.util.stream.Collectors;
  */
 @Slf4j
 @Service
-public class BatchThumbnailProcessor {
+public class BatchThumbnailProcessor implements DisposableBean {
 
     private final ThumbnailService thumbnailService;
     private final CacheService cacheService;
@@ -370,10 +371,10 @@ public class BatchThumbnailProcessor {
             try {
                 ProcessingStatistics stats = getStatistics();
                 
-                log.info("缩略图处理统计 - 活跃: {}, 待处理: {}, 完成: {}, 失败: {}, 成功率: {:.2f}%", 
+                log.info("缩略图处理统计 - 活跃: {}, 待处理: {}, 完成: {}, 失败: {}, 成功率: {}%", 
                         stats.getActiveTaskCount(), stats.getPendingTaskCount(), 
                         stats.getCompletedTaskCount(), stats.getFailedTaskCount(), 
-                        stats.getSuccessRate() * 100);
+                        String.format("%.2f", stats.getSuccessRate() * 100));
                 
                 // 检查系统健康状况
                 checkSystemHealth(stats);
@@ -390,12 +391,12 @@ public class BatchThumbnailProcessor {
     private void checkSystemHealth(ProcessingStatistics stats) {
         // 队列利用率检查
         if (stats.getQueueUtilization() > 0.8) {
-            log.warn("缩略图处理队列利用率过高: {:.2f}%", stats.getQueueUtilization() * 100);
+            log.warn("缩略图处理队列利用率过高: {}%", String.format("%.2f", stats.getQueueUtilization() * 100));
         }
         
         // 成功率检查
         if (stats.getSuccessRate() < 0.9 && stats.getTotalTaskCount() > 10) {
-            log.warn("缩略图处理成功率偏低: {:.2f}%", stats.getSuccessRate() * 100);
+            log.warn("缩略图处理成功率偏低: {}%", String.format("%.2f", stats.getSuccessRate() * 100));
         }
         
         // 活跃任务数检查
@@ -450,6 +451,57 @@ public class BatchThumbnailProcessor {
     
     private double calculateQueueUtilization() {
         return (double) pendingTasks.size() / 1000; // 队列容量为1000
+    }
+    
+    @Override
+    public void destroy() throws Exception {
+        log.info("正在关闭批量缩略图处理器...");
+        
+        // 停止监控线程
+        try {
+            scheduledExecutor.shutdown();
+            if (!scheduledExecutor.awaitTermination(10, TimeUnit.SECONDS)) {
+                log.warn("监控线程池未在10秒内正常关闭，强制关闭");
+                scheduledExecutor.shutdownNow();
+            }
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+            scheduledExecutor.shutdownNow();
+        }
+        
+        // 完成当前正在处理的任务，不再接受新任务
+        try {
+            // 获取待处理任务数量
+            int remainingTasks = pendingTasks.size();
+            if (remainingTasks > 0) {
+                log.info("等待完成剩余的{}个缩略图任务", remainingTasks);
+                
+                // 给待处理任务30秒完成时间
+                long waitStartTime = System.currentTimeMillis();
+                while (!pendingTasks.isEmpty() && 
+                       (System.currentTimeMillis() - waitStartTime) < 30000) {
+                    Thread.sleep(1000);
+                }
+                
+                if (!pendingTasks.isEmpty()) {
+                    log.warn("仍有{}个任务未完成，将被丢弃", pendingTasks.size());
+                }
+            }
+            
+            // 取消所有未完成的Future
+            futureMap.values().forEach(future -> {
+                if (!future.isDone()) {
+                    future.cancel(true);
+                }
+            });
+            futureMap.clear();
+            
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+            log.warn("关闭过程被中断");
+        }
+        
+        log.info("批量缩略图处理器已成功关闭");
     }
     
     // ==================== 内部类 ====================
