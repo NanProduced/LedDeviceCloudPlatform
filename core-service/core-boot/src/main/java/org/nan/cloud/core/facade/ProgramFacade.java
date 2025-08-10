@@ -8,11 +8,10 @@ import org.nan.cloud.common.web.context.InvocationContextHolder;
 import org.nan.cloud.common.web.context.RequestUserInfo;
 import org.nan.cloud.core.api.DTO.req.QueryProgramListRequest;
 import org.nan.cloud.core.service.ProgramDraftService;
-import org.nan.cloud.core.service.ProgramService;
-import org.nan.cloud.core.service.converter.ProgramDtoConverter;
+import org.nan.cloud.core.repository.ProgramContentRepository;
 import org.nan.cloud.program.document.ProgramContent;
+import org.nan.cloud.core.service.ProgramService;
 import org.nan.cloud.program.dto.request.CreateProgramRequest;
-import org.nan.cloud.program.dto.request.PublishDraftRequest;
 import org.nan.cloud.program.dto.request.SaveDraftRequest;
 import org.nan.cloud.program.dto.request.UpdateProgramRequest;
 import org.nan.cloud.program.dto.response.DraftDTO;
@@ -37,6 +36,7 @@ public class ProgramFacade {
 
     private final ProgramService programService;
     private final ProgramDraftService programDraftService;
+    private final ProgramContentRepository programContentRepository;
 
     /**
      * 创建节目
@@ -106,12 +106,46 @@ public class ProgramFacade {
         log.debug("Getting program content: programId={}, versionId={}, oid={}", 
                 programId, versionId, userInfo.getOid());
 
-        // TODO: 实现获取节目内容逻辑
-        // 1. 根据programId和versionId获取ProgramContent
-        // 2. 转换为ProgramContentDTO
-        // 3. 如果versionId为null，返回最新版本内容
-        
-        throw new UnsupportedOperationException("获取节目内容功能待实现");
+        // 校验节目存在性/访问权限
+        ProgramDTO program = getProgramDetails(programId);
+
+        // 查询内容（按版本或最新）
+        java.util.Optional<ProgramContent> contentOpt = (versionId == null)
+                ? programContentRepository.findLatestVersionByProgramId(programId)
+                : programContentRepository.findByProgramIdAndVersion(programId, versionId);
+
+        if (contentOpt.isEmpty()) {
+            // 返回空内容的DTO，避免前端报错
+            return ProgramContentDTO.builder()
+                    .programId(programId)
+                    .versionId(versionId)
+                    .contentData(null)
+                    .vsnData(null)
+                    .vsnXml(null)
+                    .name(program.getName())
+                    .description(program.getDescription())
+                    .width(program.getWidth())
+                    .height(program.getHeight())
+                    .duration(program.getDuration())
+                    .thumbnailUrl(program.getThumbnailUrl())
+                    .build();
+        }
+
+        ProgramContent content = contentOpt.get();
+
+        return ProgramContentDTO.builder()
+                .programId(content.getProgramId())
+                .versionId(content.getVersion())
+                .contentData(content.getOriginalData())
+                .vsnData(null) // 目前不直接返回vsnPrograms序列化数据
+                .vsnXml(content.getVsnXml())
+                .name(program.getName())
+                .description(program.getDescription())
+                .width(program.getWidth())
+                .height(program.getHeight())
+                .duration(program.getDuration())
+                .thumbnailUrl(program.getThumbnailUrl())
+                .build();
     }
 
     /**
