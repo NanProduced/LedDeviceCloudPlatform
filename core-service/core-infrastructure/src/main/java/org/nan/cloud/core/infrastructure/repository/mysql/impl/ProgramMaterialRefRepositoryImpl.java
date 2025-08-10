@@ -63,14 +63,9 @@ public class ProgramMaterialRefRepositoryImpl implements ProgramMaterialRefRepos
     }
 
     @Override
-    public int saveBatch(List<ProgramMaterialRef> refs) {
-        if (refs == null || refs.isEmpty()) return 0;
+    public void saveBatch(List<ProgramMaterialRef> refs) {
         List<ProgramMaterialRefDO> rows = converter.toDOs(refs);
-        int affected = 0;
-        for (ProgramMaterialRefDO row : rows) {
-            affected += programMaterialRefMapper.insert(row);
-        }
-        return affected;
+        programMaterialRefMapper.insert(rows);
     }
 
     @Override

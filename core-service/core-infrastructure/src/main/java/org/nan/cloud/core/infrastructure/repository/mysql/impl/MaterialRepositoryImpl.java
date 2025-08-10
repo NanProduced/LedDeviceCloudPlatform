@@ -10,12 +10,16 @@ import org.nan.cloud.core.infrastructure.repository.mysql.DO.MaterialShareRelDO;
 import org.nan.cloud.core.infrastructure.repository.mysql.converter.MaterialConverter;
 import org.nan.cloud.core.infrastructure.repository.mysql.mapper.MaterialMapper;
 import org.nan.cloud.core.infrastructure.repository.mysql.mapper.MaterialShareRelMapper;
+import org.nan.cloud.core.repository.FolderRepository;
 import org.nan.cloud.core.repository.MaterialRepository;
+import org.nan.cloud.core.repository.UserGroupRepository;
 import org.springframework.stereotype.Repository;
 
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Set;
+import java.util.stream.Collectors;
 
 @Slf4j
 @Repository
@@ -25,8 +29,8 @@ public class MaterialRepositoryImpl implements MaterialRepository {
     private final MaterialMapper materialMapper;
     private final MaterialShareRelMapper materialShareRelMapper;
     private final MaterialConverter materialConverter;
-    private final org.nan.cloud.core.repository.UserGroupRepository userGroupRepository;
-    private final org.nan.cloud.core.repository.FolderRepository folderRepository;
+    private final UserGroupRepository userGroupRepository;
+    private final FolderRepository folderRepository;
 
     @Override
     public Material getMaterialById(Long mid) {
@@ -282,5 +286,13 @@ public class MaterialRepositoryImpl implements MaterialRepository {
             log.error("批量查询素材失败 - 素材IDs: {}, 错误: {}", materialIds, e.getMessage(), e);
             return new ArrayList<>();
         }
+    }
+
+    @Override
+    public Set<Long> batchCheckBelongsToOrg(Long oid, List<Long> materialIds) {
+        return materialMapper.selectList(new LambdaQueryWrapper<MaterialDO>()
+                .select(MaterialDO::getMid)
+                .eq(MaterialDO::getOid, oid)
+                .in(MaterialDO::getMid, materialIds)).stream().map(MaterialDO::getMid).collect(Collectors.toSet());
     }
 }

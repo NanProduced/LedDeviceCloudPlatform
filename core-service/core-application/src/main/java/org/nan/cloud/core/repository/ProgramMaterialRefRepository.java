@@ -45,7 +45,7 @@ public interface ProgramMaterialRefRepository {
      * @param refs 素材引用列表
      * @return 保存的记录数
      */
-    int saveBatch(List<ProgramMaterialRef> refs);
+    void saveBatch(List<ProgramMaterialRef> refs);
     
     /**
      * 根据节目ID删除所有引用

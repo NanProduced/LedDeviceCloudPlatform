@@ -47,6 +47,7 @@ public enum ExceptionEnum {
     COMMAND_PARAMS_ERROR(5016, "command parameters error"),
     DETAILS_DENIED(5017, "get details failed"),
     PROGRAM_NAME_EXISTS(5018, "program name already exists"),
+    PROGRAM_NOT_EXISTS(5019, "program not exists"),
 
     /* 文件预览相关异常 -> 7xxx */
     FILE_NOT_FOUND(7001, "File not found or deleted"),

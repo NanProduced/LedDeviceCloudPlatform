@@ -95,4 +95,12 @@ public interface MaterialRepository {
      * @return 素材列表
      */
     List<Material> batchGetMaterialsByIds(List<Long> materialIds);
+
+    /**
+     * 批量检查素材是否属于指定组织
+     * @param oid 组织ID
+     * @param materialIds 素材ID列表
+     * @return 属于该组织的素材ID集合
+     */
+    java.util.Set<Long> batchCheckBelongsToOrg(Long oid, List<Long> materialIds);
 }

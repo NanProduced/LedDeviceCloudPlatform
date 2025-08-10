@@ -4,6 +4,9 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.nan.cloud.common.basic.exception.BaseException;
+import org.nan.cloud.common.basic.exception.ExceptionEnum;
+import org.nan.cloud.common.basic.utils.JsonUtils;
 import org.nan.cloud.core.repository.ProgramMaterialRefRepository;
 import org.nan.cloud.core.repository.MaterialRepository;
 import org.nan.cloud.core.domain.Material;
@@ -17,8 +20,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.StringUtils;
 
-import java.util.ArrayList;
-import java.util.List;
+import java.util.*;
 import java.util.stream.Collectors;
 
 /**
@@ -55,24 +57,25 @@ public class MaterialDependencyServiceImpl implements MaterialDependencyService 
             }
             
             // 2) 批量存在性校验（使用 distinct 降低查询成本）
-            java.util.Set<Long> distinctIds = new java.util.HashSet<>(materialIds);
-            List<Material> materials = materialRepository.batchGetMaterialsByIds(new java.util.ArrayList<>(distinctIds));
-            java.util.Set<Long> existsSet = materials == null ? java.util.Set.of() : materials.stream()
+            Set<Long> distinctIds = new HashSet<>(materialIds);
+            List<Material> materials = materialRepository.batchGetMaterialsByIds(new ArrayList<>(distinctIds));
+            Set<Long> existsSet = materials == null ? Set.of() : materials.stream()
                     .map(Material::getMid)
                     .collect(Collectors.toSet());
 
             // 不存在的素材
             List<Long> missingByExistence = distinctIds.stream()
                     .filter(id -> !existsSet.contains(id))
-                    .collect(Collectors.toList());
+                    .toList();
 
-            // 3) 组织归属校验（仅对已存在的素材）
+            // 3) 批量组织归属校验（仅对已存在的素材，避免N+1查询）
+            Set<Long> belongsSet = materialRepository.batchCheckBelongsToOrg(oid, new ArrayList<>(existsSet));
             List<Long> invalidOrg = existsSet.stream()
-                    .filter(mid -> !materialRepository.isMaterialBelongsToOrg(oid, mid))
-                    .collect(Collectors.toList());
+                    .filter(mid -> !belongsSet.contains(mid))
+                    .toList();
 
             // 合并缺失列表
-            List<Long> missing = new java.util.ArrayList<>();
+            List<Long> missing = new ArrayList<>();
             missing.addAll(missingByExistence);
             missing.addAll(invalidOrg);
 
@@ -120,16 +123,16 @@ public class MaterialDependencyServiceImpl implements MaterialDependencyService 
 
             // 查询节目，获取版本与创建者
             Program program = programRepository.findById(programId)
-                    .orElseThrow(() -> new IllegalArgumentException("节目不存在: " + programId));
+                    .orElseThrow(() -> new BaseException(ExceptionEnum.PROGRAM_NOT_EXISTS, "节目不存在: " + programId));
 
             // 批量查询素材，便于补充类型
-            List<Material> materials = materialRepository.batchGetMaterialsByIds(new java.util.ArrayList<>(new java.util.LinkedHashSet<>(materialIds)));
-            java.util.Map<Long, Material> idToMaterial = (materials == null)
-                    ? java.util.Map.of()
-                    : materials.stream().collect(java.util.stream.Collectors.toMap(Material::getMid, m -> m));
+            List<Material> materials = materialRepository.batchGetMaterialsByIds(new ArrayList<>(new LinkedHashSet<>(materialIds)));
+            Map<Long, Material> idToMaterial = (materials == null)
+                    ? Map.of()
+                    : materials.stream().collect(Collectors.toMap(Material::getMid, m -> m));
 
             // 组装引用记录（usageIndex 按出现顺序从1开始）
-            List<ProgramMaterialRef> refs = new java.util.ArrayList<>();
+            List<ProgramMaterialRef> refs = new ArrayList<>();
             for (int i = 0; i < parsedRefs.size(); i++) {
                 Long mid = parsedRefs.get(i).materialId;
                 ProgramMaterialRef ref = new ProgramMaterialRef();
@@ -137,19 +140,18 @@ public class MaterialDependencyServiceImpl implements MaterialDependencyService 
                 ref.setProgramVersion(program.getVersion());
                 ref.setMaterialId(mid);
                 Material mm = idToMaterial.get(mid);
-                ref.setMaterialType(mm != null ? mm.getMaterialType() : null);
+                ref.setMaterialType(mm != null ? mm.getMaterialType() : "UNKNOWN");
                 ref.setUsageIndex(i + 1);
                 ref.setVsnPath(parsedRefs.get(i).vsnPath);
                 ref.setCreatedBy(program.getCreatedBy());
                 refs.add(ref);
             }
 
-            int inserted = programMaterialRefRepository.saveBatch(refs);
-            log.debug("Created {} material dependencies for program: {}", inserted, programId);
-            return inserted == refs.size();
+            programMaterialRefRepository.saveBatch(refs);
+            return true;
             
         } catch (Exception e) {
-            log.error("Failed to create material dependencies for program: " + programId, e);
+            log.error("Failed to create material dependencies for program: {}", programId, e);
             return false;
         }
     }
@@ -161,7 +163,7 @@ public class MaterialDependencyServiceImpl implements MaterialDependencyService 
         if (!StringUtils.hasText(contentData)) {
             return List.of();
         }
-        JsonNode rootNode = objectMapper.readTree(contentData);
+        JsonNode rootNode = JsonUtils.getDefaultObjectMapper().readTree(contentData);
         List<ParsedRef> refs = new java.util.ArrayList<>();
         extractMaterialIdsWithPath(rootNode, "", refs);
         return refs;
@@ -175,14 +177,14 @@ public class MaterialDependencyServiceImpl implements MaterialDependencyService 
         try {
             // 先按版本删除现有依赖关系
             Program program = programRepository.findById(programId)
-                    .orElseThrow(() -> new IllegalArgumentException("节目不存在: " + programId));
+                    .orElseThrow(() -> new BaseException(ExceptionEnum.PROGRAM_NOT_EXISTS, "节目不存在: " + programId));
             programMaterialRefRepository.deleteByProgramIdAndVersion(programId, program.getVersion());
             
             // 重新创建依赖关系
             return createMaterialDependencies(programId, contentData, oid);
             
         } catch (Exception e) {
-            log.error("Failed to update material dependencies for program: " + programId, e);
+            log.error("Failed to update material dependencies for program: {}", programId, e);
             return false;
         }
     }
@@ -198,7 +200,7 @@ public class MaterialDependencyServiceImpl implements MaterialDependencyService 
             return deletedCount >= 0;
             
         } catch (Exception e) {
-            log.error("Failed to delete material dependencies for program: " + programId, e);
+            log.error("Failed to delete material dependencies for program: {}", programId, e);
             return false;
         }
     }
@@ -232,7 +234,7 @@ public class MaterialDependencyServiceImpl implements MaterialDependencyService 
             }).collect(Collectors.toList());
             
         } catch (Exception e) {
-            log.error("Failed to find material dependencies for program: " + programId, e);
+            log.error("Failed to find material dependencies for program: {}", programId, e);
             return List.of();
         }
     }
@@ -249,7 +251,7 @@ public class MaterialDependencyServiceImpl implements MaterialDependencyService 
                     .collect(Collectors.toList());
             
         } catch (Exception e) {
-            log.error("Failed to find programs using material: " + materialId, e);
+            log.error("Failed to find programs using material: {}", materialId, e);
             return List.of();
         }
     }
@@ -257,21 +259,24 @@ public class MaterialDependencyServiceImpl implements MaterialDependencyService 
     @Override
     public List<MaterialValidationDTO> batchValidateMaterials(List<Long> materialIds, Long oid) {
         log.debug("Batch validating {} materials for oid: {}", materialIds.size(), oid);
-        if (materialIds == null || materialIds.isEmpty()) {
+        if (materialIds.isEmpty()) {
             return List.of();
         }
 
         // 去重后批量查询，但结果仍按原顺序逐项返回
-        List<Long> distinctIds = new ArrayList<>(new java.util.LinkedHashSet<>(materialIds));
+        List<Long> distinctIds = new ArrayList<>(new LinkedHashSet<>(materialIds));
         List<Material> materials = materialRepository.batchGetMaterialsByIds(distinctIds);
-        java.util.Map<Long, Material> idToMaterial = (materials == null)
+        Map<Long, Material> idToMaterial = (materials == null)
                 ? java.util.Map.of()
-                : materials.stream().collect(java.util.stream.Collectors.toMap(Material::getMid, m -> m));
+                : materials.stream().collect(Collectors.toMap(Material::getMid, m -> m));
 
+        // 批量校验归属关系，避免N+1查询
+        Set<Long> belongsSet = materialRepository.batchCheckBelongsToOrg(oid, distinctIds);
+        
         return materialIds.stream().map(mid -> {
             Material m = idToMaterial.get(mid);
             boolean exists = m != null;
-            boolean belongs = exists && materialRepository.isMaterialBelongsToOrg(oid, mid);
+            boolean belongs = exists && belongsSet.contains(mid);
             boolean ok = exists && belongs;
             return MaterialValidationDTO.builder()
                     .isValid(ok)
@@ -304,7 +309,7 @@ public class MaterialDependencyServiceImpl implements MaterialDependencyService 
         }
         
         try {
-            JsonNode rootNode = objectMapper.readTree(contentData);
+            JsonNode rootNode = JsonUtils.getDefaultObjectMapper().readTree(contentData);
             List<ParsedRef> refs = new java.util.ArrayList<>();
             // 递归解析JSON，提取所有materialId字段及路径
             extractMaterialIdsWithPath(rootNode, "", refs);
