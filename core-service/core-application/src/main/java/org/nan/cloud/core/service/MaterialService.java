@@ -80,14 +80,6 @@ public interface MaterialService {
      * @return 创建的素材ID
      */
     Long createPendingMaterialFromEvent(FileUploadEvent event);
-
-    /**
-     * 根据文件ID查询素材
-     * @param fileId 文件ID
-     * @return 素材信息
-     */
-    Material getMaterialByFileId(String fileId);
-
     /**
      * 基于文件上传事件更新素材信息
      * @param materialId 素材ID
@@ -96,9 +88,11 @@ public interface MaterialService {
     void updateMaterialFromFileUpload(Long materialId, FileUploadEvent event);
 
     /**
-     * 更新素材的元数据ID
-     * @param fileId 文件ID
+     * 根据素材ID安全更新元数据ID
+     * 解决通过fileId查询Material的数据安全风险
+     * 
+     * @param materialId 素材ID (确定唯一)
      * @param metadataId 元数据ID
      */
-    void updateMaterialMetadata(String fileId, String metadataId);
+    void updateMaterialMetadataById(Long materialId, String metadataId);
 }

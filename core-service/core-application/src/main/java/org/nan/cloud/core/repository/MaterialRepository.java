@@ -59,13 +59,6 @@ public interface MaterialRepository {
 
 
     /**
-     * 根据文件ID查询素材
-     * @param fileId 文件ID
-     * @return 素材
-     */
-    Material getMaterialByFileId(String fileId);
-
-    /**
      * 创建素材
      * @param material 素材信息
      */

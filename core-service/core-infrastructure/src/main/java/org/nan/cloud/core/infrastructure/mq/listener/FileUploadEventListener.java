@@ -38,6 +38,7 @@ public class FileUploadEventListener implements MessageConsumer {
     private final MaterialService materialService;
     private final TaskStatusHandler taskStatusHandler;
     private final ApplicationEventPublisher applicationEventPublisher;
+    private final org.nan.cloud.core.service.TaskService taskService;
 
     // * ============ ⚠️注意 ============= *//
     // Mq消息消费者只关注对应队列消费消息，不要在消费完成后再生产Mq消息给其他服务消费
@@ -175,32 +176,29 @@ public class FileUploadEventListener implements MessageConsumer {
                 event.getTaskId(), event.getFileId());
         
         try {
-
-            // 检查是否已存在Material（避免重复创建）
-            Material existingMaterial = materialService.getMaterialByFileId(event.getFileId());
-            Long materialId;
-            
-            if (existingMaterial != null) {
-                // 更新现有Material的业务信息
-                materialService.updateMaterialFromFileUpload(existingMaterial.getMid(), event);
-                materialId = existingMaterial.getMid();
-                log.info("✅ 素材业务信息更新完成 - 素材ID: {}, 文件ID: {}", materialId, event.getFileId());
+            Long materialId = taskService.getMaterialIdByTaskId(event.getTaskId());
+            if (materialId == null) {
+                taskStatusHandler.failTask(event.getTaskId(), "无法找到任务对应的素材ID");
+                return;
             }
+
+            // 更新现有Material的业务信息
+            materialService.updateMaterialFromFileUpload(materialId, event);
+            log.info("✅ 素材业务信息更新完成 - 素材ID: {}, 任务ID: {}", materialId, event.getTaskId());
             
             // 完成任务
             taskStatusHandler.completeTask(event.getTaskId(), event.getThumbnailUrl());
 
             // 发组织空间变更事件 - 扣除空间
             applicationEventPublisher.publishEvent(new QuotaChangeEvent(this, QuotaChangeEvent.QuotaChangeEventType.MATERIAL_FILE_UPLOAD, event.getTaskId()));
-            log.error("发布组织空间变更事件 - 组织:{}", existingMaterial.getOid());
+            log.info("✅ 发布组织空间变更事件 - 任务ID: {}", event.getTaskId());
 
         } catch (Exception e) {
-            log.error("❌ 创建素材业务数据失败 - 任务ID: {}, 错误: {}", 
+            log.error("❌ 处理文件上传完成事件失败 - 任务ID: {}, 错误: {}", 
                     event.getTaskId(), e.getMessage(), e);
             
             // 任务失败
-            taskStatusHandler.failTask(event.getTaskId(), "创建素材业务数据失败: " + e.getMessage());
-
+            taskStatusHandler.failTask(event.getTaskId(), "处理文件上传完成事件失败: " + e.getMessage());
         }
     }
 
@@ -236,15 +234,21 @@ public class FileUploadEventListener implements MessageConsumer {
                 event.getTaskId(), event.getFileId());
 
         // 元数据解析完成事件
-        if (event.getProcessType().equals("METADATA")) {
-
+        if ("METADATA".equals(event.getProcessType())) {
             try {
-                // 更新元数据ID
                 String metadataId = event.getMetadataId();
                 if (metadataId != null) {
-                    materialService.updateMaterialMetadata(event.getFileId(), metadataId);
-                }
+                    // 🔒 安全方案：通过taskId查找materialId，避免fileId查询的数据安全风险
+                    Long materialId = taskService.getMaterialIdByTaskId(event.getTaskId());
+                    if (materialId == null) {
+                        log.error("❌ 无法找到任务对应的素材ID - 任务ID: {}", event.getTaskId());
+                        return;
+                    }
 
+                    // 使用安全的materialId更新元数据
+                    materialService.updateMaterialMetadataById(materialId, metadataId);
+                    log.info("✅ 素材元数据更新完成 - 素材ID: {}, 元数据ID: {}", materialId, metadataId);
+                }
             } catch (Exception e) {
                 log.error("❌ 更新素材元数据失败 - 任务ID: {}, 错误: {}",
                         event.getTaskId(), e.getMessage(), e);

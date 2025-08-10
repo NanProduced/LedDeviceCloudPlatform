@@ -112,4 +112,13 @@ public interface TaskService {
      * @param taskIds 任务ID列表
      */
     void deleteTasks(List<String> taskIds);
+
+    /**
+     * 根据任务ID获取关联的素材ID
+     * 解决file-service与core-service之间的信息不对称问题
+     * 
+     * @param taskId 任务ID
+     * @return 素材ID，如果任务不存在或没有关联素材则返回null
+     */
+    Long getMaterialIdByTaskId(String taskId);
 }

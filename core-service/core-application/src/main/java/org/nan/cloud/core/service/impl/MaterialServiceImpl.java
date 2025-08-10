@@ -366,11 +366,6 @@ public class MaterialServiceImpl implements MaterialService {
     }
 
     @Override
-    public Material getMaterialByFileId(String fileId) {
-        return materialRepository.getMaterialByFileId(fileId);
-    }
-
-    @Override
     @Transactional
     public void updateMaterialFromFileUpload(Long materialId, FileUploadEvent event) {
         try {
@@ -400,18 +395,24 @@ public class MaterialServiceImpl implements MaterialService {
 
     @Override
     @Transactional
-    public void updateMaterialMetadata(String fileId, String metadataId) {
+    public void updateMaterialMetadataById(Long materialId, String metadataId) {
+        log.debug("🔒 使用安全的素材ID更新元数据 - materialId: {}, metadataId: {}", materialId, metadataId);
+        
         try {
-            Material material = materialRepository.getMaterialByFileId(fileId);
-            if (material != null) {
-                material.setMetaDataId(metadataId);
-                material.setUpdateTime(LocalDateTime.now());
-                materialRepository.updateMaterial(material);
-                
-                log.info("素材元数据更新成功 - 素材ID: {}, 元数据ID: {}", material.getMid(), metadataId);
+            Material material = materialRepository.getMaterialById(materialId);
+            if (material == null) {
+                log.warn("⚠️ 素材不存在 - materialId: {}", materialId);
+                throw new IllegalArgumentException("素材不存在 - ID: " + materialId);
             }
+            
+            material.setMetaDataId(metadataId);
+            material.setUpdateTime(LocalDateTime.now());
+            materialRepository.updateMaterial(material);
+            
+            log.info("✅ 素材元数据更新成功 - materialId: {}, metadataId: {}", materialId, metadataId);
+            
         } catch (Exception e) {
-            log.error("更新素材元数据失败 - 文件ID: {}, 错误: {}", fileId, e.getMessage(), e);
+            log.error("❌ 更新素材元数据失败 - materialId: {}, 错误: {}", materialId, e.getMessage(), e);
             throw new RuntimeException("更新素材元数据失败", e);
         }
     }

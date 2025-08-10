@@ -219,4 +219,34 @@ public class TaskServiceImpl implements TaskService {
             deleteTask(taskId);
         }
     }
+
+    @Override
+    public Long getMaterialIdByTaskId(String taskId) {
+        log.debug("🔍 通过任务ID查询素材ID - taskId: {}", taskId);
+        
+        try {
+            Task task = getTaskById(taskId);
+            if (task == null) {
+                log.warn("⚠️ 任务不存在 - taskId: {}", taskId);
+                return null;
+            }
+            
+            String refId = task.getRefId();
+            if (refId == null || refId.trim().isEmpty()) {
+                log.warn("⚠️ 任务没有关联的素材ID - taskId: {}", taskId);
+                return null;
+            }
+            
+            Long materialId = Long.parseLong(refId);
+            log.debug("✅ 找到素材ID - taskId: {}, materialId: {}", taskId, materialId);
+            return materialId;
+            
+        } catch (NumberFormatException e) {
+            log.error("❌ 素材ID格式错误 - taskId: {}, refId: {}", taskId, e.getMessage());
+            return null;
+        } catch (Exception e) {
+            log.error("❌ 查询素材ID失败 - taskId: {}, 错误: {}", taskId, e.getMessage(), e);
+            return null;
+        }
+    }
 }

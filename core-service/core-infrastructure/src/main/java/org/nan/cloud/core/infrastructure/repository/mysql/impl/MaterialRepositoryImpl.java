@@ -184,12 +184,6 @@ public class MaterialRepositoryImpl implements MaterialRepository {
     }
 
     @Override
-    public Material getMaterialByFileId(String fileId) {
-        MaterialDO materialDO = materialMapper.selectMaterialWithFileByFileId(fileId);
-        return materialConverter.toMaterial(materialDO);
-    }
-
-    @Override
     public void createMaterial(Material material) {
         MaterialDO materialDO = materialConverter.toMaterialDO(material);
         LocalDateTime now = LocalDateTime.now();
