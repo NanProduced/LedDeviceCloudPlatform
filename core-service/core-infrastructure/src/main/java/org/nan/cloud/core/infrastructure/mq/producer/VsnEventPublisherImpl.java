@@ -20,7 +20,7 @@ import org.springframework.stereotype.Service;
 @Service
 @Primary
 @RequiredArgsConstructor
-public class VsnEventPublisherRabbitImpl implements VsnEventPublisher {
+public class VsnEventPublisherImpl implements VsnEventPublisher {
 
     private static final String BUSINESS_EXCHANGE = "business.topic";
 

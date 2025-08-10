@@ -1,20 +1,18 @@
 package org.nan.cloud.file.infrastructure.progress;
 
-import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import net.coobird.thumbnailator.Thumbnails;
 import net.coobird.thumbnailator.geometry.Positions;
 import org.apache.tika.Tika;
 import org.nan.cloud.file.application.config.FileStorageProperties;
 import org.nan.cloud.file.application.domain.FileInfo;
+import org.nan.cloud.file.application.repository.FileInfoRepository;
 import org.nan.cloud.file.application.service.StorageService;
 import org.nan.cloud.file.application.service.ThumbnailService;
-import org.nan.cloud.file.application.service.ThumbnailService.ThumbnailInfo;
 import org.nan.cloud.file.application.service.CacheService;
 import org.nan.cloud.file.application.enums.FileCacheType;
 import org.nan.cloud.common.basic.exception.BaseException;
 import org.nan.cloud.common.basic.exception.ExceptionEnum;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
 import org.springframework.util.StringUtils;
@@ -25,7 +23,6 @@ import java.awt.image.BufferedImage;
 import java.io.File;
 import java.io.IOException;
 import java.io.InputStream;
-import java.io.FileInputStream;
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.nio.file.Files;
@@ -74,13 +71,16 @@ public class ThumbnailServiceImpl implements ThumbnailService {
     private final StorageService storageService;
     private final FileStorageProperties storageProperties;
     private final CacheService cacheService;
+    private final FileInfoRepository fileInfoRepository;
     
     public ThumbnailServiceImpl(StorageService storageService,
                               FileStorageProperties storageProperties,
-                              CacheService cacheService) {
+                              CacheService cacheService,
+                              FileInfoRepository fileInfoRepository) {
         this.storageService = storageService;
         this.storageProperties = storageProperties;
         this.cacheService = cacheService;
+        this.fileInfoRepository = fileInfoRepository;
     }
     
     /**
@@ -849,13 +849,24 @@ public class ThumbnailServiceImpl implements ThumbnailService {
     // ==================== 私有辅助方法 ====================
     
     /**
-     * 获取源文件路径（临时实现，应该通过StorageService获取）
+     * 获取源文件路径
      */
     private String getSourceFilePath(String fileId) {
-        // TODO: 这里应该调用StorageService.getFileInfo(fileId)获取实际文件路径
-        // 临时实现：假设文件存储在标准路径下
-        return Paths.get(storageProperties.getStorage().getLocal().getBasePath(), 
-                        "files", fileId).toString();
+        try {
+            // 通过FileInfoRepository获取文件信息
+            Optional<FileInfo> fileInfoOptional = fileInfoRepository.findByFileId(fileId);
+            if (fileInfoOptional.isEmpty()) {
+                throw new BaseException(ExceptionEnum.FILE_NOT_FOUND,
+                    "文件信息不存在: " + fileId, HttpStatus.NOT_FOUND);
+            }
+
+            // 通过StorageService获取绝对路径
+            return storageService.getAbsolutePath(fileInfoOptional.get().getStoragePath());
+        } catch (Exception e) {
+            log.error("获取源文件路径失败 - 文件ID: {}, 错误: {}", fileId, e.getMessage());
+            throw new BaseException(ExceptionEnum.FILE_NOT_FOUND, 
+                "获取源文件路径失败: " + fileId, HttpStatus.NOT_FOUND);
+        }
     }
     
     /**

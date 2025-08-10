@@ -9,6 +9,8 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.ControllerAdvice;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.ResponseBody;
+import org.springframework.http.MediaType;
+import jakarta.servlet.http.HttpServletRequest;
 
 @ControllerAdvice
 @ResponseBody
@@ -16,10 +18,25 @@ import org.springframework.web.bind.annotation.ResponseBody;
 public class GlobalExceptionHandler {
 
     @ExceptionHandler(BaseException.class)
-    public ResponseEntity<DynamicResponse<?>> handleBaseException(BaseException e) {
+    public ResponseEntity<?> handleBaseException(BaseException e, HttpServletRequest request) {
         log.error("BaseException: {}", e.getMsg(), e);
+        
+        // 检查请求的Content-Type或Accept头，如果是图片预览请求则不返回JSON
+        String acceptHeader = request.getHeader("Accept");
+        String contentType = request.getContentType();
+        String requestURI = request.getRequestURI();
+        
+        // 如果是文件预览相关请求且期望的是图片内容，则返回简单错误响应
+        if ((acceptHeader != null && acceptHeader.contains("image/")) 
+            || (contentType != null && contentType.startsWith("image/"))
+            || requestURI.contains("/preview/") || requestURI.contains("/thumbnail/")) {
+            
+            log.warn("文件预览请求失败，返回HTTP错误状态 - URI: {}, 错误: {}", requestURI, e.getMsg());
+            return new ResponseEntity<>(e.getHttpStatus());
+        }
+        
+        // 其他请求返回JSON格式错误信息
         return new ResponseEntity<>(DynamicResponse.fail(null, e.getErrorCode(), e.getMsg()), e.getHttpStatus());
-
     }
 
     @ExceptionHandler(BusinessRefuseException.class)
@@ -29,8 +46,8 @@ public class GlobalExceptionHandler {
     }
 
     @ExceptionHandler(Exception.class)
-    public ResponseEntity<DynamicResponse<?>> handleException(Exception e) {
-        return handleBaseException(new BaseException(e, e.getMessage()));
+    public ResponseEntity<?> handleException(Exception e, HttpServletRequest request) {
+        return handleBaseException(new BaseException(e, e.getMessage()), request);
     }
 
     @ExceptionHandler(Terminal400Exception.class)

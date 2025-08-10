@@ -25,61 +25,47 @@ public interface ProgramApi {
     String PREFIX = "/program";
 
     /**
-     * 1) 创建节目
-     * POST /core/api/program/create
-     * Resp.data: { programId, versionId, status }
+     * 创建节目
      */
     @PostMapping(PREFIX + "/create")
     ProgramDTO createProgram(@RequestBody CreateProgramRequest request);
 
     /**
-     * 2) 更新节目（覆盖最新）
-     * PUT /core/api/program/{programId}
-     * Resp.data: { programId, versionId }
+     * 更新节目（覆盖最新）
      */
     @PutMapping(PREFIX + "/{programId}")
     ProgramDTO updateProgram(@PathVariable Long programId, 
                            @RequestBody UpdateProgramRequest request);
 
     /**
-     * 3) 保存草稿（不变更正式版本，保留独立版本号与编辑状态）
-     * POST /core/api/program/{programId}/draft
-     * Resp.data: { programId, draftVersionId, savedAt }
+     * 保存草稿（不变更正式版本，保留独立版本号与编辑状态）
      */
     @PostMapping(PREFIX + "/{programId}/draft")
     DraftDTO saveDraft(@PathVariable Long programId, 
                       @RequestBody SaveDraftRequest request);
 
     /**
-     * 5) 获取节目详情（基础元数据）
-     * GET /core/api/program/{programId}
-     * Resp.data: { programId, name, description, width, height, duration, status, thumbnailUrl, latestVersionId, createdAt, updatedAt }
+     * 获取节目详情（基础元数据）
      */
     @GetMapping(PREFIX + "/{programId}")
     ProgramDTO getProgramDetails(@PathVariable Long programId);
 
     /**
-     * 6) 获取节目内容（用于回显）
-     * GET /core/api/program/{programId}/content
+     * 获取节目内容（用于回显）
      * Query: versionId?（若不传则返回最新版本内容）
-     * Resp.data: { contentData, vsnData }
      */
     @GetMapping(PREFIX + "/{programId}/content")
     ProgramContentDTO getProgramContent(@PathVariable Long programId, 
                                       @RequestParam(required = false) Integer versionId);
 
     /**
-     * 7) 节目列表
-     * GET /core/api/program/list?keyword=&status=&page=&pageSize=&sortBy=&sortOrder=
-     * Resp.data: { items: ProgramSummary[], total, page, pageSize }
+     * 节目列表
      */
     @GetMapping(PREFIX + "/list")
     PageVO<ProgramDTO> listPrograms(@RequestBody PageRequestDTO<QueryProgramListRequest> pageRequestDTO);
 
     /**
-     * 8) 删除节目
-     * DELETE /core/api/program/{programId}
-     * Resp.data: { programId, deleted: true }
+     * 删除节目
      */
     @DeleteMapping(PREFIX + "/{programId}")
     ProgramDTO deleteProgram(@PathVariable Long programId);
@@ -87,9 +73,7 @@ public interface ProgramApi {
     
 
     /**
-     * 10) 版本管理
-     * GET /core/api/program/{programId}/versions
-     * Resp.data: { items: [{versionId, type: "draft|release", status, createdAt, remark?}], total }
+     *  版本管理
      * 
      * POST /core/api/program/{programId}/versions/{versionId}/revert
      * 将指定版本内容恢复为"当前编辑版本"（不直接发布）

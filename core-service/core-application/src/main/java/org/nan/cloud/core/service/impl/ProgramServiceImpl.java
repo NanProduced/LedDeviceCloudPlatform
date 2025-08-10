@@ -42,8 +42,6 @@ public class ProgramServiceImpl implements ProgramService {
 
     private final ProgramRepository programRepository;
     private final ProgramContentRepository programContentRepository;
-    private final ProgramMaterialRefRepository programMaterialRefRepository;
-    private final ProgramApprovalRepository programApprovalRepository;
     private final ProgramDtoConverter programDtoConverter;
     private final VsnEventPublisher vsnEventPublisher;
     private final MaterialDependencyService materialDependencyService;

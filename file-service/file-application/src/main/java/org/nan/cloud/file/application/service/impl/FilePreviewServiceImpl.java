@@ -20,6 +20,8 @@ import org.springframework.util.StringUtils;
 
 import jakarta.servlet.http.HttpServletResponse;
 import java.io.*;
+import java.net.URLEncoder;
+import java.nio.charset.StandardCharsets;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.List;
@@ -661,7 +663,20 @@ public class FilePreviewServiceImpl implements FilePreviewService {
             
             // 🚀 执行302重定向
             response.setStatus(HttpServletResponse.SC_FOUND);
-            response.setHeader("Location", bestMatch.getStorageUrl());
+            
+            // URL编码防止中文字符问题
+            String encodedLocation;
+            try {
+                encodedLocation = URLEncoder.encode(bestMatch.getStorageUrl(), StandardCharsets.UTF_8)
+                    .replace("%2F", "/")  // 保持路径分隔符
+                    .replace("%3A", ":")  // 保持协议分隔符
+                    .replace("+", "%20"); // 空格编码为%20而不是+
+            } catch (Exception e) {
+                log.warn("URL编码失败，使用原始URL - 错误: {}", e.getMessage());
+                encodedLocation = bestMatch.getStorageUrl();
+            }
+            
+            response.setHeader("Location", encodedLocation);
             
             // 设置预生成资源的长缓存策略
             setPreGeneratedCacheHeaders(response, request.getFileId());
