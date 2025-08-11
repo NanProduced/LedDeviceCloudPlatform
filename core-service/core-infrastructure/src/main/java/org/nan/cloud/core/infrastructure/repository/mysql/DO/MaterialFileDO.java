@@ -75,4 +75,16 @@ public class MaterialFileDO {
 
     @TableField("update_time")
     private LocalDateTime updateTime;
+
+    /**
+     * 转码来源文件ID
+     */
+    @TableField("source_file_id")
+    private String sourceFileId;
+
+    /**
+     * 转码详情（Mongo ObjectId）
+     */
+    @TableField("transcode_detail_id")
+    private String transcodeDetailId;
 }

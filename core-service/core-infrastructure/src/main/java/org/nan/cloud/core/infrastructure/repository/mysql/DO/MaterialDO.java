@@ -85,6 +85,18 @@ public class MaterialDO {
     @TableField(exist = false)
     private String storagePath;
 
+    /**
+     * 转码来源素材ID
+     */
+    @TableField("source_material_id")
+    private Long sourceMaterialId;
+
+    /**
+     * 转码预设名/代码
+     */
+    @TableField("transcode_preset")
+    private String transcodePreset;
+
     @TableField(exist = false)
     private LocalDateTime uploadTime;
 

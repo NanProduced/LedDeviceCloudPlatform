@@ -40,6 +40,7 @@ public class FileServiceRabbitConfig {
     // ==================== 路由键常量 ====================
     
     public static final String VSN_GENERATE_ROUTING_KEY = "program.vsn.generate.*.*";
+    public static final String FILE_TRANSCODING_CREATED_ROUTING_KEY = "file.transcoding.created.*.*";
     public static final String FILE_BUSINESS_DLQ_ROUTING_KEY = "file.business.dlq";
     
     // ==================== 交换器配置 ====================
@@ -113,6 +114,19 @@ public class FileServiceRabbitConfig {
                 .bind(businessFileQueue())
                 .to(businessTopicExchange())
                 .with(VSN_GENERATE_ROUTING_KEY);
+    }
+
+    /**
+     * 转码任务创建绑定 - 路由键: file.transcoding.created.{orgId}.{materialId}
+     *
+     * 用于接收来自 core-service 的转码任务下发事件
+     */
+    @Bean
+    public Binding transcodingCreatedBinding() {
+        return BindingBuilder
+                .bind(businessFileQueue())
+                .to(businessTopicExchange())
+                .with(FILE_TRANSCODING_CREATED_ROUTING_KEY);
     }
     
     /**

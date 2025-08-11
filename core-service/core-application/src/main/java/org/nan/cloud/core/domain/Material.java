@@ -106,6 +106,11 @@ public class Material {
     private String storageType;
 
     /**
+     * 存储路径（来自 material_file 联表字段）
+     */
+    private String storagePath;
+
+    /**
      * 首次上传时间
      */
     private LocalDateTime uploadTime;
@@ -175,4 +180,14 @@ public class Material {
             default -> "未知";
         };
     }
+
+    /**
+     * 转码来源素材ID
+     */
+    private Long sourceMaterialId;
+
+    /**
+     * 转码预设名/代码
+     */
+    private String transcodePreset;
 }

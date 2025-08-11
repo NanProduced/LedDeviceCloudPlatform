@@ -101,6 +101,12 @@ public class TranscodingPresetResponse {
         @Schema(description = "分辨率", example = "1280x720")
         private String resolution;
 
+        @Schema(description = "宽度(px)")
+        private Integer width;
+
+        @Schema(description = "高度(px)")
+        private Integer height;
+
         /**
          * 码率 (kbps)
          */
@@ -124,6 +130,15 @@ public class TranscodingPresetResponse {
          */
         @Schema(description = "质量设置")
         private String quality;
+
+        @Schema(description = "CRF 值（H.264/H.265 可用）")
+        private Integer crf;
+
+        @Schema(description = "FFmpeg 速度预设（ultrafast..placebo）")
+        private String speedPreset;
+
+        @Schema(description = "容器格式", example = "mp4")
+        private String container;
     }
 
     /**

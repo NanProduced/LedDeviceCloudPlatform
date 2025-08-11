@@ -8,6 +8,13 @@
   },
   {
     "source": "business.topic",
+    "destination": "business.core.queue",
+    "destinationType": "queue",
+    "routingKey": "file.transcoding.*.*.*",
+    "description": "文件转码事件绑定 - 路由键: file.transcoding.{eventType}.{orgId}.{refId}，对应@Bean: transcodingBusinessBinding()"
+  },
+  {
+    "source": "business.topic",
     "destination": "business.task.progress.queue",
     "destinationType": "queue",
     "routingKey": "task.progress.*.*",

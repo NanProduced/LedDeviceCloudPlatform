@@ -14,6 +14,7 @@ import org.nan.cloud.core.api.DTO.res.MaterialNodeTreeResponse;
 import org.nan.cloud.core.api.MaterialApi;
 import org.nan.cloud.core.facade.FolderFacade;
 import org.nan.cloud.core.facade.MaterialFacade;
+import org.nan.cloud.core.api.DTO.res.BasicMaterialInfoResponse;
 import org.nan.cloud.core.service.MaterialMetadataService;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
@@ -28,6 +29,7 @@ public class MaterialController implements MaterialApi {
 
     private final FolderFacade folderFacade;
     private final MaterialFacade materialFacade;
+    private final org.nan.cloud.core.service.MaterialService materialService;
     private final MaterialMetadataService materialMetadataService;
 
     @Operation(
@@ -58,6 +60,21 @@ public class MaterialController implements MaterialApi {
     @Override
     public List<ListMaterialResponse> listAllVisibleMaterials() {
         return materialFacade.listAllVisibleMaterials();
+    }
+    @Override
+    public BasicMaterialInfoResponse getBasicMaterialInfo(@PathVariable Long materialId) {
+        var m = materialService.getMaterialById(materialId);
+        if (m == null) {
+            return null;
+        }
+        return BasicMaterialInfoResponse.builder()
+                .materialId(m.getMid())
+                .oid(m.getOid())
+                .fileId(m.getFileId())
+                .storagePath(m.getStoragePath())
+                .materialName(m.getMaterialName())
+                .materialType(m.getMaterialType())
+                .build();
     }
 
     /**

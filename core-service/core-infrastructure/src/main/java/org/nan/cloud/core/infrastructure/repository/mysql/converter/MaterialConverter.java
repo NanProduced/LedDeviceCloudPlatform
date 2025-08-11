@@ -34,6 +34,8 @@ public interface MaterialConverter {
     @Mapping(target = "refCount", source = "refCount")
     @Mapping(target = "fileStatus", source = "fileStatus")
     @Mapping(target = "metaDataId", source = "metaDataId")
+    @Mapping(target = "sourceMaterialId", source = "sourceMaterialId")
+    @Mapping(target = "transcodePreset", source = "transcodePreset")
     Material toMaterial(MaterialDO materialDO);
 
     MaterialDO toMaterialDO(Material material);

@@ -39,6 +39,9 @@ public interface MaterialApi {
             Boolean includeBasicInfo,
             Boolean includeImageMetadata,
             Boolean includeVideoMetadata);
+    @GetMapping(prefix + "/basic/{materialId}")
+    BasicMaterialInfoResponse getBasicMaterialInfo(@PathVariable Long materialId);
+
 
     @GetMapping(prefix + "/metadata/{materialId}/exists")
     Boolean checkMetadataExists(@PathVariable Long materialId);
