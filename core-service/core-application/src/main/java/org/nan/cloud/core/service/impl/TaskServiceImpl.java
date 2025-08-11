@@ -5,7 +5,6 @@ import lombok.extern.slf4j.Slf4j;
 import org.nan.cloud.common.basic.model.PageRequestDTO;
 import org.nan.cloud.common.basic.model.PageVO;
 import org.nan.cloud.core.api.DTO.req.QueryTaskRequest;
-import org.nan.cloud.core.api.DTO.res.QueryTaskResponse;
 import org.nan.cloud.core.domain.Task;
 import org.nan.cloud.core.enums.TaskStatusEnum;
 import org.nan.cloud.core.enums.TaskTypeEnum;
@@ -17,6 +16,8 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Map;
+import java.util.stream.Collectors;
 
 /**
  * 任务服务实现类
@@ -33,7 +34,28 @@ public class TaskServiceImpl implements TaskService {
 
     @Override
     public PageVO<Task> listTasks(PageRequestDTO<QueryTaskRequest> pageRequest, Long orgId, Long userId) {
-        return taskRepository.listTasks(pageRequest.getPageNum(), pageRequest.getPageSize(), pageRequest.getParams().getTaskType(), pageRequest.getParams().getTaskStatus(), orgId, userId);
+        PageVO<Task> page = taskRepository.listTasks(pageRequest.getPageNum(),
+                pageRequest.getPageSize(),
+                pageRequest.getParams() == null ? null : pageRequest.getParams().getTaskType(),
+                pageRequest.getParams() == null ? null : pageRequest.getParams().getTaskStatus(),
+                pageRequest.getParams() == null ? null : pageRequest.getParams().getKeyword(),
+                orgId, userId);
+
+        // 补充领域字段：progress（从缓存），以及为完成任务补充100%
+        if (page.getRecords() != null) {
+            for (Task t : page.getRecords()) {
+                Task cached = businessCacheService.getTaskProgress(t.getTaskId());
+                if (cached != null && cached.getProgress() != null) {
+                    t.setProgress(cached.getProgress());
+                } else if (t.getTaskStatus() == TaskStatusEnum.COMPLETED) {
+                    t.setProgress(100);
+                } else if (t.getProgress() == null) {
+                    t.setProgress(0);
+                }
+            }
+        }
+
+        return page;
     }
 
     @Override
@@ -248,5 +270,16 @@ public class TaskServiceImpl implements TaskService {
             log.error("❌ 查询素材ID失败 - taskId: {}, 错误: {}", taskId, e.getMessage(), e);
             return null;
         }
+    }
+
+    @Override
+    public Map<String, Long> countTasksByStatus(Long orgId, Long userId) {
+        PageRequestDTO<QueryTaskRequest> req = new PageRequestDTO<>();
+        req.setPageNum(1);
+        req.setPageSize(1000);
+        req.setParams(new QueryTaskRequest());
+        PageVO<Task> page = listTasks(req, orgId, userId);
+        return page.getRecords().stream()
+                .collect(Collectors.groupingBy(t -> t.getTaskStatus() == null ? "UNKNOWN" : t.getTaskStatus().name(), Collectors.counting()));
     }
 }

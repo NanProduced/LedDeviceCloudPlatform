@@ -8,7 +8,7 @@ import java.util.List;
 
 public interface TaskRepository {
 
-    PageVO<Task> listTasks(int pageNum, int pageSize, String taskType, String taskStatus, Long orgId, Long userId);
+    PageVO<Task> listTasks(int pageNum, int pageSize, String taskType, String taskStatus, String keyword, Long orgId, Long userId);
 
     Task getTaskById(String taskId);
 

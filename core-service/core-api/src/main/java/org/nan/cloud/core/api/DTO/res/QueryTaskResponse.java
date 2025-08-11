@@ -24,6 +24,15 @@ public class QueryTaskResponse {
     @Schema(description = "导出任务的文件下载链接")
     private String downloadUrl;
 
+    @Schema(description = "任务进度(0-100)")
+    private Integer progress;
+
+    @Schema(description = "任务错误信息(当失败时存在)")
+    private String errorMessage;
+
+    @Schema(description = "缩略图地址(素材相关任务可选)")
+    private String thumbnailUrl;
+
     @Schema(description = "创建时间")
     private LocalDateTime createTime;
 

@@ -3,12 +3,12 @@ package org.nan.cloud.core.service;
 import org.nan.cloud.common.basic.model.PageRequestDTO;
 import org.nan.cloud.common.basic.model.PageVO;
 import org.nan.cloud.core.api.DTO.req.QueryTaskRequest;
-import org.nan.cloud.core.api.DTO.res.QueryTaskResponse;
 import org.nan.cloud.core.domain.Task;
 import org.nan.cloud.core.enums.TaskStatusEnum;
 import org.nan.cloud.core.enums.TaskTypeEnum;
 
 import java.util.List;
+import java.util.Map;
 
 /**
  * 任务服务接口
@@ -121,4 +121,9 @@ public interface TaskService {
      * @return 素材ID，如果任务不存在或没有关联素材则返回null
      */
     Long getMaterialIdByTaskId(String taskId);
+
+    /**
+     * 统计当前用户任务在各状态下的数量
+     */
+    Map<String, Long> countTasksByStatus(Long orgId, Long userId);
 }

@@ -26,7 +26,7 @@ public class TaskRepositoryImpl implements TaskRepository {
     private final TaskDomainConverter taskConverter;
 
     @Override
-    public PageVO<Task> listTasks(int pageNum, int pageSize, String taskType, String taskStatus, Long orgId, Long userId) {
+    public PageVO<Task> listTasks(int pageNum, int pageSize, String taskType, String taskStatus, String keyword, Long orgId, Long userId) {
         Page<TaskDO> page = new Page<>(pageNum, pageSize);
         LambdaQueryWrapper<TaskDO> wrapper = new LambdaQueryWrapper<TaskDO>()
                 .eq(TaskDO::getOid, orgId)
@@ -37,6 +37,10 @@ public class TaskRepositoryImpl implements TaskRepository {
         if (StringUtils.isNotBlank(taskStatus)) {
             wrapper.and(qw -> qw.eq(TaskDO::getTaskStatus, taskStatus));
         }
+        if (StringUtils.isNotBlank(keyword)) {
+            wrapper.and(qw -> qw.like(TaskDO::getRef, keyword));
+        }
+        // keyword按ref模糊查询：为了保持接口兼容，这里可以扩展为从ThreadLocal携带，也可后续修改仓储签名。
         wrapper.orderByDesc(TaskDO::getCreateTime);
         IPage<TaskDO> pageResult = taskMapper.selectPage(page, wrapper);
         PageVO<Task> pageVO = PageVO.<Task>builder()

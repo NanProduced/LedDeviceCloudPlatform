@@ -13,6 +13,7 @@ import org.nan.cloud.core.facade.TaskFacade;
 import org.springframework.web.bind.annotation.RestController;
 
 import java.util.Map;
+import java.util.List;
 
 @Tag(name = "任务管理器", description = "查询任务相关列表及信息")
 @Slf4j
@@ -32,13 +33,21 @@ public class TaskController implements TaskApi {
         return taskFacade.listTasks(requestDTO);
     }
 
-    @Operation(
-            summary = "获取用户任务分类统计",
-            description = "根据任务状态对用户任务数量进行统计",
-            tags = {"任务管理", "通用接口"}
-    )
+    @Operation(summary = "获取用户任务分类统计", description = "根据任务状态统计：PENDING/RUNNING/COMPLETED/FAILED/CANCELED")
     @Override
     public Map<String, Long> getCountMapByStatus() {
-        return Map.of();
+        return taskFacade.countByStatus();
+    }
+
+    @Operation(summary = "取消任务")
+    @Override
+    public void cancelTask(String taskId) {
+        taskFacade.cancelTask(taskId);
+    }
+
+    @Operation(summary = "批量删除任务")
+    @Override
+    public void deleteTasks(List<String> taskIds) {
+        taskFacade.deleteTasks(taskIds);
     }
 }
