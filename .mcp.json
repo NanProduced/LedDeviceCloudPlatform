@@ -1,0 +1,1 @@
+{"openmemory": {"type": "stdio", "command": "npx", "args": ["-y", "openmemory"], "env": {"OPENMEMORY_API_KEY": "om-zguyyra6phuz44oam1kqgp5kwxgxhse2", "CLIENT_NAME": "claude"}}}
