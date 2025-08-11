@@ -259,4 +259,13 @@ public interface ProgramRepository {
                                   String vsnFilePath,
                                   String errorMessage,
                                   Long updatedBy);
+    
+    /**
+     * 更新节目缩略图URL
+     * @param programId 节目ID
+     * @param thumbnailUrl 缩略图URL
+     * @param updatedBy 更新者
+     * @return 影响行数
+     */
+    int updateThumbnailUrl(Long programId, String thumbnailUrl, Long updatedBy);
 }

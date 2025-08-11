@@ -421,4 +421,17 @@ public class ProgramRepositoryImpl implements ProgramRepository {
 
         return programMapper.update(null, updateWrapper);
     }
+    
+    @Override
+    public int updateThumbnailUrl(Long programId, String thumbnailUrl, Long updatedBy) {
+        log.debug("Updating program thumbnail: programId={}, thumbnailUrl={}", programId, thumbnailUrl);
+        
+        UpdateWrapper<ProgramDO> updateWrapper = new UpdateWrapper<>();
+        updateWrapper.eq("id", programId)
+                .set("thumbnail_url", thumbnailUrl)
+                .set("updated_by", updatedBy)
+                .set("updated_time", LocalDateTime.now());
+        
+        return programMapper.update(null, updateWrapper);
+    }
 }

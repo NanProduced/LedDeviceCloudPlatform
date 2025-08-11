@@ -12,6 +12,8 @@ public interface MaterialRepository {
      */
     Material getMaterialById(Long mid);
 
+    String getFileIdByMaterialId(Long mid);
+
     /**
      * 查询用户组下的所有素材
      * @param oid 组织ID

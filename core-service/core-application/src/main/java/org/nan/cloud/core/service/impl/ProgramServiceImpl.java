@@ -1,8 +1,10 @@
 package org.nan.cloud.core.service.impl;
 
+import com.fasterxml.jackson.core.type.TypeReference;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.nan.cloud.common.basic.model.PageVO;
+import org.nan.cloud.common.basic.utils.JsonUtils;
 import org.nan.cloud.core.domain.Program;
 import org.nan.cloud.core.event.mq.VsnGenerationRequestEvent;
 import org.nan.cloud.core.service.converter.ProgramDtoConverter;
@@ -15,6 +17,7 @@ import org.nan.cloud.core.service.ProgramService;
 import org.nan.cloud.core.service.ProgramApprovalService;
 import org.nan.cloud.core.service.VsnEventPublisher;
 import org.nan.cloud.program.document.ProgramContent;
+import org.nan.cloud.program.document.VsnProgram;
 import org.nan.cloud.program.dto.request.CreateProgramRequest;
 import org.nan.cloud.program.dto.request.UpdateProgramRequest;
 import org.nan.cloud.program.dto.response.MaterialValidationDTO;
@@ -476,8 +479,7 @@ public class ProgramServiceImpl implements ProgramService {
         
         // 处理VSN数据（如果提供）
         if (StringUtils.hasText(vsnData)) {
-            // TODO: 解析vsnData并设置vsnPrograms
-            // content.setVsnPrograms(parseVsnData(vsnData));
+            content.setVsnPrograms(JsonUtils.fromJson(vsnData, new  TypeReference<List<VsnProgram>>() {}));
             log.debug("VSN data provided for program: {}, version: {}", program.getId(), program.getVersion());
         }
 

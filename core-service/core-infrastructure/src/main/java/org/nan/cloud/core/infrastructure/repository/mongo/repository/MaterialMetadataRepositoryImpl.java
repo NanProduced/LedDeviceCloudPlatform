@@ -91,6 +91,12 @@ public class MaterialMetadataRepositoryImpl implements MaterialMetadataRepositor
     }
 
     @Override
+    public MaterialMetadata findByFileId(String fileId) {
+        Query query = new Query(Criteria.where("fileId").is(fileId));
+        return mongoTemplate.findOne(query, MaterialMetadata.class, COLLECTION_NAME);
+    }
+
+    @Override
     public List<MaterialMetadata> batchFindByFileIds(List<String> fileIds) {
         if (fileIds == null || fileIds.isEmpty()) {
             log.debug("批量查询素材元数据 - 文件ID列表为空，返回空结果");

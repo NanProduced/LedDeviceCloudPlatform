@@ -419,6 +419,18 @@ public class MessageServiceRabbitConfig {
                 .with(TASK_PROGRESS_ROUTING_KEY);
     }
     
+    /**
+     * VSN生成结果队列绑定
+     * 路由键：program.vsn.result.{orgId}.{programId}
+     */
+    @Bean
+    public Binding vsnResultBinding() {
+        return BindingBuilder
+                .bind(businessCoreQueue())
+                .to(businessExchange())
+                .with("program.vsn.result.*.*");
+    }
+    
     // ==================== 配置加载日志 ====================
     
     /**

@@ -20,6 +20,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.StringUtils;
 
+import java.time.LocalDateTime;
 import java.util.*;
 import java.util.stream.Collectors;
 
@@ -143,6 +144,7 @@ public class MaterialDependencyServiceImpl implements MaterialDependencyService 
                 ref.setUsageIndex(i + 1);
                 ref.setVsnPath(parsedRefs.get(i).vsnPath);
                 ref.setCreatedBy(program.getCreatedBy());
+                ref.setCreatedTime(LocalDateTime.now());
                 refs.add(ref);
             }
 

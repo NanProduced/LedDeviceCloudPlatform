@@ -39,6 +39,13 @@ public class MaterialRepositoryImpl implements MaterialRepository {
     }
 
     @Override
+    public String getFileIdByMaterialId(Long mid) {
+        return materialMapper.selectOne(new LambdaQueryWrapper<MaterialDO>()
+                .select(MaterialDO::getFileId)
+                .eq(MaterialDO::getMid, mid)).getFileId();
+    }
+
+    @Override
     public List<Material> listMaterialsByUserGroup(Long oid, Long ugid, Long fid, boolean includeSub) {
         // 🎯 正确的API调用逻辑：ugid和fid互斥，只传一个
         

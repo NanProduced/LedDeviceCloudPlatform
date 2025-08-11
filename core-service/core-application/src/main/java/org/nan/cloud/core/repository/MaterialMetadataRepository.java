@@ -38,6 +38,8 @@ public interface MaterialMetadataRepository {
      * @param id MongoDB文档ID
      */
     void deleteById(String id);
+
+    MaterialMetadata findByFileId(String fileId);
     
     /**
      * 批量根据文件ID查询素材元数据

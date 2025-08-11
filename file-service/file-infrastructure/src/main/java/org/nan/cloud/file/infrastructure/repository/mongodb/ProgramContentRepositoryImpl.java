@@ -5,6 +5,8 @@ import lombok.extern.slf4j.Slf4j;
 import org.nan.cloud.file.application.repository.ProgramContentRepository;
 import org.nan.cloud.program.document.ProgramContent;
 import org.springframework.data.mongodb.core.MongoTemplate;
+import org.springframework.data.mongodb.core.query.Criteria;
+import org.springframework.data.mongodb.core.query.Query;
 import org.springframework.stereotype.Repository;
 
 @Slf4j
@@ -17,6 +19,11 @@ public class ProgramContentRepositoryImpl implements ProgramContentRepository {
     @Override
     public ProgramContent findById(String contentId) {
         return mongoTemplate.findById(contentId, ProgramContent.class, "program_contents");
+    }
+
+    @Override
+    public ProgramContent findByProgramId(Long programId) {
+        return mongoTemplate.findOne(Query.query(Criteria.where("program_id").is(programId)), ProgramContent.class);
     }
 }
 

@@ -8,5 +8,6 @@ import org.nan.cloud.program.document.ProgramContent;
  */
 public interface ProgramContentRepository {
     ProgramContent findById(String contentId);
+    ProgramContent findByProgramId(Long programId);
 }
 

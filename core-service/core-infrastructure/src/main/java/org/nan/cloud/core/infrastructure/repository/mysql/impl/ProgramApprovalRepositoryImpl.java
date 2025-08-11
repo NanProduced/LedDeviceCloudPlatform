@@ -150,6 +150,8 @@ public class ProgramApprovalRepositoryImpl implements ProgramApprovalRepository 
         
         if (approval.getId() == null) {
             // 新增记录
+            approvalDO.setCreatedTime(LocalDateTime.now());
+            approvalDO.setUpdatedTime(LocalDateTime.now());
             approvalDO.setAppliedTime(LocalDateTime.now());
             int rows = programApprovalMapper.insert(approvalDO);
             if (rows > 0) {

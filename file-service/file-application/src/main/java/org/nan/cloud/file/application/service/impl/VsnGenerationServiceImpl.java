@@ -46,14 +46,13 @@ public class VsnGenerationServiceImpl implements VsnGenerationService {
             Long orgId = toLong(requestPayload.get("organizationId"));
             Long programId = toLong(requestPayload.get("programId"));
             Integer version = toInt(requestPayload.get("version"));
-            String contentId = String.valueOf(requestPayload.get("contentId"));
             String programName = requestPayload.get("programName") == null ? null : String.valueOf(requestPayload.get("programName"));
 
             watcher = new MemoryMonitor.MemoryWatcher("VSN生成-程序" + programId);
             MemoryMonitor.logMemoryUsage("VSN生成开始");
 
             // 1) 从 Mongo 读取 ProgramContent（按 contentId）
-            ProgramContent content = programContentRepository.findById(contentId);
+            ProgramContent content = programContentRepository.findByProgramId(programId);
             watcher.checkpoint("读取程序内容");
 
             // 2) 校验 ProgramContent → VsnProgram 列表存在性与基本结构
