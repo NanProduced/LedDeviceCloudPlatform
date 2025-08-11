@@ -102,14 +102,14 @@ public interface ProgramApi {
      * 审核通过
      */
     @PostMapping(PREFIX + "/approval/{approvalId}/approve")
-    boolean approveProgramApproval(@PathVariable Long approvalId,
+    boolean approveProgram(@PathVariable Long approvalId,
                                  @RequestBody ApprovalRequest request);
     
     /**
      * 审核拒绝
      */
     @PostMapping(PREFIX + "/approval/{approvalId}/reject")
-    boolean rejectProgramApproval(@PathVariable Long approvalId,
+    boolean rejectProgram(@PathVariable Long approvalId,
                                 @RequestBody ApprovalRequest request);
     
     /**

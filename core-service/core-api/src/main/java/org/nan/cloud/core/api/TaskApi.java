@@ -8,6 +8,7 @@ import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestBody;
 
+import java.util.List;
 import java.util.Map;
 
 public interface TaskApi {
@@ -24,5 +25,5 @@ public interface TaskApi {
     void cancelTask(@PathVariable("taskId") String taskId);
 
     @PostMapping(prefix + "/delete")
-    void deleteTasks(@RequestBody java.util.List<String> taskIds);
+    void deleteTasks(@RequestBody List<String> taskIds);
 }

@@ -163,7 +163,7 @@ public class ProgramController implements ProgramApi {
             tags = {"节目审核"}
     )
     @Override
-    public boolean approveProgramApproval(@PathVariable Long approvalId,
+    public boolean approveProgram(@PathVariable Long approvalId,
                                         @RequestBody @Validated ApprovalRequest request) {
         log.info("REST API: Approving program - approvalId: {}", approvalId);
         return programFacade.approveProgramApproval(approvalId, request);
@@ -175,7 +175,7 @@ public class ProgramController implements ProgramApi {
             tags = {"节目审核"}
     )
     @Override
-    public boolean rejectProgramApproval(@PathVariable Long approvalId,
+    public boolean rejectProgram(@PathVariable Long approvalId,
                                        @RequestBody @Validated ApprovalRequest request) {
         log.info("REST API: Rejecting program - approvalId: {}", approvalId);
         return programFacade.rejectProgramApproval(approvalId, request);
