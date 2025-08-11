@@ -35,7 +35,6 @@ public class MaterialDependencyServiceImpl implements MaterialDependencyService 
     private final ProgramMaterialRefRepository programMaterialRefRepository;
     private final MaterialRepository materialRepository;
     private final ProgramRepository programRepository;
-    private final ObjectMapper objectMapper;
     
     @Override
     public MaterialValidationDTO validateMaterialDependencies(String contentData, Long oid) {

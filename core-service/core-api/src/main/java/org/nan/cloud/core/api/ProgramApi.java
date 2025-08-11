@@ -64,7 +64,7 @@ public interface ProgramApi {
     /**
      * 节目列表
      */
-    @GetMapping(PREFIX + "/list")
+    @PostMapping(PREFIX + "/list")
     PageVO<ProgramDTO> listPrograms(@RequestBody PageRequestDTO<QueryProgramListRequest> pageRequestDTO);
 
     /**
