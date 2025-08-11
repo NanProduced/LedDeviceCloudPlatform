@@ -6,7 +6,6 @@ import org.nan.cloud.file.application.service.VsnGenerationService;
 import org.nan.cloud.file.application.port.VsnResultPublisher;
 import org.nan.cloud.file.application.repository.ProgramContentRepository;
 import org.nan.cloud.file.application.service.validation.VsnSchemaValidator;
-import org.nan.cloud.file.application.port.VsnXmlWriter;
 import org.nan.cloud.file.application.port.StreamingVsnXmlWriter;
 import org.nan.cloud.file.application.utils.StreamingHashCalculator;
 import org.nan.cloud.file.application.utils.MemoryMonitor;
@@ -15,11 +14,6 @@ import org.nan.cloud.program.document.VsnProgram;
 import org.nan.cloud.file.application.config.FileStorageProperties;
 import org.springframework.stereotype.Service;
 
-import java.nio.charset.StandardCharsets;
-import java.nio.channels.FileChannel;
-import java.nio.file.StandardOpenOption;
-import java.nio.file.StandardCopyOption;
-import java.security.MessageDigest;
 import java.util.List;
 import java.util.Map;
 import java.io.FileOutputStream;
@@ -36,7 +30,6 @@ public class VsnGenerationServiceImpl implements VsnGenerationService {
     private final ProgramContentRepository programContentRepository;
     private final FileStorageProperties fileStorageProperties;
     private final VsnSchemaValidator vsnSchemaValidator;
-    private final VsnXmlWriter vsnXmlWriter;
     private final StreamingVsnXmlWriter streamingVsnXmlWriter;
 
     @Override

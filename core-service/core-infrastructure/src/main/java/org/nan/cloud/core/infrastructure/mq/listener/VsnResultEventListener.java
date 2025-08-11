@@ -108,7 +108,7 @@ public class VsnResultEventListener implements MessageConsumer {
         materialRefs.sort(Comparator.comparingInt(ProgramMaterialRef::getUsageIndex).thenComparingLong(ProgramMaterialRef::getMaterialId));
         
         ProgramMaterialRef firstMaterial = materialRefs.get(0);
-        Long firstMaterialId = firstMaterial.getId();
+        Long firstMaterialId = firstMaterial.getMaterialId();
         String firstMaterialFileId = materialRepository.getFileIdByMaterialId(firstMaterialId);
 
         log.debug("获取第一个素材: materialId={}, fileId={}",

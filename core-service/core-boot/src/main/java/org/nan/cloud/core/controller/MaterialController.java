@@ -16,6 +16,7 @@ import org.nan.cloud.core.facade.FolderFacade;
 import org.nan.cloud.core.facade.MaterialFacade;
 import org.nan.cloud.core.api.DTO.res.BasicMaterialInfoResponse;
 import org.nan.cloud.core.service.MaterialMetadataService;
+import org.nan.cloud.core.service.MaterialService;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
 
@@ -29,7 +30,7 @@ public class MaterialController implements MaterialApi {
 
     private final FolderFacade folderFacade;
     private final MaterialFacade materialFacade;
-    private final org.nan.cloud.core.service.MaterialService materialService;
+    private final MaterialService materialService;
     private final MaterialMetadataService materialMetadataService;
 
     @Operation(

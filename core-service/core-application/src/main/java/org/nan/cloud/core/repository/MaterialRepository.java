@@ -72,6 +72,31 @@ public interface MaterialRepository {
      */
     void updateMaterial(Material material);
 
+    // ========== 转码任务查询相关方法 ==========
+
+    /**
+     * 根据ID和用户查询素材（权限控制）
+     * @param materialId 素材ID
+     * @param uid 用户ID
+     * @param oid 组织ID
+     * @return 素材信息
+     */
+    Material findByIdAndUser(Long materialId, Long uid, Long oid);
+
+    /**
+     * 根据源素材ID查询转码后的素材列表
+     * @param sourceMaterialId 源素材ID
+     * @return 转码后的素材列表
+     */
+    List<Material> findBySourceMaterialId(Long sourceMaterialId);
+
+    /**
+     * 根据ID查询素材
+     * @param materialId 素材ID
+     * @return 素材信息
+     */
+    Material findById(Long materialId);
+
     /**
      * 删除素材
      * @param mid 素材ID

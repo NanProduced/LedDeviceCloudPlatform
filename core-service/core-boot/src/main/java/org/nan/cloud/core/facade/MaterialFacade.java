@@ -7,8 +7,10 @@ import org.nan.cloud.common.web.context.RequestUserInfo;
 import org.nan.cloud.core.api.DTO.res.ListMaterialResponse;
 import org.nan.cloud.core.api.DTO.res.ListSharedMaterialResponse;
 import org.nan.cloud.core.api.DTO.res.MaterialNodeTreeResponse;
+import org.nan.cloud.core.api.DTO.res.TaskInitResponse;
 import org.nan.cloud.core.aspect.SkipOrgManagerPermissionCheck;
 import org.nan.cloud.core.service.MaterialService;
+import org.nan.cloud.core.service.MaterialTranscodeService;
 import org.nan.cloud.core.service.PermissionChecker;
 import org.springframework.stereotype.Component;
 
@@ -21,6 +23,7 @@ public class MaterialFacade {
 
     private final MaterialService materialService;
     private final PermissionChecker permissionChecker;
+    private final MaterialTranscodeService materialTranscodeService;
 
     /**
      * 初始化素材管理树形结构
@@ -117,5 +120,24 @@ public class MaterialFacade {
                 requestUser.getUid(), requestUser.getUgid(), fid, includeSub);
         
         return materialService.listSharedMaterials(requestUser.getOid(), requestUser.getUgid(), fid, includeSub);
+    }
+
+    /**
+     * 提交转码任务
+     * @param materialId
+     * @return
+     */
+    @SkipOrgManagerPermissionCheck
+    public TaskInitResponse submitTranscode(Long materialId) {
+        RequestUserInfo user = InvocationContextHolder.getContext().getRequestUser();
+        // todo: 权限校验
+        String taskId = materialTranscodeService.submitTranscode(materialId, user.getOid(), user.getUgid(), user.getUid());
+        return TaskInitResponse.builder()
+                .taskId(taskId)
+                .taskType("MATERIAL_TRANSCODE")
+                .status("PENDING")
+                .progressSubscriptionUrl("/topic/task/" + taskId)
+                .message("任务已创建，等待 file-service 执行")
+                .build();
     }
 }

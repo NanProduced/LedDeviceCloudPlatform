@@ -16,7 +16,10 @@ import org.springframework.stereotype.Repository;
 
 import java.time.LocalDateTime;
 import java.util.List;
+import org.nan.cloud.core.enums.TaskTypeEnum;
+import lombok.extern.slf4j.Slf4j;
 
+@Slf4j
 @Repository
 @RequiredArgsConstructor
 public class TaskRepositoryImpl implements TaskRepository {
@@ -102,5 +105,131 @@ public class TaskRepositoryImpl implements TaskRepository {
     @Override
     public void deleteTasks(List<String> taskIds) {
         taskMapper.deleteByIds(taskIds);
+    }
+
+    // ========== 转码任务查询相关方法实现 ==========
+
+    @Override
+    public List<Task> findTranscodingTasksByUser(Long uid, Long oid, TaskTypeEnum taskType, String status,
+                                                 LocalDateTime startTime, LocalDateTime endTime,
+                                                 Integer page, Integer size, String sortBy, String sortDirection) {
+        log.debug("🔍 查询用户转码任务列表 - uid: {}, oid: {}, taskType: {}", uid, oid, taskType);
+        
+        LambdaQueryWrapper<TaskDO> wrapper = new LambdaQueryWrapper<TaskDO>()
+                .eq(TaskDO::getCreator, uid)
+                .eq(TaskDO::getOid, oid)
+                .eq(TaskDO::getTaskType, taskType.name());
+        
+        // 状态过滤
+        if (StringUtils.isNotBlank(status)) {
+            wrapper.eq(TaskDO::getTaskStatus, status);
+        }
+        
+        // 时间范围过滤
+        if (startTime != null) {
+            wrapper.ge(TaskDO::getCreateTime, startTime);
+        }
+        if (endTime != null) {
+            wrapper.le(TaskDO::getCreateTime, endTime);
+        }
+        
+        // 排序处理
+        if ("asc".equalsIgnoreCase(sortDirection)) {
+            if ("createTime".equals(sortBy)) {
+                wrapper.orderByAsc(TaskDO::getCreateTime);
+            } else if ("completeTime".equals(sortBy)) {
+                wrapper.orderByAsc(TaskDO::getCompleteTime);
+            } else {
+                wrapper.orderByAsc(TaskDO::getCreateTime); // 默认
+            }
+        } else {
+            if ("createTime".equals(sortBy)) {
+                wrapper.orderByDesc(TaskDO::getCreateTime);
+            } else if ("completeTime".equals(sortBy)) {
+                wrapper.orderByDesc(TaskDO::getCompleteTime);
+            } else {
+                wrapper.orderByDesc(TaskDO::getCreateTime); // 默认
+            }
+        }
+        
+        // 分页处理
+        if (page != null && size != null && page > 0 && size > 0) {
+            Page<TaskDO> pageObj = new Page<>(page, size);
+            IPage<TaskDO> pageResult = taskMapper.selectPage(pageObj, wrapper);
+            log.debug("📊 转码任务查询结果 - 当前页: {}, 总数: {}", page, pageResult.getTotal());
+            return taskConverter.toTaskList(pageResult.getRecords());
+        } else {
+            // 无分页查询
+            List<TaskDO> taskDOS = taskMapper.selectList(wrapper);
+            log.debug("📊 转码任务查询结果 - 总数: {}", taskDOS.size());
+            return taskConverter.toTaskList(taskDOS);
+        }
+    }
+
+    @Override
+    public Integer countTranscodingTasksByUser(Long uid, Long oid, TaskTypeEnum taskType, String status,
+                                              LocalDateTime startTime, LocalDateTime endTime) {
+        log.debug("🔢 统计用户转码任务数量 - uid: {}, oid: {}, taskType: {}", uid, oid, taskType);
+        
+        LambdaQueryWrapper<TaskDO> wrapper = new LambdaQueryWrapper<TaskDO>()
+                .eq(TaskDO::getCreator, uid)
+                .eq(TaskDO::getOid, oid)
+                .eq(TaskDO::getTaskType, taskType.name());
+        
+        // 状态过滤
+        if (StringUtils.isNotBlank(status)) {
+            wrapper.eq(TaskDO::getTaskStatus, status);
+        }
+        
+        // 时间范围过滤
+        if (startTime != null) {
+            wrapper.ge(TaskDO::getCreateTime, startTime);
+        }
+        if (endTime != null) {
+            wrapper.le(TaskDO::getCreateTime, endTime);
+        }
+        
+        Long count = taskMapper.selectCount(wrapper);
+        log.debug("📊 转码任务数量统计结果: {}", count);
+        return count.intValue();
+    }
+
+    @Override
+    public Task findTranscodingTaskByIdAndUser(String taskId, Long uid, Long oid, TaskTypeEnum taskType) {
+        log.debug("🔍 根据任务ID和用户查询转码任务 - taskId: {}, uid: {}, oid: {}", taskId, uid, oid);
+        
+        TaskDO taskDO = taskMapper.selectOne(new LambdaQueryWrapper<TaskDO>()
+                .eq(TaskDO::getTaskId, taskId)
+                .eq(TaskDO::getCreator, uid)
+                .eq(TaskDO::getOid, oid)
+                .eq(TaskDO::getTaskType, taskType.name())
+        );
+        
+        if (taskDO == null) {
+            log.warn("⚠️ 转码任务不存在或无权限访问 - taskId: {}, uid: {}", taskId, uid);
+            return null;
+        }
+        
+        return taskConverter.toTask(taskDO);
+    }
+
+    @Override
+    public List<Task> findTranscodingTasksBySourceMaterial(Long sourceMaterialId, Long uid, Long oid, TaskTypeEnum taskType) {
+        log.debug("🔍 根据源素材ID查询转码任务 - sourceMaterialId: {}, uid: {}, oid: {}", sourceMaterialId, uid, oid);
+        
+        // 通过ref字段查询，ref格式为 "material:{sourceMaterialId}"
+        String refPattern = "material:" + sourceMaterialId;
+        
+        List<TaskDO> taskDOS = taskMapper.selectList(new LambdaQueryWrapper<TaskDO>()
+                .eq(TaskDO::getCreator, uid)
+                .eq(TaskDO::getOid, oid)
+                .eq(TaskDO::getTaskType, taskType.name())
+                .eq(TaskDO::getRef, refPattern)
+                .orderByDesc(TaskDO::getCreateTime) // 按创建时间倒序
+        );
+        
+        log.debug("📊 找到转码任务数量: {} - sourceMaterialId: {}", taskDOS.size(), sourceMaterialId);
+        
+        return taskConverter.toTaskList(taskDOS);
     }
 }

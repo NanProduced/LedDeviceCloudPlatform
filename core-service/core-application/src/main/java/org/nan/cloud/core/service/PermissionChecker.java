@@ -34,6 +34,7 @@ public interface PermissionChecker {
 
     boolean ifTargetTerminalGroupTheSameOrg(Long oid, Long targetTgid);
 
+
     boolean ifTargetFolderTheSameOrg(Long oid, Long targetFid);
     /**
      * 检查操作用户是否有权限修改目标用户组的终端组绑定

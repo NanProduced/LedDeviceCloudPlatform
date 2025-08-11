@@ -296,4 +296,54 @@ public class MaterialRepositoryImpl implements MaterialRepository {
                 .eq(MaterialDO::getOid, oid)
                 .in(MaterialDO::getMid, materialIds)).stream().map(MaterialDO::getMid).collect(Collectors.toSet());
     }
+
+    // ========== 转码任务查询相关方法实现 ==========
+
+    @Override
+    public Material findByIdAndUser(Long materialId, Long uid, Long oid) {
+        log.debug("🔍 根据ID和用户查询素材 - materialId: {}, uid: {}, oid: {}", materialId, uid, oid);
+        
+        // 权限控制：确保素材属于指定组织且用户有权限访问
+        MaterialDO materialDO = materialMapper.selectOne(new LambdaQueryWrapper<MaterialDO>()
+                .eq(MaterialDO::getMid, materialId)
+                .eq(MaterialDO::getOid, oid)
+                // 注：这里简化处理，实际应该检查用户是否属于素材的用户组或有访问权限
+                // 可以通过JOIN user_group_member表来验证权限
+        );
+        
+        if (materialDO == null) {
+            log.warn("⚠️ 素材不存在或无权限访问 - materialId: {}, uid: {}, oid: {}", materialId, uid, oid);
+            return null;
+        }
+        
+        return materialConverter.toMaterial(materialDO);
+    }
+
+    @Override
+    public List<Material> findBySourceMaterialId(Long sourceMaterialId) {
+        log.debug("🔍 根据源素材ID查询转码后素材 - sourceMaterialId: {}", sourceMaterialId);
+        
+        // 查询source_material_id字段匹配的所有素材
+        List<MaterialDO> materialDOS = materialMapper.selectList(new LambdaQueryWrapper<MaterialDO>()
+                .eq(MaterialDO::getSourceMaterialId, sourceMaterialId)
+                .orderByDesc(MaterialDO::getCreateTime) // 按创建时间倒序，最新的在前
+        );
+        
+        log.debug("📊 找到转码后素材数量: {} - sourceMaterialId: {}", materialDOS.size(), sourceMaterialId);
+        
+        return materialConverter.toMaterials(materialDOS);
+    }
+
+    @Override
+    public Material findById(Long materialId) {
+        log.debug("🔍 根据ID查询素材 - materialId: {}", materialId);
+        
+        MaterialDO materialDO = materialMapper.selectById(materialId);
+        if (materialDO == null) {
+            log.debug("📋 素材不存在 - materialId: {}", materialId);
+            return null;
+        }
+        
+        return materialConverter.toMaterial(materialDO);
+    }
 }

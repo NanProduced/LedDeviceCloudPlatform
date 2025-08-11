@@ -6,10 +6,15 @@ import org.nan.cloud.common.basic.utils.JsonUtils;
 import org.nan.cloud.common.mq.consumer.ConsumeResult;
 import org.nan.cloud.common.mq.consumer.MessageConsumer;
 import org.nan.cloud.common.mq.core.message.Message;
+import org.nan.cloud.core.domain.Task;
+import org.nan.cloud.core.enums.TaskStatusEnum;
+import org.nan.cloud.core.enums.TaskTypeEnum;
+import org.nan.cloud.core.infrastructure.repository.mysql.DO.MaterialDO;
 import org.nan.cloud.core.infrastructure.repository.mysql.DO.MaterialFileDO;
 import org.nan.cloud.core.infrastructure.repository.mysql.mapper.MaterialFileMapper;
 import org.nan.cloud.core.infrastructure.repository.mysql.mapper.MaterialMapper;
 import org.nan.cloud.core.infrastructure.task.TaskStatusHandler;
+import org.nan.cloud.core.service.TaskService;
 import org.springframework.stereotype.Component;
 
 import java.time.LocalDateTime;
@@ -23,7 +28,7 @@ public class TranscodingEventListener implements MessageConsumer {
     private final TaskStatusHandler taskStatusHandler;
     private final MaterialFileMapper materialFileMapper;
     private final MaterialMapper materialMapper;
-    private final org.nan.cloud.core.service.TaskService taskService;
+    private final TaskService taskService;
 
     @Override
     public ConsumeResult consume(Message message) {
@@ -101,7 +106,7 @@ public class TranscodingEventListener implements MessageConsumer {
         materialFileMapper.insert(mf);
 
         // 2) 创建新 material（指向 targetFileId），命名：原名+格式，组/文件夹继承自原素材
-        org.nan.cloud.core.infrastructure.repository.mysql.DO.MaterialDO src = null;
+        MaterialDO src = null;
         if (sourceMaterialId != null) {
             src = materialMapper.selectById(sourceMaterialId);
         }
@@ -117,7 +122,7 @@ public class TranscodingEventListener implements MessageConsumer {
         String fmt = (fileExtension != null && !fileExtension.isBlank()) ? fileExtension.toUpperCase() : "TRANSCODED";
         String newName = baseNameNoExt + "(" + fmt + ")";
 
-        org.nan.cloud.core.infrastructure.repository.mysql.DO.MaterialDO md = new org.nan.cloud.core.infrastructure.repository.mysql.DO.MaterialDO();
+        MaterialDO md = new MaterialDO();
         md.setMaterialName(newName);
         md.setFileId(targetFileId);
         md.setOid(oid);
@@ -142,25 +147,16 @@ public class TranscodingEventListener implements MessageConsumer {
         @SuppressWarnings("unchecked")
         Map<String, Object> p = JsonUtils.getDefaultObjectMapper().convertValue(message.getPayload(), Map.class);
         String taskId = (String) p.get("taskId");
-        Long oid = toLong(p.get("organizationId"));
-        Long uid = toLong(p.get("userId"));
-        Long sourceMaterialId = toLong(p.get("sourceMaterialId"));
-        // 创建任务（转码）PENDING 0%
+        
+        // 仅确认任务已接收，不重复创建Task（已在MaterialTranscodeController中创建）
+        log.info("📨 转码任务已被file-service接收 - taskId={}", taskId);
+        
+        // 可选：更新任务状态为ACCEPTED，表明已被处理服务接收
         try {
-            org.nan.cloud.core.domain.Task task = org.nan.cloud.core.domain.Task.builder()
-                    .taskId(taskId)
-                    .taskType(org.nan.cloud.core.enums.TaskTypeEnum.MATERIAL_TRANSCODE)
-                    .taskStatus(org.nan.cloud.core.enums.TaskStatusEnum.PENDING)
-                    .oid(oid)
-                    .ref("material:" + sourceMaterialId)
-                    .refId(String.valueOf(sourceMaterialId))
-                    .creator(uid)
-                    .progress(0)
-                    .createTime(java.time.LocalDateTime.now())
-                    .build();
-            taskService.createTask(task);
+            taskStatusHandler.updateTaskStatus(taskId, TaskStatusEnum.RUNNING);
+            log.info("✅ 任务状态已更新为RUNNING - taskId={}", taskId);
         } catch (Exception e) {
-            log.error("创建转码任务记录失败 - taskId={}", taskId, e);
+            log.warn("⚠️ 更新任务状态失败，但不影响转码流程 - taskId={}, error={}", taskId, e.getMessage());
         }
     }
 
