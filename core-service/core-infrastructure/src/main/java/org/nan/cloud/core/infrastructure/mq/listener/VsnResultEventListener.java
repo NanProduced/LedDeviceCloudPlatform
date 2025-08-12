@@ -9,11 +9,13 @@ import org.nan.cloud.common.mq.consumer.MessageConsumer;
 import org.nan.cloud.common.mq.core.message.Message;
 import org.nan.cloud.core.domain.ProgramMaterialRef;
 import org.nan.cloud.core.event.mq.VsnGenerationResponseEvent;
+import org.nan.cloud.core.event.quota.QuotaChangeEvent;
 import org.nan.cloud.core.repository.MaterialMetadataRepository;
 import org.nan.cloud.core.repository.MaterialRepository;
 import org.nan.cloud.core.repository.ProgramMaterialRefRepository;
 import org.nan.cloud.core.repository.ProgramRepository;
 import org.nan.cloud.program.enums.VsnGenerationStatusEnum;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Component;
 import org.springframework.util.CollectionUtils;
 
@@ -33,6 +35,7 @@ public class VsnResultEventListener implements MessageConsumer {
     private final ProgramMaterialRefRepository programMaterialRefRepository;
     private final MaterialMetadataRepository materialMetadataRepository;
     private final MaterialRepository materialRepository;
+    private final ApplicationEventPublisher applicationEventPublisher;
 
     @Override
     public String[] getSupportedMessageTypes() {
@@ -64,12 +67,14 @@ public class VsnResultEventListener implements MessageConsumer {
             VsnGenerationStatusEnum status = event.getStatus();
             String fileId = event.getVsnFileId();
             String filePath = event.getVsnFilePath();
+            Long fileSize = event.getVsnFileSize();
             String error = event.getErrorMessage();
 
+            // 使用包含文件大小的重载方法更新VSN结果
             programRepository.updateVsnGenerationResult(
-                    event.getProgramId(), status, fileId, filePath, error, 0L);
+                    event.getProgramId(), status, fileId, filePath, fileSize, error, 0L);
             
-            // 如果VSN生成成功，更新节目缩略图为第一个素材的缩略图
+            // 如果VSN生成成功，处理后续逻辑
             if (VsnGenerationStatusEnum.COMPLETED.equals(status)) {
                 try {
                     updateProgramThumbnail(event.getProgramId());
@@ -77,6 +82,26 @@ public class VsnResultEventListener implements MessageConsumer {
                     log.warn("⚠️ 更新节目缩略图失败: programId={}, error={}", 
                             event.getProgramId(), e.getMessage(), e);
                     // 缩略图更新失败不影响VSN结果处理
+                }
+                
+                // 发布VSN配额扣除事件
+                try {
+                    if (fileSize != null && fileSize > 0) {
+                        QuotaChangeEvent quotaEvent = new QuotaChangeEvent(
+                                this, 
+                                QuotaChangeEvent.QuotaChangeEventType.VSN_CREATE, 
+                                String.valueOf(event.getProgramId())
+                        );
+                        applicationEventPublisher.publishEvent(quotaEvent);
+                        log.info("📊 已发布VSN配额扣除事件: programId={}, size={}MB", 
+                                event.getProgramId(), fileSize / 1024 / 1024);
+                    } else {
+                        log.warn("⚠️ VSN文件大小为空，跳过配额扣除: programId={}", event.getProgramId());
+                    }
+                } catch (Exception e) {
+                    log.error("❌ 发布VSN配额事件失败: programId={}, error={}", 
+                            event.getProgramId(), e.getMessage(), e);
+                    // 配额事件发布失败不影响VSN结果处理
                 }
             }
 

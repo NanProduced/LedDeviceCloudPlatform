@@ -266,6 +266,25 @@ public interface ProgramRepository {
                                   String vsnFilePath,
                                   String errorMessage,
                                   Long updatedBy);
+
+    /**
+     * 更新VSN生成结果字段（包含文件大小）
+     * @param programId 节目ID
+     * @param status VSN生成状态
+     * @param vsnFileId VSN文件ID（可空）
+     * @param vsnFilePath VSN文件路径（可空）
+     * @param vsnFileSize VSN文件大小（字节）
+     * @param errorMessage 错误信息（可空）
+     * @param updatedBy 更新者（系统更新可传0）
+     * @return 影响行数
+     */
+    int updateVsnGenerationResult(Long programId,
+                                  org.nan.cloud.program.enums.VsnGenerationStatusEnum status,
+                                  String vsnFileId,
+                                  String vsnFilePath,
+                                  Long vsnFileSize,
+                                  String errorMessage,
+                                  Long updatedBy);
     
     /**
      * 更新节目缩略图URL

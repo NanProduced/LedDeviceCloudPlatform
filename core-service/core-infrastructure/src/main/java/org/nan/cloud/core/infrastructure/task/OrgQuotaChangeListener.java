@@ -12,6 +12,8 @@ import org.nan.cloud.core.infrastructure.repository.mysql.mapper.TaskMapper;
 import org.nan.cloud.core.infrastructure.repository.mysql.mapper.OrgQuotaMapper;
 import org.nan.cloud.core.infrastructure.repository.mysql.DO.OrgQuotaDO;
 import org.nan.cloud.core.infrastructure.repository.mongo.document.OrgQuotaChangeLogDocument;
+import org.nan.cloud.core.repository.ProgramRepository;
+import org.nan.cloud.core.domain.Program;
 import org.springframework.data.mongodb.core.MongoTemplate;
 import org.springframework.context.event.EventListener;
 import org.springframework.scheduling.annotation.Async;
@@ -31,13 +33,26 @@ public class OrgQuotaChangeListener {
     private final OrgQuotaMapper orgQuotaMapper;
 
     private final MongoTemplate mongoTemplate;
+    
+    private final ProgramRepository programRepository;
 
     @Async
     @EventListener
     public void handleQuotaChangeEvent(QuotaChangeEvent event) {
         QuotaChangeEvent.QuotaChangeEventType eventType = event.getEventType();
-        if (Objects.requireNonNull(eventType) == QuotaChangeEvent.QuotaChangeEventType.MATERIAL_FILE_UPLOAD) {
-            handleMaterialFileUploadEvent(event.getTaskId());
+        switch (Objects.requireNonNull(eventType)) {
+            case MATERIAL_FILE_UPLOAD:
+                handleMaterialFileUploadEvent(event.getTaskId());
+                break;
+            case VSN_CREATE:
+                handleVsnCreateEvent(event.getTaskId());
+                break;
+            case VSN_DELETE:
+                handleVsnDeleteEvent(event.getTaskId());
+                break;
+            default:
+                log.debug("未处理的配额变更事件类型: {}", eventType);
+                break;
         }
     }
 
@@ -94,6 +109,113 @@ public class OrgQuotaChangeListener {
         mongoTemplate.save(logDoc);
     }
 
+    /**
+     * 处理VSN创建事件
+     * @param programId 节目ID（作为字符串传递）
+     */
+    private void handleVsnCreateEvent(String programId) {
+        log.info("VSN文件创建成功 - 开始扣除组织存储空间");
+        try {
+            Long id = Long.valueOf(programId);
+            Program program = programRepository.findById(id).orElse(null);
+            if (program == null) {
+                log.warn("节目不存在，跳过配额扣除. programId={}", programId);
+                return;
+            }
+            
+            if (program.getVsnFileSize() == null || program.getVsnFileSize() <= 0) {
+                log.warn("VSN文件大小为空或无效，跳过配额扣除. programId={}, size={}", 
+                        programId, program.getVsnFileSize());
+                return;
+            }
+
+            // 读取组织当前配额
+            OrgQuotaDO quota = orgQuotaMapper.selectById(program.getOid());
+            if (quota == null) {
+                log.warn("组织配额不存在，跳过配额扣除. orgId={}", program.getOid());
+                return;
+            }
+            
+            long beforeUsedSize = quota.getUsedStorageSize() != null ? quota.getUsedStorageSize() : 0L;
+            int beforeUsedCount = quota.getUsedFileCount() != null ? quota.getUsedFileCount() : 0;
+            
+            long afterUsedSize = beforeUsedSize + program.getVsnFileSize();
+            int afterUsedCount = beforeUsedCount + 1;
+
+            // 生成日志
+            OrgQuotaChangeLogDocument logDoc = buildVsnCreateLog(quota, program, beforeUsedSize, beforeUsedCount);
+
+            // 更新配额（简单加法；低并发场景，接受轻微竞态）
+            OrgQuotaDO update = new OrgQuotaDO();
+            update.setOrgId(program.getOid());
+            update.setUsedStorageSize(afterUsedSize);
+            update.setUsedFileCount(afterUsedCount);
+            orgQuotaMapper.updateById(update);
+
+            log.info("VSN文件创建成功 - 扣除组织存储空间成功: 组织:{}, 本次扣除:{} MB, 文件数量:{}", 
+                    program.getOid(), program.getVsnFileSize() / 1024 / 1024, 1);
+
+            // 记录 Mongo 日志
+            mongoTemplate.save(logDoc);
+            
+        } catch (Exception e) {
+            log.error("处理VSN创建配额事件失败: programId={}, error={}", programId, e.getMessage(), e);
+        }
+    }
+
+    /**
+     * 处理VSN删除事件
+     * @param programId 节目ID（作为字符串传递）
+     */
+    private void handleVsnDeleteEvent(String programId) {
+        log.info("VSN文件删除 - 开始回收组织存储空间");
+        try {
+            Long id = Long.valueOf(programId);
+            Program program = programRepository.findById(id).orElse(null);
+            if (program == null) {
+                log.warn("节目不存在，跳过配额回收. programId={}", programId);
+                return;
+            }
+            
+            if (program.getVsnFileSize() == null || program.getVsnFileSize() <= 0) {
+                log.debug("VSN文件大小为空，跳过配额回收. programId={}", programId);
+                return;
+            }
+
+            // 读取组织当前配额
+            OrgQuotaDO quota = orgQuotaMapper.selectById(program.getOid());
+            if (quota == null) {
+                log.warn("组织配额不存在，跳过配额回收. orgId={}", program.getOid());
+                return;
+            }
+            
+            long beforeUsedSize = quota.getUsedStorageSize() != null ? quota.getUsedStorageSize() : 0L;
+            int beforeUsedCount = quota.getUsedFileCount() != null ? quota.getUsedFileCount() : 0;
+            
+            long afterUsedSize = Math.max(0, beforeUsedSize - program.getVsnFileSize());
+            int afterUsedCount = Math.max(0, beforeUsedCount - 1);
+
+            // 生成日志
+            OrgQuotaChangeLogDocument logDoc = buildVsnDeleteLog(quota, program, beforeUsedSize, beforeUsedCount);
+
+            // 更新配额
+            OrgQuotaDO update = new OrgQuotaDO();
+            update.setOrgId(program.getOid());
+            update.setUsedStorageSize(afterUsedSize);
+            update.setUsedFileCount(afterUsedCount);
+            orgQuotaMapper.updateById(update);
+
+            log.info("VSN文件删除 - 回收组织存储空间成功: 组织:{}, 本次回收:{} MB, 文件数量:{}", 
+                    program.getOid(), program.getVsnFileSize() / 1024 / 1024, 1);
+
+            // 记录 Mongo 日志
+            mongoTemplate.save(logDoc);
+            
+        } catch (Exception e) {
+            log.error("处理VSN删除配额事件失败: programId={}, error={}", programId, e.getMessage(), e);
+        }
+    }
+
     /* ----------------- 构建空间更改日志辅助方法 ----------------------- */
 
     private OrgQuotaChangeLogDocument buildMaterialUploadLog(OrgQuotaDO orgQuotaDO, MaterialDO materialDO, TaskDO taskDO) {
@@ -115,6 +237,52 @@ public class OrgQuotaChangeListener {
                 .operationUid(taskDO.getCreator())
                 .taskId(taskDO.getTaskId())
                 .createdAt(taskDO.getCompleteTime())
+                .build();
+    }
+
+    private OrgQuotaChangeLogDocument buildVsnCreateLog(OrgQuotaDO orgQuotaDO, Program program, 
+                                                       long beforeUsedSize, int beforeUsedCount) {
+        return OrgQuotaChangeLogDocument.builder()
+                .oid(program.getOid())
+                .fileId(program.getVsnFileId())
+                .ugid(program.getUgid())
+                .fid(null) // VSN文件不关联文件夹
+                .fileType("VSN")
+                .sourceId(program.getId().toString())
+                .bytesChange(program.getVsnFileSize()) // 正数表示增加
+                .filesChange(1)
+                .quotaOperationType(QuotaOperationType.VSN_UPLOAD)
+                .beforeUsedSize(beforeUsedSize)
+                .afterUsedSize(beforeUsedSize + program.getVsnFileSize())
+                .beforeUsedCount(beforeUsedCount)
+                .afterUsedCount(beforeUsedCount + 1)
+                .operationUid(program.getCreatedBy())
+                .taskId(null) // VSN生成没有taskId
+                .remark("节目VSN文件生成")
+                .createdAt(java.time.LocalDateTime.now())
+                .build();
+    }
+
+    private OrgQuotaChangeLogDocument buildVsnDeleteLog(OrgQuotaDO orgQuotaDO, Program program, 
+                                                       long beforeUsedSize, int beforeUsedCount) {
+        return OrgQuotaChangeLogDocument.builder()
+                .oid(program.getOid())
+                .fileId(program.getVsnFileId())
+                .ugid(program.getUgid())
+                .fid(null) // VSN文件不关联文件夹
+                .fileType("VSN")
+                .sourceId(program.getId().toString())
+                .bytesChange(-program.getVsnFileSize()) // 负数表示减少
+                .filesChange(-1)
+                .quotaOperationType(QuotaOperationType.VSN_DELETE)
+                .beforeUsedSize(beforeUsedSize)
+                .afterUsedSize(Math.max(0, beforeUsedSize - program.getVsnFileSize()))
+                .beforeUsedCount(beforeUsedCount)
+                .afterUsedCount(Math.max(0, beforeUsedCount - 1))
+                .operationUid(program.getUpdatedBy())
+                .taskId(null) // VSN删除没有taskId
+                .remark("节目VSN文件删除")
+                .createdAt(java.time.LocalDateTime.now())
                 .build();
     }
 }

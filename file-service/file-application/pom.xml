@@ -26,6 +26,12 @@
             <artifactId>file-api</artifactId>
             <version>${project.version}</version>
         </dependency>
+        <!-- 通用基础模块 -->
+        <dependency>
+            <groupId>org.nan</groupId>
+            <artifactId>common-basic</artifactId>
+            <version>${project.version}</version>
+        </dependency>
         <!-- program-domain: 读取 ProgramContent/VsnProgram 模型与枚举 -->
         <dependency>
             <groupId>org.nan</groupId>

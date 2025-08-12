@@ -139,7 +139,7 @@ public interface ProgramApprovalMapper extends BaseMapper<ProgramApprovalDO> {
      */
     @Select("<script>" +
             "SELECT pa.* FROM program_approval pa " +
-            "INNER JOIN programs p ON pa.program_id = p.id " +
+            "INNER JOIN program p ON pa.program_id = p.id " +
             "WHERE pa.org_id = #{oid} " +
             "AND pa.status = 'PENDING' " +
             "AND p.ugid IN " +
@@ -160,7 +160,7 @@ public interface ProgramApprovalMapper extends BaseMapper<ProgramApprovalDO> {
      */
     @Select("<script>" +
             "SELECT COUNT(*) FROM program_approval pa " +
-            "INNER JOIN programs p ON pa.program_id = p.id " +
+            "INNER JOIN program p ON pa.program_id = p.id " +
             "WHERE pa.org_id = #{oid} " +
             "AND pa.status = 'PENDING' " +
             "AND p.ugid IN " +
@@ -219,7 +219,7 @@ public interface ProgramApprovalMapper extends BaseMapper<ProgramApprovalDO> {
      */
     @Select("<script>" +
             "SELECT pa.* FROM program_approval pa " +
-            "INNER JOIN programs p ON pa.program_id = p.id " +
+            "INNER JOIN program p ON pa.program_id = p.id " +
             "WHERE pa.org_id = #{oid} " +
             "<if test='status != null'> AND pa.status = #{status} </if>" +
             "AND p.ugid IN " +
@@ -242,7 +242,7 @@ public interface ProgramApprovalMapper extends BaseMapper<ProgramApprovalDO> {
      */
     @Select("<script>" +
             "SELECT COUNT(*) FROM program_approval pa " +
-            "INNER JOIN programs p ON pa.program_id = p.id " +
+            "INNER JOIN program p ON pa.program_id = p.id " +
             "WHERE pa.org_id = #{oid} " +
             "<if test='status != null'> AND pa.status = #{status} </if>" +
             "AND p.ugid IN " +

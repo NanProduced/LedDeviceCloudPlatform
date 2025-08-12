@@ -132,6 +132,13 @@ public class ProgramDO {
     private String vsnGenerationError;
     
     /**
+     * VSN文件大小
+     * 生成的VSN文件字节大小，用于组织配额管理
+     */
+    @TableField("vsn_file_size")
+    private Long vsnFileSize;
+    
+    /**
      * 所属组织ID
      */
     @TableField("org_id")

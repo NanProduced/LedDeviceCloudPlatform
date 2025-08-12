@@ -15,6 +15,8 @@ import org.nan.cloud.core.repository.UserGroupRepository;
 import org.nan.cloud.program.entity.ProgramDO;
 import org.nan.cloud.program.enums.ProgramApprovalStatusEnum;
 import org.nan.cloud.program.enums.ProgramStatusEnum;
+import org.nan.cloud.core.event.quota.QuotaChangeEvent;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Repository;
 import org.springframework.util.CollectionUtils;
 
@@ -34,6 +36,7 @@ public class ProgramRepositoryImpl implements ProgramRepository {
     private final ProgramMapper programMapper;
     private final ProgramDomainConverter programDomainConverter;
     private final UserGroupRepository userGroupRepository;
+    private final ApplicationEventPublisher applicationEventPublisher;
 
     @Override
     public Optional<Program> findById(Long programId) {
@@ -237,6 +240,25 @@ public class ProgramRepositoryImpl implements ProgramRepository {
     public int deleteById(Long programId) {
         log.debug("Deleting program by id: {}", programId);
         
+        // 删除前检查VSN文件，发布配额回收事件
+        try {
+            Optional<Program> program = findById(programId);
+            if (program.isPresent() && program.get().getVsnFileSize() != null && program.get().getVsnFileSize() > 0) {
+                QuotaChangeEvent event = new QuotaChangeEvent(
+                        this, 
+                        QuotaChangeEvent.QuotaChangeEventType.VSN_DELETE, 
+                        String.valueOf(programId)
+                );
+                applicationEventPublisher.publishEvent(event);
+                log.debug("发布VSN删除事件: programId={}, size={}",
+                        programId, program.get().getVsnFileSize());
+            }
+        } catch (Exception e) {
+            log.error("Failed to publish VSN delete quota event: programId={}, error={}", 
+                    programId, e.getMessage(), e);
+            // 配额事件发布失败不影响删除操作
+        }
+        
         int deletedRows = programMapper.deleteById(programId);
         log.debug("Program deleted: id={}, affected rows={}", programId, deletedRows);
         
@@ -249,6 +271,27 @@ public class ProgramRepositoryImpl implements ProgramRepository {
         
         if (CollectionUtils.isEmpty(programIds)) {
             return 0;
+        }
+        
+        // 批量删除前检查VSN文件，发布配额回收事件
+        try {
+            List<Program> programs = findByIds(programIds);
+            for (Program program : programs) {
+                if (program.getVsnFileSize() != null && program.getVsnFileSize() > 0) {
+                    QuotaChangeEvent event = new QuotaChangeEvent(
+                            this, 
+                            QuotaChangeEvent.QuotaChangeEventType.VSN_DELETE, 
+                            String.valueOf(program.getId())
+                    );
+                    applicationEventPublisher.publishEvent(event);
+                    log.debug("批量发送VSN删除事件: programId={}, size={}",
+                            program.getId(), program.getVsnFileSize());
+                }
+            }
+        } catch (Exception e) {
+            log.error("发布VSN删除事件失败: programIds={}, error={}",
+                    programIds, e.getMessage(), e);
+            // 配额事件发布失败不影响删除操作
         }
         
         // 使用MyBatis Plus的deleteBatchIds方法
@@ -435,6 +478,30 @@ public class ProgramRepositoryImpl implements ProgramRepository {
                 .set("vsn_generation_status", status)
                 .set("vsn_file_id", vsnFileId)
                 .set("vsn_file_path", vsnFilePath)
+                .set("vsn_generation_error", errorMessage)
+                .set("updated_by", updatedBy)
+                .set("updated_time", LocalDateTime.now());
+
+        return programMapper.update(null, updateWrapper);
+    }
+
+    @Override
+    public int updateVsnGenerationResult(Long programId,
+                                         org.nan.cloud.program.enums.VsnGenerationStatusEnum status,
+                                         String vsnFileId,
+                                         String vsnFilePath,
+                                         Long vsnFileSize,
+                                         String errorMessage,
+                                         Long updatedBy) {
+        log.debug("Updating VSN result with file size: programId={}, status={}, fileId={}, path={}, size={}",
+                programId, status, vsnFileId, vsnFilePath, vsnFileSize);
+
+        UpdateWrapper<ProgramDO> updateWrapper = new UpdateWrapper<>();
+        updateWrapper.eq("id", programId)
+                .set("vsn_generation_status", status)
+                .set("vsn_file_id", vsnFileId)
+                .set("vsn_file_path", vsnFilePath)
+                .set("vsn_file_size", vsnFileSize)
                 .set("vsn_generation_error", errorMessage)
                 .set("updated_by", updatedBy)
                 .set("updated_time", LocalDateTime.now());

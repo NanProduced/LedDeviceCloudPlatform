@@ -160,27 +160,120 @@ file:
       
   # 转码配置
   transcoding:
-    enabled: false
-    output-formats:
-      - mp4
-      - webm
-    default-preset: "medium"
+    # FFmpeg配置
+    ffmpeg:
+      path: "/usr/local/bin/ffmpeg"
+      threads: 8
+      timeout: 3600
+      enable-gpu: true
+    
+    # 临时文件配置
+    temp:
+      dir: "C:/Users/nanpr/javaProject/filePath/temp/transcoding"
+    
+    # 队列配置
+    queue:
+      max-concurrent-tasks: 3
+      max-queue-size: 100
+      priority-enabled: true
+    
+    # 转码预设配置
     presets:
-      fast:
-        video-bitrate: 1000
-        audio-bitrate: 128
-        crf: 28
-        preset: "fast"
-      medium:
-        video-bitrate: 2000
+      # LED高分辨率预设 - 适用于户外大屏LED (4K)
+      - id: "led-4k"
+        name: "LED 4K高分辨率"
+        video-codec: "libx264"
+        audio-codec: "aac"
+        width: 3840
+        height: 2160
+        video-bitrate: 8000
         audio-bitrate: 192
-        crf: 23
+        crf: 20
         preset: "medium"
-      high:
+        
+      # LED全高清预设 - 适用于室内LED显示 (1080p)
+      - id: "led-1080p"
+        name: "LED 1080p标准"
+        video-codec: "libx264"
+        audio-codec: "aac"
+        width: 1920
+        height: 1080
         video-bitrate: 4000
+        audio-bitrate: 128
+        crf: 22
+        preset: "medium"
+        
+      # LED高清预设 - 适用于中等尺寸LED (720p)
+      - id: "led-720p"
+        name: "LED 720p高清"
+        video-codec: "libx264"
+        audio-codec: "aac"
+        width: 1280
+        height: 720
+        video-bitrate: 2500
+        audio-bitrate: 128
+        crf: 24
+        preset: "medium"
+        
+      # LED标清预设 - 适用于小尺寸LED显示
+      - id: "led-480p"
+        name: "LED 480p标清"
+        video-codec: "libx264"
+        audio-codec: "aac"
+        width: 854
+        height: 480
+        video-bitrate: 1200
+        audio-bitrate: 96
+        crf: 26
+        preset: "medium"
+        
+      # LED超高质量预设 - 适用于重要展示内容
+      - id: "led-premium"
+        name: "LED超高质量"
+        video-codec: "libx264"
+        audio-codec: "aac"
+        width: 1920
+        height: 1080
+        video-bitrate: 6000
         audio-bitrate: 256
         crf: 18
         preset: "slow"
+        
+      # LED经济预设 - 节省存储空间
+      - id: "led-economy"
+        name: "LED经济模式"
+        video-codec: "libx264"
+        audio-codec: "aac"
+        width: 1280
+        height: 720
+        video-bitrate: 1500
+        audio-bitrate: 96
+        crf: 28
+        preset: "fast"
+        
+      # LED快速预设 - 快速转码
+      - id: "led-fast"
+        name: "LED快速转码"
+        video-codec: "libx264"
+        audio-codec: "aac"
+        width: 1920
+        height: 1080
+        video-bitrate: 3000
+        audio-bitrate: 128
+        crf: 25
+        preset: "ultrafast"
+        
+      # LED宽屏预设 - 适用于16:10显示比例
+      - id: "led-widescreen"
+        name: "LED宽屏显示"
+        video-codec: "libx264"
+        audio-codec: "aac"
+        width: 1920
+        height: 1200
+        video-bitrate: 4500
+        audio-bitrate: 128
+        crf: 22
+        preset: "medium"
         
   # 文件验证配置
   validation:

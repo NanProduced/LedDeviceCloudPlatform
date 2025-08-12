@@ -101,6 +101,12 @@ public class Program {
      * 当VSN生成失败时，记录详细的错误信息用于排查
      */
     private String vsnGenerationError;
+    
+    /**
+     * VSN文件大小
+     * 生成的VSN文件字节大小，用于组织配额管理
+     */
+    private Long vsnFileSize;
 
 
     // 版本控制

@@ -9,6 +9,9 @@ import org.nan.cloud.core.DTO.CreateOrgDTO;
 import org.nan.cloud.core.api.DTO.req.CreateOrgRequest;
 import org.nan.cloud.core.api.DTO.res.CreateOrgResponse;
 import org.nan.cloud.core.api.DTO.req.QuotaCheckRequest;
+import org.nan.cloud.core.api.DTO.res.OrgQuotaDetailResponse;
+import org.nan.cloud.core.api.DTO.res.QuotaBreakdownResponse;
+import org.nan.cloud.core.api.DTO.res.QuotaTrendResponse;
 import org.nan.cloud.core.converter.OrgConverter;
 import org.nan.cloud.core.domain.Organization;
 import org.nan.cloud.core.domain.User;
@@ -75,5 +78,46 @@ public class OrgFacade {
         RequestUserInfo requestUser = InvocationContextHolder.getContext().getRequestUser();
 
         return quotaService.checkQuotaAllow(requestUser.getOid(), request.getBytes(), request.getFiles());
+    }
+
+    /**
+     * 获取组织配额详情
+     * @param orgId 组织ID
+     * @return 配额详情响应
+     */
+    public OrgQuotaDetailResponse getQuotaDetail(Long orgId) {
+        // 权限检查：只能查看当前组织的配额信息
+        RequestUserInfo requestUser = InvocationContextHolder.getContext().getRequestUser();
+        ExceptionEnum.PERMISSION_DENIED.throwIf(!orgId.equals(requestUser.getOid()));
+        
+        return quotaService.getOrgQuotaDetail(orgId);
+    }
+
+    /**
+     * 获取组织配额使用趋势
+     * @param orgId 组织ID
+     * @param period 统计周期
+     * @param days 统计天数
+     * @return 配额趋势响应
+     */
+    public QuotaTrendResponse getQuotaTrend(Long orgId, String period, Integer days) {
+        // 权限检查：只能查看当前组织的配额信息
+        RequestUserInfo requestUser = InvocationContextHolder.getContext().getRequestUser();
+        ExceptionEnum.PERMISSION_DENIED.throwIf(!orgId.equals(requestUser.getOid()));
+        
+        return quotaService.getQuotaTrend(orgId, period, days);
+    }
+
+    /**
+     * 获取组织配额使用分解
+     * @param orgId 组织ID
+     * @return 配额分解响应
+     */
+    public QuotaBreakdownResponse getQuotaBreakdown(Long orgId) {
+        // 权限检查：只能查看当前组织的配额信息
+        RequestUserInfo requestUser = InvocationContextHolder.getContext().getRequestUser();
+        ExceptionEnum.PERMISSION_DENIED.throwIf(!orgId.equals(requestUser.getOid()));
+        
+        return quotaService.getQuotaBreakdown(orgId);
     }
 }
