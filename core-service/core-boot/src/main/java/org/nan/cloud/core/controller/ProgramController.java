@@ -7,6 +7,9 @@ import lombok.extern.slf4j.Slf4j;
 import org.nan.cloud.common.basic.model.PageRequestDTO;
 import org.nan.cloud.common.basic.model.PageVO;
 import org.nan.cloud.core.api.DTO.req.QueryProgramListRequest;
+import org.nan.cloud.core.api.DTO.req.PendingApprovalForMeRequest;
+import org.nan.cloud.core.api.DTO.req.InitiatedApprovalsByMeRequest;
+import org.nan.cloud.core.api.DTO.req.AllApprovalsRequest;
 import org.nan.cloud.core.api.ProgramApi;
 import org.nan.cloud.core.facade.ProgramFacade;
 import org.nan.cloud.program.dto.request.CreateProgramRequest;
@@ -207,14 +210,52 @@ public class ProgramController implements ProgramApi {
 
     @Operation(
             summary = "查询组织待审核列表",
-            description = "分页查询当前组织下的待审核节目列表",
+            description = "分页查询当前组织下的待审核节目列表 (已废弃 - 使用新的三维度接口)",
+            tags = {"节目审核"},
+            deprecated = true
+    )
+    @Override
+    @Deprecated
+    public PageVO<ProgramApprovalDTO> getPendingApprovals(@RequestParam(defaultValue = "1") int page,
+                                                         @RequestParam(defaultValue = "20") int size) {
+        log.debug("REST API: Getting pending approvals (deprecated) - page: {}, size: {}", page, size);
+        return programFacade.getPendingApprovals(page, size);
+    }
+
+    @Operation(
+            summary = "查询待我审核的节目列表",
+            description = "查询节目ugid属于当前用户组层级且状态为PENDING的审核记录",
             tags = {"节目审核"}
     )
     @Override
-    public PageVO<ProgramApprovalDTO> getPendingApprovals(@RequestParam(defaultValue = "1") int page,
-                                                         @RequestParam(defaultValue = "20") int size) {
-        log.debug("REST API: Getting pending approvals - page: {}, size: {}", page, size);
-        return programFacade.getPendingApprovals(page, size);
+    public PageVO<ProgramApprovalDTO> getPendingApprovalsForMe(@RequestBody @Validated PageRequestDTO<PendingApprovalForMeRequest> request) {
+        log.debug("REST API: Getting pending approvals for me - page: {}, size: {}, params: {}", 
+                request.getPageNum(), request.getPageSize(), request.getParams());
+        return programFacade.getPendingApprovalsForMe(request);
+    }
+
+    @Operation(
+            summary = "查询我发起的审核申请列表",
+            description = "查询创建者为当前用户的所有审核记录",
+            tags = {"节目审核"}
+    )
+    @Override
+    public PageVO<ProgramApprovalDTO> getInitiatedApprovalsByMe(@RequestBody @Validated PageRequestDTO<InitiatedApprovalsByMeRequest> request) {
+        log.debug("REST API: Getting initiated approvals by me - page: {}, size: {}, params: {}", 
+                request.getPageNum(), request.getPageSize(), request.getParams());
+        return programFacade.getInitiatedApprovalsByMe(request);
+    }
+
+    @Operation(
+            summary = "查询全部审核记录",
+            description = "查询ugid属于当前用户组层级的所有审核记录",
+            tags = {"节目审核"}
+    )
+    @Override
+    public PageVO<ProgramApprovalDTO> getAllApprovals(@RequestBody @Validated PageRequestDTO<AllApprovalsRequest> request) {
+        log.debug("REST API: Getting all approvals - page: {}, size: {}, params: {}", 
+                request.getPageNum(), request.getPageSize(), request.getParams());
+        return programFacade.getAllApprovals(request);
     }
 
     @Operation(

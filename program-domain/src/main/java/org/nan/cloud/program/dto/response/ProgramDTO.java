@@ -122,5 +122,10 @@ public class ProgramDTO {
      * 更新者用户ID
      */
     private Long updatedBy;
+    
+    /**
+     * 用户组ID（用于权限层级控制）
+     */
+    private Long ugid;
 
 }

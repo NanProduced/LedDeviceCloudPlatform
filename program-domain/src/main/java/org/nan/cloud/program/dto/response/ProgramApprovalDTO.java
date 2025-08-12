@@ -28,9 +28,24 @@ public class ProgramApprovalDTO {
     private String programName;
     
     /**
+     * 节目描述
+     */
+    private String programDescription;
+    
+    /**
      * 节目版本号
      */
     private Integer programVersion;
+    
+    /**
+     * 节目状态
+     */
+    private String programStatus;
+    
+    /**
+     * 节目状态显示名称
+     */
+    private String programStatusName;
     
     /**
      * 审核状态
@@ -100,4 +115,9 @@ public class ProgramApprovalDTO {
      * 申请人姓名
      */
     private String applicantName;
+    
+    /**
+     * 用户组ID（用于权限层级控制）
+     */
+    private Long ugid;
 }

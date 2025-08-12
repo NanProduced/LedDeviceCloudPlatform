@@ -114,4 +114,67 @@ public interface ProgramApprovalRepository {
      * @return 删除的记录数
      */
     int deleteByProgramId(Long programId);
+    
+    // ===== 新增三维度查询方法 =====
+    
+    /**
+     * 查询待我审核的节目列表（基于用户组层级）
+     * 业务逻辑：节目的ugid属于指定用户组层级，且审核状态为PENDING
+     * @param userGroupIds 用户组层级ID列表（当前组+子组）
+     * @param oid 组织ID
+     * @param page 页码，从1开始
+     * @param size 每页大小
+     * @return 审核记录列表
+     */
+    List<ProgramApproval> findPendingByUserGroups(List<Long> userGroupIds, Long oid, int page, int size);
+    
+    /**
+     * 统计待我审核的节目数量（基于用户组层级）
+     * @param userGroupIds 用户组层级ID列表
+     * @param oid 组织ID
+     * @return 数量
+     */
+    long countPendingByUserGroups(List<Long> userGroupIds, Long oid);
+    
+    /**
+     * 查询我发起的审核申请列表
+     * 业务逻辑：创建者为指定用户ID的审核记录
+     * @param createdBy 创建者用户ID
+     * @param oid 组织ID
+     * @param status 审核状态过滤（可选）
+     * @param page 页码，从1开始
+     * @param size 每页大小
+     * @return 审核记录列表
+     */
+    List<ProgramApproval> findByCreatedBy(Long createdBy, Long oid, ProgramApprovalStatusEnum status, int page, int size);
+    
+    /**
+     * 统计我发起的审核申请数量
+     * @param createdBy 创建者用户ID
+     * @param oid 组织ID
+     * @param status 审核状态过滤（可选）
+     * @return 数量
+     */
+    long countByCreatedBy(Long createdBy, Long oid, ProgramApprovalStatusEnum status);
+    
+    /**
+     * 查询全部审核记录（基于用户组层级）
+     * 业务逻辑：节目的ugid属于指定用户组层级的所有审核记录
+     * @param userGroupIds 用户组层级ID列表（当前组+子组）
+     * @param oid 组织ID
+     * @param status 审核状态过滤（可选）
+     * @param page 页码，从1开始
+     * @param size 每页大小
+     * @return 审核记录列表
+     */
+    List<ProgramApproval> findAllByUserGroups(List<Long> userGroupIds, Long oid, ProgramApprovalStatusEnum status, int page, int size);
+    
+    /**
+     * 统计全部审核记录数量（基于用户组层级）
+     * @param userGroupIds 用户组层级ID列表
+     * @param oid 组织ID
+     * @param status 审核状态过滤（可选）
+     * @return 数量
+     */
+    long countAllByUserGroups(List<Long> userGroupIds, Long oid, ProgramApprovalStatusEnum status);
 }

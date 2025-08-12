@@ -5,12 +5,15 @@ import lombok.extern.slf4j.Slf4j;
 import org.nan.cloud.common.basic.exception.ExceptionEnum;
 import org.nan.cloud.common.basic.model.PageVO;
 import org.nan.cloud.core.domain.ProgramApproval;
+import org.nan.cloud.core.domain.Program;
 import org.nan.cloud.core.domain.User;
 import org.nan.cloud.core.repository.ProgramApprovalRepository;
 import org.nan.cloud.core.repository.ProgramRepository;
 import org.nan.cloud.core.service.ProgramApprovalService;
 import org.nan.cloud.core.service.UserService;
+import org.nan.cloud.core.service.UserGroupService;
 import org.nan.cloud.core.service.converter.ProgramApprovalDtoConverter;
+import org.nan.cloud.core.DTO.UserGroupRelDTO;
 import org.nan.cloud.program.dto.request.ApprovalRequest;
 import org.nan.cloud.program.dto.response.ProgramApprovalDTO;
 import org.nan.cloud.program.enums.ProgramApprovalStatusEnum;
@@ -22,7 +25,11 @@ import org.springframework.util.StringUtils;
 
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Map;
+import java.util.Objects;
 import java.util.Optional;
+import java.util.function.Function;
+import java.util.stream.Collectors;
 
 /**
  * 节目审核服务实现
@@ -37,6 +44,7 @@ public class ProgramApprovalServiceImpl implements ProgramApprovalService {
     private final ProgramRepository programRepository;
     private final ProgramApprovalDtoConverter programApprovalDtoConverter;
     private final UserService userService;
+    private final UserGroupService userGroupService;
 
     @Override
     @Transactional
@@ -222,8 +230,9 @@ public class ProgramApprovalServiceImpl implements ProgramApprovalService {
         
         if (approval.isPresent()) {
             ProgramApprovalDTO approvalDTO = programApprovalDtoConverter.toProgramApprovalDTO(approval.get());
-            // 填充审核人姓名
+            // 填充审核人姓名和节目信息
             fillReviewerName(approvalDTO);
+            fillProgramInformation(approvalDTO);
             log.debug("✅ 找到节目版本审核记录 - programId: {}, version: {}, status: {}", 
                     programId, programVersion, approvalDTO.getStatus());
             return Optional.of(approvalDTO);
@@ -247,8 +256,9 @@ public class ProgramApprovalServiceImpl implements ProgramApprovalService {
         
         if (approval.isPresent()) {
             ProgramApprovalDTO approvalDTO = programApprovalDtoConverter.toProgramApprovalDTO(approval.get());
-            // 填充审核人姓名
+            // 填充审核人姓名和节目信息
             fillReviewerName(approvalDTO);
+            fillProgramInformation(approvalDTO);
             log.debug("✅ 找到节目最新审核记录 - programId: {}, version: {}, status: {}", 
                     programId, approvalDTO.getProgramVersion(), approvalDTO.getStatus());
             return Optional.of(approvalDTO);
@@ -266,8 +276,9 @@ public class ProgramApprovalServiceImpl implements ProgramApprovalService {
         long total = programApprovalRepository.countPendingByOrganization(oid);
         
         List<ProgramApprovalDTO> approvalDTOs = programApprovalDtoConverter.toProgramApprovalDTOs(approvals);
-        // 填充审核人姓名
+        // 填充审核人姓名和节目信息
         fillReviewerNames(approvalDTOs);
+        fillProgramInformations(approvalDTOs);
         
         PageVO<ProgramApprovalDTO> pageVO = PageVO.<ProgramApprovalDTO>builder()
                 .records(approvalDTOs)
@@ -295,8 +306,9 @@ public class ProgramApprovalServiceImpl implements ProgramApprovalService {
                 .toList();
         
         List<ProgramApprovalDTO> approvalDTOs = programApprovalDtoConverter.toProgramApprovalDTOs(filteredApprovals);
-        // 填充审核人姓名
+        // 填充审核人姓名和节目信息
         fillReviewerNames(approvalDTOs);
+        fillProgramInformations(approvalDTOs);
 
         PageVO<ProgramApprovalDTO> pageVO = PageVO.<ProgramApprovalDTO>builder()
                 .records(approvalDTOs)
@@ -444,6 +456,240 @@ public class ProgramApprovalServiceImpl implements ProgramApprovalService {
                 fillReviewerName(approvalDTO);
             }
             log.debug("✅ 批量填充审核人姓名完成 - 共处理 {} 条记录", approvalDTOs.size());
+        }
+    }
+    
+    /**
+     * 为单个审核记录填充节目信息和用户组ID
+     * 根据programId查询节目信息并填充相关字段
+     */
+    private void fillProgramInformation(ProgramApprovalDTO approvalDTO) {
+        if (approvalDTO != null && approvalDTO.getProgramId() != null) {
+            try {
+                Optional<Program> programOpt = programRepository.findById(approvalDTO.getProgramId());
+                if (programOpt.isPresent()) {
+                    Program program = programOpt.get();
+                    
+                    // 填充节目基本信息
+                    if (approvalDTO.getProgramName() == null) {
+                        approvalDTO.setProgramName(program.getName());
+                    }
+                    approvalDTO.setProgramDescription(program.getDescription());
+                    approvalDTO.setProgramStatus(program.getStatus() != null ? program.getStatus().name() : null);
+                    approvalDTO.setProgramStatusName(program.getStatus() != null ? program.getStatus().getValue() : null);
+                    
+                    // 填充用户组ID（重要：用于权限层级控制）
+                    approvalDTO.setUgid(program.getUgid());
+                    
+                    log.debug("📝 填充节目信息 - programId: {}, programName: {}, ugid: {}", 
+                            program.getId(), program.getName(), program.getUgid());
+                } else {
+                    log.warn("⚠️ 未找到节目信息 - programId: {}", approvalDTO.getProgramId());
+                    approvalDTO.setProgramName("未知节目");
+                    approvalDTO.setProgramDescription("");
+                    approvalDTO.setProgramStatus("UNKNOWN");
+                    approvalDTO.setProgramStatusName("未知状态");
+                }
+            } catch (Exception e) {
+                log.error("❌ 填充节目信息失败 - programId: {}, error: {}", 
+                        approvalDTO.getProgramId(), e.getMessage());
+                approvalDTO.setProgramName("获取失败");
+                approvalDTO.setProgramDescription("");
+                approvalDTO.setProgramStatus("ERROR");
+                approvalDTO.setProgramStatusName("获取失败");
+            }
+        }
+    }
+    
+    /**
+     * 为审核记录列表批量填充节目信息和用户组ID
+     * 🚀 优化版本：解决N+1查询问题，使用批量查询
+     */
+    private void fillProgramInformations(List<ProgramApprovalDTO> approvalDTOs) {
+        if (approvalDTOs == null || approvalDTOs.isEmpty()) {
+            return;
+        }
+
+        try {
+            // 1. 提取所有唯一的节目ID
+            List<Long> programIds = approvalDTOs.stream()
+                    .map(ProgramApprovalDTO::getProgramId)
+                    .filter(Objects::nonNull)
+                    .distinct()
+                    .toList();
+
+            if (programIds.isEmpty()) {
+                log.debug("📭 无需填充节目信息 - 所有审核记录都没有有效的programId");
+                return;
+            }
+
+            // 2. 批量查询所有节目信息（解决N+1问题）
+            List<Program> programs = programRepository.findByIds(programIds);
+            log.debug("🔍 批量查询节目信息 - 查询{}个ID，找到{}条记录", programIds.size(), programs.size());
+
+            // 3. 构建Map提供O(1)查找性能
+            Map<Long, Program> programMap = programs.stream()
+                    .collect(Collectors.toMap(Program::getId, Function.identity()));
+
+            // 4. 使用Map批量填充DTO信息
+            for (ProgramApprovalDTO approvalDTO : approvalDTOs) {
+                if (approvalDTO.getProgramId() != null) {
+                    Program program = programMap.get(approvalDTO.getProgramId());
+                    fillProgramInformationFromCache(approvalDTO, program);
+                }
+            }
+
+            log.debug("✅ 批量填充节目信息完成 - 处理{}条记录，查询{}次数据库", 
+                    approvalDTOs.size(), programs.isEmpty() ? 0 : 1);
+
+        } catch (Exception e) {
+            log.error("❌ 批量填充节目信息失败 - error: {}", e.getMessage(), e);
+            // 降级到单个查询模式
+            log.warn("⚠️ 降级到单个查询模式");
+            for (ProgramApprovalDTO approvalDTO : approvalDTOs) {
+                fillProgramInformation(approvalDTO);
+            }
+        }
+    }
+
+    /**
+     * 使用缓存的节目信息填充DTO（避免重复查询）
+     */
+    private void fillProgramInformationFromCache(ProgramApprovalDTO approvalDTO, Program program) {
+        if (program != null) {
+            // 填充节目基本信息
+            if (approvalDTO.getProgramName() == null) {
+                approvalDTO.setProgramName(program.getName());
+            }
+            approvalDTO.setProgramDescription(program.getDescription());
+            approvalDTO.setProgramStatus(program.getStatus() != null ? program.getStatus().name() : null);
+            approvalDTO.setProgramStatusName(program.getStatus() != null ? program.getStatus().getValue() : null);
+            
+            // 填充用户组ID（重要：用于权限层级控制）
+            approvalDTO.setUgid(program.getUgid());
+            
+            log.debug("📝 从缓存填充节目信息 - programId: {}, programName: {}, ugid: {}", 
+                    program.getId(), program.getName(), program.getUgid());
+        } else {
+            log.warn("⚠️ 缓存中未找到节目信息 - programId: {}", approvalDTO.getProgramId());
+            approvalDTO.setProgramName("未知节目");
+            approvalDTO.setProgramDescription("");
+            approvalDTO.setProgramStatus("UNKNOWN");
+            approvalDTO.setProgramStatusName("未知状态");
+        }
+    }
+    
+    // ===== 新增三维度查询方法实现 =====
+    
+    @Override
+    public PageVO<ProgramApprovalDTO> getPendingApprovalsForMe(Long userId, Long userUgid, Long oid, int page, int size) {
+        log.debug("🔍 查询待我审核的节目列表 - userId: {}, userUgid: {}, oid: {}, page: {}, size: {}", 
+                userId, userUgid, oid, page, size);
+        
+        // 1. 获取用户组层级（当前组+子组）
+        List<Long> userGroupIds = getUserGroupHierarchy(userUgid);
+        log.debug("👥 用户组层级 - userUgid: {}, hierarchy: {}", userUgid, userGroupIds);
+        
+        // 2. 基于用户组层级查询待审核记录
+        List<ProgramApproval> approvals = programApprovalRepository.findPendingByUserGroups(userGroupIds, oid, page, size);
+        long total = programApprovalRepository.countPendingByUserGroups(userGroupIds, oid);
+        
+        // 3. 转换为DTO并填充信息
+        List<ProgramApprovalDTO> approvalDTOs = programApprovalDtoConverter.toProgramApprovalDTOs(approvals);
+        fillReviewerNames(approvalDTOs);
+        fillProgramInformations(approvalDTOs);
+        
+        // 4. 构建分页结果
+        PageVO<ProgramApprovalDTO> pageVO = PageVO.<ProgramApprovalDTO>builder()
+                .records(approvalDTOs)
+                .total(total)
+                .pageNum(page)
+                .pageSize(size)
+                .build();
+        pageVO.calculate();
+        
+        log.debug("✅ 查询待我审核记录完成 - userId: {}, found: {}, total: {}", userId, approvalDTOs.size(), total);
+        return pageVO;
+    }
+    
+    @Override
+    public PageVO<ProgramApprovalDTO> getInitiatedApprovalsByMe(Long userId, Long oid, int page, int size, ProgramApprovalStatusEnum status) {
+        log.debug("🔍 查询我发起的审核申请列表 - userId: {}, oid: {}, page: {}, size: {}, status: {}", 
+                userId, oid, page, size, status);
+        
+        // 1. 基于创建者查询审核记录
+        List<ProgramApproval> approvals = programApprovalRepository.findByCreatedBy(userId, oid, status, page, size);
+        long total = programApprovalRepository.countByCreatedBy(userId, oid, status);
+        
+        // 2. 转换为DTO并填充信息
+        List<ProgramApprovalDTO> approvalDTOs = programApprovalDtoConverter.toProgramApprovalDTOs(approvals);
+        fillReviewerNames(approvalDTOs);
+        fillProgramInformations(approvalDTOs);
+        
+        // 3. 构建分页结果
+        PageVO<ProgramApprovalDTO> pageVO = PageVO.<ProgramApprovalDTO>builder()
+                .records(approvalDTOs)
+                .total(total)
+                .pageNum(page)
+                .pageSize(size)
+                .build();
+        pageVO.calculate();
+        
+        log.debug("✅ 查询我发起的审核申请完成 - userId: {}, found: {}, total: {}", userId, approvalDTOs.size(), total);
+        return pageVO;
+    }
+    
+    @Override
+    public PageVO<ProgramApprovalDTO> getAllApprovals(Long userId, Long userUgid, Long oid, int page, int size, ProgramApprovalStatusEnum status) {
+        log.debug("🔍 查询全部审核记录 - userId: {}, userUgid: {}, oid: {}, page: {}, size: {}, status: {}", 
+                userId, userUgid, oid, page, size, status);
+        
+        // 1. 获取用户组层级（当前组+子组）
+        List<Long> userGroupIds = getUserGroupHierarchy(userUgid);
+        log.debug("👥 用户组层级 - userUgid: {}, hierarchy: {}", userUgid, userGroupIds);
+        
+        // 2. 基于用户组层级查询所有审核记录
+        List<ProgramApproval> approvals = programApprovalRepository.findAllByUserGroups(userGroupIds, oid, status, page, size);
+        long total = programApprovalRepository.countAllByUserGroups(userGroupIds, oid, status);
+        
+        // 3. 转换为DTO并填充信息
+        List<ProgramApprovalDTO> approvalDTOs = programApprovalDtoConverter.toProgramApprovalDTOs(approvals);
+        fillReviewerNames(approvalDTOs);
+        fillProgramInformations(approvalDTOs);
+        
+        // 4. 构建分页结果
+        PageVO<ProgramApprovalDTO> pageVO = PageVO.<ProgramApprovalDTO>builder()
+                .records(approvalDTOs)
+                .total(total)
+                .pageNum(page)
+                .pageSize(size)
+                .build();
+        pageVO.calculate();
+        
+        log.debug("✅ 查询全部审核记录完成 - userId: {}, found: {}, total: {}", userId, approvalDTOs.size(), total);
+        return pageVO;
+    }
+    
+    /**
+     * 获取用户组层级（当前组+所有子组）
+     * 用于权限控制：用户可以看到自己组和子组的节目审核
+     */
+    private List<Long> getUserGroupHierarchy(Long userUgid) {
+        try {
+            List<UserGroupRelDTO> hierarchy = userGroupService.getAllUserGroupsByParent(userUgid);
+            List<Long> groupIds = hierarchy.stream()
+                    .map(UserGroupRelDTO::getUgid)
+                    .distinct()
+                    .toList();
+            
+            log.debug("👥 获取用户组层级成功 - userUgid: {}, hierarchy size: {}, ids: {}", 
+                    userUgid, groupIds.size(), groupIds);
+            return groupIds;
+            
+        } catch (Exception e) {
+            log.error("❌ 获取用户组层级失败 - userUgid: {}, error: {}", userUgid, e.getMessage(), e);
+            // 降级方案：只返回当前用户组
+            return List.of(userUgid);
         }
     }
 }

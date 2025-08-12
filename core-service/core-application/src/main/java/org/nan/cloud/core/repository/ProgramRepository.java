@@ -22,6 +22,13 @@ public interface ProgramRepository {
     Optional<Program> findById(Long programId);
     
     /**
+     * 根据ID列表批量查询节目（解决N+1查询问题）
+     * @param programIds 节目ID列表
+     * @return 节目列表
+     */
+    List<Program> findByIds(List<Long> programIds);
+    
+    /**
      * 根据ID和组织查询节目（权限控制）
      * @param programId 节目ID
      * @param oid 组织ID

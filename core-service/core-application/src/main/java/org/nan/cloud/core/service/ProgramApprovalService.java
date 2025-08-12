@@ -71,13 +71,52 @@ public interface ProgramApprovalService {
     Optional<ProgramApprovalDTO> getLatestProgramApproval(Long programId, Long oid);
     
     /**
-     * 分页查询组织下的待审核列表
+     * 分页查询组织下的待审核列表 (已废弃)
+     * @param oid 组织ID
+     * @param page 页码，从1开始
+     * @param size 每页大小
+     * @return 分页结果
+     * @deprecated 使用新的三维度接口替代
+     */
+    @Deprecated
+    PageVO<ProgramApprovalDTO> getPendingApprovals(Long oid, int page, int size);
+    
+    /**
+     * 查询待我审核的节目列表
+     * 业务逻辑：节目的ugid属于当前用户组或子组，且审核状态为PENDING
+     * @param userId 当前用户ID
+     * @param userUgid 当前用户的用户组ID
      * @param oid 组织ID
      * @param page 页码，从1开始
      * @param size 每页大小
      * @return 分页结果
      */
-    PageVO<ProgramApprovalDTO> getPendingApprovals(Long oid, int page, int size);
+    PageVO<ProgramApprovalDTO> getPendingApprovalsForMe(Long userId, Long userUgid, Long oid, int page, int size);
+    
+    /**
+     * 查询我发起的审核申请列表
+     * 业务逻辑：创建者为当前用户ID的所有审核记录
+     * @param userId 当前用户ID
+     * @param oid 组织ID
+     * @param page 页码，从1开始
+     * @param size 每页大小
+     * @param status 审核状态过滤（可选）
+     * @return 分页结果
+     */
+    PageVO<ProgramApprovalDTO> getInitiatedApprovalsByMe(Long userId, Long oid, int page, int size, ProgramApprovalStatusEnum status);
+    
+    /**
+     * 查询全部审核记录
+     * 业务逻辑：ugid属于当前用户组层级的所有审核记录
+     * @param userId 当前用户ID
+     * @param userUgid 当前用户的用户组ID
+     * @param oid 组织ID
+     * @param page 页码，从1开始
+     * @param size 每页大小
+     * @param status 审核状态过滤（可选）
+     * @return 分页结果
+     */
+    PageVO<ProgramApprovalDTO> getAllApprovals(Long userId, Long userUgid, Long oid, int page, int size, ProgramApprovalStatusEnum status);
     
     /**
      * 分页查询审核人员的审核记录

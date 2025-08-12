@@ -126,4 +126,131 @@ public interface ProgramApprovalMapper extends BaseMapper<ProgramApprovalDO> {
      */
     @Delete("DELETE FROM program_approval WHERE program_id = #{programId}")
     int deleteByProgramId(@Param("programId") Long programId);
+    
+    // ===== 新增三维度查询方法 =====
+    
+    /**
+     * 分页查询待我审核的节目列表（基于用户组层级）
+     * 业务逻辑：节目的ugid属于指定用户组层级，且审核状态为PENDING
+     * @param page 分页参数
+     * @param userGroupIds 用户组层级ID列表（当前组+子组）
+     * @param oid 组织ID
+     * @return 审核记录列表
+     */
+    @Select("<script>" +
+            "SELECT pa.* FROM program_approval pa " +
+            "INNER JOIN programs p ON pa.program_id = p.id " +
+            "WHERE pa.org_id = #{oid} " +
+            "AND pa.status = 'PENDING' " +
+            "AND p.ugid IN " +
+            "<foreach collection='userGroupIds' item='ugid' open='(' separator=',' close=')'>" +
+            "#{ugid}" +
+            "</foreach> " +
+            "ORDER BY pa.applied_time ASC" +
+            "</script>")
+    IPage<ProgramApprovalDO> selectPendingByUserGroups(Page<?> page, 
+                                                      @Param("userGroupIds") List<Long> userGroupIds, 
+                                                      @Param("oid") Long oid);
+    
+    /**
+     * 统计待我审核的节目数量（基于用户组层级）
+     * @param userGroupIds 用户组层级ID列表
+     * @param oid 组织ID
+     * @return 数量
+     */
+    @Select("<script>" +
+            "SELECT COUNT(*) FROM program_approval pa " +
+            "INNER JOIN programs p ON pa.program_id = p.id " +
+            "WHERE pa.org_id = #{oid} " +
+            "AND pa.status = 'PENDING' " +
+            "AND p.ugid IN " +
+            "<foreach collection='userGroupIds' item='ugid' open='(' separator=',' close=')'>" +
+            "#{ugid}" +
+            "</foreach>" +
+            "</script>")
+    long countPendingByUserGroups(@Param("userGroupIds") List<Long> userGroupIds, @Param("oid") Long oid);
+    
+    /**
+     * 分页查询我发起的审核申请列表
+     * 业务逻辑：创建者为指定用户ID的审核记录
+     * @param page 分页参数
+     * @param createdBy 创建者用户ID
+     * @param oid 组织ID
+     * @param status 审核状态过滤（可选）
+     * @return 审核记录列表
+     */
+    @Select("<script>" +
+            "SELECT * FROM program_approval " +
+            "WHERE created_by = #{createdBy} " +
+            "AND org_id = #{oid} " +
+            "<if test='status != null'> AND status = #{status} </if>" +
+            "ORDER BY applied_time DESC" +
+            "</script>")
+    IPage<ProgramApprovalDO> selectByCreatedBy(Page<?> page, 
+                                             @Param("createdBy") Long createdBy, 
+                                             @Param("oid") Long oid,
+                                             @Param("status") ProgramApprovalStatusEnum status);
+    
+    /**
+     * 统计我发起的审核申请数量
+     * @param createdBy 创建者用户ID
+     * @param oid 组织ID
+     * @param status 审核状态过滤（可选）
+     * @return 数量
+     */
+    @Select("<script>" +
+            "SELECT COUNT(*) FROM program_approval " +
+            "WHERE created_by = #{createdBy} " +
+            "AND org_id = #{oid} " +
+            "<if test='status != null'> AND status = #{status} </if>" +
+            "</script>")
+    long countByCreatedBy(@Param("createdBy") Long createdBy, 
+                         @Param("oid") Long oid, 
+                         @Param("status") ProgramApprovalStatusEnum status);
+    
+    /**
+     * 分页查询全部审核记录（基于用户组层级）
+     * 业务逻辑：节目的ugid属于指定用户组层级的所有审核记录
+     * @param page 分页参数
+     * @param userGroupIds 用户组层级ID列表（当前组+子组）
+     * @param oid 组织ID
+     * @param status 审核状态过滤（可选）
+     * @return 审核记录列表
+     */
+    @Select("<script>" +
+            "SELECT pa.* FROM program_approval pa " +
+            "INNER JOIN programs p ON pa.program_id = p.id " +
+            "WHERE pa.org_id = #{oid} " +
+            "<if test='status != null'> AND pa.status = #{status} </if>" +
+            "AND p.ugid IN " +
+            "<foreach collection='userGroupIds' item='ugid' open='(' separator=',' close=')'>" +
+            "#{ugid}" +
+            "</foreach> " +
+            "ORDER BY pa.applied_time DESC" +
+            "</script>")
+    IPage<ProgramApprovalDO> selectAllByUserGroups(Page<?> page, 
+                                                  @Param("userGroupIds") List<Long> userGroupIds, 
+                                                  @Param("oid") Long oid,
+                                                  @Param("status") ProgramApprovalStatusEnum status);
+    
+    /**
+     * 统计全部审核记录数量（基于用户组层级）
+     * @param userGroupIds 用户组层级ID列表
+     * @param oid 组织ID
+     * @param status 审核状态过滤（可选）
+     * @return 数量
+     */
+    @Select("<script>" +
+            "SELECT COUNT(*) FROM program_approval pa " +
+            "INNER JOIN programs p ON pa.program_id = p.id " +
+            "WHERE pa.org_id = #{oid} " +
+            "<if test='status != null'> AND pa.status = #{status} </if>" +
+            "AND p.ugid IN " +
+            "<foreach collection='userGroupIds' item='ugid' open='(' separator=',' close=')'>" +
+            "#{ugid}" +
+            "</foreach>" +
+            "</script>")
+    long countAllByUserGroups(@Param("userGroupIds") List<Long> userGroupIds, 
+                             @Param("oid") Long oid, 
+                             @Param("status") ProgramApprovalStatusEnum status);
 }

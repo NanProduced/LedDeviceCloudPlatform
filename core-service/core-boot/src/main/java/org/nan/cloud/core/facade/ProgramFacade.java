@@ -7,6 +7,9 @@ import org.nan.cloud.common.basic.model.PageVO;
 import org.nan.cloud.common.web.context.InvocationContextHolder;
 import org.nan.cloud.common.web.context.RequestUserInfo;
 import org.nan.cloud.core.api.DTO.req.QueryProgramListRequest;
+import org.nan.cloud.core.api.DTO.req.PendingApprovalForMeRequest;
+import org.nan.cloud.core.api.DTO.req.InitiatedApprovalsByMeRequest;
+import org.nan.cloud.core.api.DTO.req.AllApprovalsRequest;
 import org.nan.cloud.core.service.ProgramDraftService;
 import org.nan.cloud.core.repository.ProgramContentRepository;
 import org.nan.cloud.program.document.ProgramContent;
@@ -287,13 +290,72 @@ public class ProgramFacade {
     }
     
     /**
-     * 查询组织待审核列表
+     * 查询组织待审核列表 (已废弃)
+     * @deprecated 使用新的三维度接口替代
      */
+    @Deprecated
     public PageVO<ProgramApprovalDTO> getPendingApprovals(int page, int size) {
         RequestUserInfo userInfo = InvocationContextHolder.getContext().getRequestUser();
-        log.debug("Getting pending approvals: oid={}, page={}, size={}", userInfo.getOid(), page, size);
+        log.debug("Getting pending approvals (deprecated): oid={}, page={}, size={}", userInfo.getOid(), page, size);
         
         return programApprovalService.getPendingApprovals(userInfo.getOid(), page, size);
+    }
+    
+    /**
+     * 查询待我审核的节目列表
+     */
+    public PageVO<ProgramApprovalDTO> getPendingApprovalsForMe(PageRequestDTO<PendingApprovalForMeRequest> request) {
+        RequestUserInfo userInfo = InvocationContextHolder.getContext().getRequestUser();
+        log.debug("Getting pending approvals for me: uid={}, ugid={}, oid={}, page={}, size={}, params={}", 
+                userInfo.getUid(), userInfo.getUgid(), userInfo.getOid(), 
+                request.getPageNum(), request.getPageSize(), request.getParams());
+        
+        // 从请求参数中提取状态，如果没有则默认为PENDING
+        ProgramApprovalStatusEnum status = (request.getParams() != null && request.getParams().getStatus() != null) 
+                ? request.getParams().getStatus() 
+                : ProgramApprovalStatusEnum.PENDING;
+                
+        return programApprovalService.getPendingApprovalsForMe(
+                userInfo.getUid(), userInfo.getUgid(), userInfo.getOid(), 
+                request.getPageNum(), request.getPageSize());
+    }
+    
+    /**
+     * 查询我发起的审核申请列表
+     */
+    public PageVO<ProgramApprovalDTO> getInitiatedApprovalsByMe(PageRequestDTO<InitiatedApprovalsByMeRequest> request) {
+        RequestUserInfo userInfo = InvocationContextHolder.getContext().getRequestUser();
+        log.debug("Getting initiated approvals by me: uid={}, oid={}, page={}, size={}, params={}", 
+                userInfo.getUid(), userInfo.getOid(), 
+                request.getPageNum(), request.getPageSize(), request.getParams());
+        
+        // 从请求参数中提取状态过滤条件
+        ProgramApprovalStatusEnum status = (request.getParams() != null) 
+                ? request.getParams().getStatus() 
+                : null;
+        
+        return programApprovalService.getInitiatedApprovalsByMe(
+                userInfo.getUid(), userInfo.getOid(), 
+                request.getPageNum(), request.getPageSize(), status);
+    }
+    
+    /**
+     * 查询全部审核记录
+     */
+    public PageVO<ProgramApprovalDTO> getAllApprovals(PageRequestDTO<AllApprovalsRequest> request) {
+        RequestUserInfo userInfo = InvocationContextHolder.getContext().getRequestUser();
+        log.debug("Getting all approvals: uid={}, ugid={}, oid={}, page={}, size={}, params={}", 
+                userInfo.getUid(), userInfo.getUgid(), userInfo.getOid(), 
+                request.getPageNum(), request.getPageSize(), request.getParams());
+        
+        // 从请求参数中提取状态过滤条件
+        ProgramApprovalStatusEnum status = (request.getParams() != null) 
+                ? request.getParams().getStatus() 
+                : null;
+        
+        return programApprovalService.getAllApprovals(
+                userInfo.getUid(), userInfo.getUgid(), userInfo.getOid(), 
+                request.getPageNum(), request.getPageSize(), status);
     }
     
     /**

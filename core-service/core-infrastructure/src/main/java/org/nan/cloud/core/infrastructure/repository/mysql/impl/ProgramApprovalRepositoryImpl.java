@@ -231,4 +231,114 @@ public class ProgramApprovalRepositoryImpl implements ProgramApprovalRepository 
         
         return rows;
     }
+    
+    // ===== 新增三维度查询方法实现 =====
+    
+    @Override
+    public List<ProgramApproval> findPendingByUserGroups(List<Long> userGroupIds, Long oid, int page, int size) {
+        log.debug("🔍 查询待我审核的节目列表 - userGroupIds: {}, oid: {}, page: {}, size: {}", 
+                userGroupIds, oid, page, size);
+        
+        if (CollectionUtils.isEmpty(userGroupIds)) {
+            log.debug("📭 用户组ID列表为空，返回空列表");
+            return List.of();
+        }
+        
+        Page<ProgramApprovalDO> myBatisPage = new Page<>(page, size);
+        var resultPage = programApprovalMapper.selectPendingByUserGroups(myBatisPage, userGroupIds, oid);
+        List<ProgramApprovalDO> approvalDOs = resultPage.getRecords();
+        
+        if (CollectionUtils.isEmpty(approvalDOs)) {
+            log.debug("📭 未找到待我审核记录 - userGroupIds: {}, oid: {}", userGroupIds, oid);
+            return List.of();
+        }
+        
+        List<ProgramApproval> approvals = programApprovalConverter.toDomains(approvalDOs);
+        log.debug("✅ 查询到 {} 条待我审核记录 - userGroupIds: {}, oid: {}", approvals.size(), userGroupIds, oid);
+        return approvals;
+    }
+    
+    @Override
+    public long countPendingByUserGroups(List<Long> userGroupIds, Long oid) {
+        log.debug("🔍 统计待我审核的节目数量 - userGroupIds: {}, oid: {}", userGroupIds, oid);
+        
+        if (CollectionUtils.isEmpty(userGroupIds)) {
+            log.debug("📭 用户组ID列表为空，返回0");
+            return 0L;
+        }
+        
+        long count = programApprovalMapper.countPendingByUserGroups(userGroupIds, oid);
+        log.debug("✅ 待我审核节目数量 - userGroupIds: {}, oid: {}, count: {}", userGroupIds, oid, count);
+        return count;
+    }
+    
+    @Override
+    public List<ProgramApproval> findByCreatedBy(Long createdBy, Long oid, ProgramApprovalStatusEnum status, int page, int size) {
+        log.debug("🔍 查询我发起的审核申请列表 - createdBy: {}, oid: {}, status: {}, page: {}, size: {}", 
+                createdBy, oid, status, page, size);
+        
+        Page<ProgramApprovalDO> myBatisPage = new Page<>(page, size);
+        var resultPage = programApprovalMapper.selectByCreatedBy(myBatisPage, createdBy, oid, status);
+        List<ProgramApprovalDO> approvalDOs = resultPage.getRecords();
+        
+        if (CollectionUtils.isEmpty(approvalDOs)) {
+            log.debug("📭 未找到我发起的审核申请 - createdBy: {}, oid: {}, status: {}", createdBy, oid, status);
+            return List.of();
+        }
+        
+        List<ProgramApproval> approvals = programApprovalConverter.toDomains(approvalDOs);
+        log.debug("✅ 查询到 {} 条我发起的审核申请 - createdBy: {}, oid: {}, status: {}", 
+                approvals.size(), createdBy, oid, status);
+        return approvals;
+    }
+    
+    @Override
+    public long countByCreatedBy(Long createdBy, Long oid, ProgramApprovalStatusEnum status) {
+        log.debug("🔍 统计我发起的审核申请数量 - createdBy: {}, oid: {}, status: {}", createdBy, oid, status);
+        
+        long count = programApprovalMapper.countByCreatedBy(createdBy, oid, status);
+        log.debug("✅ 我发起的审核申请数量 - createdBy: {}, oid: {}, status: {}, count: {}", 
+                createdBy, oid, status, count);
+        return count;
+    }
+    
+    @Override
+    public List<ProgramApproval> findAllByUserGroups(List<Long> userGroupIds, Long oid, ProgramApprovalStatusEnum status, int page, int size) {
+        log.debug("🔍 查询全部审核记录 - userGroupIds: {}, oid: {}, status: {}, page: {}, size: {}", 
+                userGroupIds, oid, status, page, size);
+        
+        if (CollectionUtils.isEmpty(userGroupIds)) {
+            log.debug("📭 用户组ID列表为空，返回空列表");
+            return List.of();
+        }
+        
+        Page<ProgramApprovalDO> myBatisPage = new Page<>(page, size);
+        var resultPage = programApprovalMapper.selectAllByUserGroups(myBatisPage, userGroupIds, oid, status);
+        List<ProgramApprovalDO> approvalDOs = resultPage.getRecords();
+        
+        if (CollectionUtils.isEmpty(approvalDOs)) {
+            log.debug("📭 未找到全部审核记录 - userGroupIds: {}, oid: {}, status: {}", userGroupIds, oid, status);
+            return List.of();
+        }
+        
+        List<ProgramApproval> approvals = programApprovalConverter.toDomains(approvalDOs);
+        log.debug("✅ 查询到 {} 条全部审核记录 - userGroupIds: {}, oid: {}, status: {}", 
+                approvals.size(), userGroupIds, oid, status);
+        return approvals;
+    }
+    
+    @Override
+    public long countAllByUserGroups(List<Long> userGroupIds, Long oid, ProgramApprovalStatusEnum status) {
+        log.debug("🔍 统计全部审核记录数量 - userGroupIds: {}, oid: {}, status: {}", userGroupIds, oid, status);
+        
+        if (CollectionUtils.isEmpty(userGroupIds)) {
+            log.debug("📭 用户组ID列表为空，返回0");
+            return 0L;
+        }
+        
+        long count = programApprovalMapper.countAllByUserGroups(userGroupIds, oid, status);
+        log.debug("✅ 全部审核记录数量 - userGroupIds: {}, oid: {}, status: {}, count: {}", 
+                userGroupIds, oid, status, count);
+        return count;
+    }
 }

@@ -48,6 +48,24 @@ public class ProgramRepositoryImpl implements ProgramRepository {
     }
 
     @Override
+    public List<Program> findByIds(List<Long> programIds) {
+        if (CollectionUtils.isEmpty(programIds)) {
+            return List.of();
+        }
+        
+        log.debug("Batch finding programs by ids: {}, count: {}", programIds, programIds.size());
+        
+        QueryWrapper<ProgramDO> queryWrapper = new QueryWrapper<>();
+        queryWrapper.in("id", programIds).eq("deleted", 0);
+        
+        List<ProgramDO> programDOs = programMapper.selectList(queryWrapper);
+        List<Program> programs = programDomainConverter.toDomains(programDOs);
+        
+        log.debug("Found {} programs for {} ids", programs.size(), programIds.size());
+        return programs;
+    }
+
+    @Override
     public Optional<Program> findByIdAndOid(Long programId, Long oid) {
         log.debug("Finding program by id: {} and oid: {}", programId, oid);
         

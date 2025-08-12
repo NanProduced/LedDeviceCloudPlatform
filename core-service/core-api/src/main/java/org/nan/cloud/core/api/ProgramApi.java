@@ -3,6 +3,9 @@ package org.nan.cloud.core.api;
 import org.nan.cloud.common.basic.model.PageRequestDTO;
 import org.nan.cloud.common.basic.model.PageVO;
 import org.nan.cloud.core.api.DTO.req.QueryProgramListRequest;
+import org.nan.cloud.core.api.DTO.req.PendingApprovalForMeRequest;
+import org.nan.cloud.core.api.DTO.req.InitiatedApprovalsByMeRequest;
+import org.nan.cloud.core.api.DTO.req.AllApprovalsRequest;
 import org.nan.cloud.program.dto.request.CreateProgramRequest;
 import org.nan.cloud.program.dto.request.PublishDraftRequest;
 import org.nan.cloud.program.dto.request.SaveDraftRequest;
@@ -126,12 +129,38 @@ public interface ProgramApi {
                                                @PathVariable Integer versionId);
     
     /**
-     * 查询组织待审核列表
+     * 查询组织待审核列表 (已废弃 - 使用新的三维度接口)
+     * @deprecated 使用 getPendingApprovalsForMe, getInitiatedApprovalsByMe, getAllApprovals 替代
      */
+    @Deprecated
     @GetMapping(PREFIX + "/approval/pending")
     PageVO<ProgramApprovalDTO> getPendingApprovals(
             @RequestParam(defaultValue = "1") int page,
             @RequestParam(defaultValue = "20") int size);
+            
+    /**
+     * 查询待我审核的节目列表
+     * 业务逻辑：节目的ugid属于当前用户组或子组，且审核状态为PENDING
+     */
+    @PostMapping(PREFIX + "/approval/pending-for-me")
+    PageVO<ProgramApprovalDTO> getPendingApprovalsForMe(
+            @RequestBody PageRequestDTO<PendingApprovalForMeRequest> request);
+            
+    /**
+     * 查询我发起的审核申请列表  
+     * 业务逻辑：创建者为当前用户ID的所有审核记录
+     */
+    @PostMapping(PREFIX + "/approval/initiated-by-me")
+    PageVO<ProgramApprovalDTO> getInitiatedApprovalsByMe(
+            @RequestBody PageRequestDTO<InitiatedApprovalsByMeRequest> request);
+            
+    /**
+     * 查询全部审核记录
+     * 业务逻辑：ugid属于当前用户组层级的所有审核记录
+     */
+    @PostMapping(PREFIX + "/approval/all")  
+    PageVO<ProgramApprovalDTO> getAllApprovals(
+            @RequestBody PageRequestDTO<AllApprovalsRequest> request);
     
     /**
      * 查询审核人员的审核记录
