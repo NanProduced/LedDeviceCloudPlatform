@@ -48,6 +48,7 @@ public enum ExceptionEnum {
     DETAILS_DENIED(5017, "get details failed"),
     PROGRAM_NAME_EXISTS(5018, "program name already exists"),
     PROGRAM_NOT_EXISTS(5019, "program not exists"),
+    TEMPLATE_BUSINESS_ERROR(5020, "template business error"),
 
     /* 文件预览相关异常 -> 7xxx */
     FILE_NOT_FOUND(7001, "File not found or deleted"),

@@ -67,7 +67,7 @@ public class ProgramController implements ProgramApi {
             tags = {"节目管理", "草稿管理"}
     )
     @Override
-    public DraftDTO saveDraft(@PathVariable Long programId, 
+    public DraftDTO saveDraft(@RequestParam Long programId,
                             @RequestBody @Validated SaveDraftRequest request) {
         log.info("REST API: Saving draft for program: {}", programId);
         return programFacade.saveDraft(programId, request);
@@ -241,5 +241,41 @@ public class ProgramController implements ProgramApi {
     public boolean withdrawProgramApproval(@PathVariable Long approvalId) {
         log.info("REST API: Withdrawing program approval - approvalId: {}", approvalId);
         return programFacade.withdrawProgramApproval(approvalId);
+    }
+
+    // ===== 模板管理相关API实现 =====
+
+    @Operation(
+            summary = "保存为模板",
+            description = "将节目编辑状态保存为模板",
+            tags = {"模板管理"}
+    )
+    @Override
+    public ProgramDTO saveAsTemplate(@RequestBody @Validated CreateProgramRequest request) {
+        log.info("REST API: Saving as template with name: {}", request.getName());
+        return programFacade.saveAsTemplate(request);
+    }
+
+    @Operation(
+            summary = "更新模板",
+            description = "更新模板内容和编辑状态",
+            tags = {"模板管理"}
+    )
+    @Override
+    public ProgramDTO updateTemplate(@PathVariable Long templateId,
+                                   @RequestBody @Validated UpdateProgramRequest request) {
+        log.info("REST API: Updating template: {}", templateId);
+        return programFacade.updateTemplate(templateId, request);
+    }
+
+    @Operation(
+            summary = "获取模板列表",
+            description = "分页查询模板列表，支持继承（父级组可看到子组模板）",
+            tags = {"模板管理"}
+    )
+    @Override
+    public PageVO<ProgramDTO> listTemplates(@RequestBody PageRequestDTO<QueryProgramListRequest> pageRequestDTO) {
+        log.debug("REST API: Listing templates with keyword: {}", pageRequestDTO.getParams().getKeyword());
+        return programFacade.listTemplates(pageRequestDTO);
     }
 }

@@ -320,6 +320,52 @@ public class ProgramFacade {
         return programApprovalService.withdrawApproval(approvalId, userInfo.getUid(), userInfo.getOid());
     }
 
+    // ===== 模板管理相关方法 =====
+
+    /**
+     * 保存节目为模板
+     */
+    public ProgramDTO saveAsTemplate(CreateProgramRequest request) {
+        RequestUserInfo userInfo = InvocationContextHolder.getContext().getRequestUser();
+        log.info("Saving program as template: name={}, userId={}, oid={}, ugid={}", 
+                request.getName(), userInfo.getUid(), userInfo.getOid(), userInfo.getUgid());
+
+        return programService.saveAsTemplate(request, userInfo.getUid(), userInfo.getOid(), userInfo.getUgid());
+    }
+
+    /**
+     * 更新模板
+     */
+    public ProgramDTO updateTemplate(Long templateId, UpdateProgramRequest request) {
+        RequestUserInfo userInfo = InvocationContextHolder.getContext().getRequestUser();
+        log.info("Updating template: templateId={}, userId={}, oid={}", 
+                templateId, userInfo.getUid(), userInfo.getOid());
+
+        return programService.updateTemplate(templateId, request, userInfo.getUid(), userInfo.getOid());
+    }
+
+    /**
+     * 模板列表（支持继承）
+     */
+    public PageVO<ProgramDTO> listTemplates(PageRequestDTO<QueryProgramListRequest> pageRequestDTO) {
+        RequestUserInfo userInfo = InvocationContextHolder.getContext().getRequestUser();
+        
+        log.debug("Listing templates: keyword={}, page={}, pageSize={}, oid={}, ugid={}", 
+                pageRequestDTO.getParams().getKeyword(), 
+                pageRequestDTO.getPageNum(),
+                pageRequestDTO.getPageSize(),
+                userInfo.getOid(), 
+                userInfo.getUgid());
+
+        // 调用Service层模板查询（支持继承）
+        return programService.findTemplatesWithInheritance(
+                userInfo.getOid(), 
+                userInfo.getUgid(), 
+                pageRequestDTO.getParams().getKeyword(),
+                pageRequestDTO.getPageNum(), 
+                pageRequestDTO.getPageSize());
+    }
+
     // ===== 私有辅助方法 =====
 
     /**

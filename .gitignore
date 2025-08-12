@@ -100,3 +100,16 @@ out/
 
 # Compiled class files in wrong locations
 *.class
+/common-mq/common-mq-consumer/src/main/resources/rebel.xml
+/common-mq/common-mq-core/src/main/resources/rebel.xml
+/common-mq/common-mq-examples/src/main/resources/rebel.xml
+/common-mq/common-mq-producer/src/main/resources/rebel.xml
+/file-service/file-api/src/main/resources/rebel.xml
+/file-service/file-application/src/main/resources/rebel.xml
+/file-service/file-boot/src/main/resources/rebel.xml
+/file-service/file-infrastructure/src/main/resources/rebel.xml
+/message-service/message-api/src/main/resources/rebel.xml
+/message-service/message-application/src/main/resources/rebel.xml
+/message-service/message-boot/src/main/resources/rebel.xml
+/message-service/message-infrastructure/src/main/resources/rebel.xml
+/program-domain/src/main/resources/rebel.xml

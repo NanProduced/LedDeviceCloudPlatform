@@ -43,8 +43,8 @@ public interface ProgramApi {
     /**
      * 保存草稿（不变更正式版本，保留独立版本号与编辑状态）
      */
-    @PostMapping(PREFIX + "/{programId}/draft")
-    DraftDTO saveDraft(@PathVariable Long programId, 
+    @PostMapping(PREFIX + "/draft")
+    DraftDTO saveDraft(@RequestParam Long programId,
                       @RequestBody SaveDraftRequest request);
 
     /**
@@ -148,4 +148,26 @@ public interface ProgramApi {
      */
     @DeleteMapping(PREFIX + "/approval/{approvalId}")
     boolean withdrawProgramApproval(@PathVariable Long approvalId);
+
+    // ===== 模板管理相关API =====
+
+    /**
+     * 保存为模板
+     */
+    @PostMapping(PREFIX + "/template/create")
+    ProgramDTO saveAsTemplate(@RequestBody CreateProgramRequest request);
+
+    /**
+     * 更新模板
+     */
+    @PutMapping(PREFIX + "/template/{templateId}")
+    ProgramDTO updateTemplate(@PathVariable Long templateId,
+                            @RequestBody UpdateProgramRequest request);
+
+    /**
+     * 获取模板列表 
+     * 支持继承（父级组可看到子组模板）
+     */
+    @PostMapping(PREFIX + "/template/list")
+    PageVO<ProgramDTO> listTemplates(@RequestBody PageRequestDTO<QueryProgramListRequest> pageRequestDTO);
 }

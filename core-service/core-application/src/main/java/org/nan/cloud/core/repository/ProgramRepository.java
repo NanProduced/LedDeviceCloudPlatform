@@ -268,4 +268,18 @@ public interface ProgramRepository {
      * @return 影响行数
      */
     int updateThumbnailUrl(Long programId, String thumbnailUrl, Long updatedBy);
+    
+    // ===== 模板管理相关方法 =====
+    
+    /**
+     * 查询用户组模板列表（支持继承）
+     * 继承规则：子用户组可以继承父用户组的模板
+     * @param oid 组织ID
+     * @param ugid 用户组ID
+     * @param keyword 搜索关键词（可选）
+     * @param page 页码，从1开始
+     * @param size 每页大小
+     * @return 模板分页结果（包含继承的模板）
+     */
+    PageVO<Program> findTemplatesWithInheritance(Long oid, Long ugid, String keyword, int page, int size);
 }

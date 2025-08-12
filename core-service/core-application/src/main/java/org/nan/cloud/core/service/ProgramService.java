@@ -169,6 +169,39 @@ public interface ProgramService {
      */
     boolean hasAccessPermission(Long programId, Long userId, Long oid);
     
+    // ===== 模板管理相关方法 =====
+    
+    /**
+     * 保存节目为模板
+     * @param request 节目创建请求
+     * @param userId 创建者用户ID
+     * @param oid 组织ID
+     * @param ugid 用户组ID
+     * @return 创建的模板信息
+     */
+    ProgramDTO saveAsTemplate(CreateProgramRequest request, Long userId, Long oid, Long ugid);
+    
+    /**
+     * 更新模板
+     * @param templateId 模板ID
+     * @param request 更新请求
+     * @param userId 更新者用户ID
+     * @param oid 组织ID
+     * @return 更新后的模板信息
+     */
+    ProgramDTO updateTemplate(Long templateId, UpdateProgramRequest request, Long userId, Long oid);
+    
+    /**
+     * 查询用户组模板列表（支持继承）
+     * @param oid 组织ID
+     * @param ugid 用户组ID
+     * @param keyword 搜索关键词（可选）
+     * @param page 页码，从1开始
+     * @param size 每页大小
+     * @return 模板列表（包含子组模板）
+     */
+    PageVO<ProgramDTO> findTemplatesWithInheritance(Long oid, Long ugid, String keyword, int page, int size);
+    
     // ===== 版本控制相关方法 =====
     
     /**

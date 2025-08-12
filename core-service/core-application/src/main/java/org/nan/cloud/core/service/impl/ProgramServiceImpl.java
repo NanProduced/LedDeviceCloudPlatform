@@ -3,6 +3,8 @@ package org.nan.cloud.core.service.impl;
 import com.fasterxml.jackson.core.type.TypeReference;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.nan.cloud.common.basic.exception.BaseException;
+import org.nan.cloud.common.basic.exception.ExceptionEnum;
 import org.nan.cloud.common.basic.model.PageVO;
 import org.nan.cloud.common.basic.utils.JsonUtils;
 import org.nan.cloud.core.domain.Program;
@@ -562,6 +564,220 @@ public class ProgramServiceImpl implements ProgramService {
                     programId, programVersion, e.getMessage(), e);
             // 不抛出异常，避免影响节目创建流程
             // 审核记录创建失败不应该阻止节目创建
+        }
+    }
+
+    // ===== 模板管理相关方法实现 =====
+
+    @Override
+    @Transactional(rollbackFor = Exception.class)
+    public ProgramDTO saveAsTemplate(CreateProgramRequest request, Long userId, Long oid, Long ugid) {
+        log.info("Creating template: name={}, userId={}, oid={}, ugid={}", 
+                request.getName(), userId, oid, ugid);
+
+        // 1.校验
+
+        // 2. 验证模板名称唯一性
+        validateProgramNameUnique(oid, ugid, request.getName(), null);
+
+        // 3. 验证素材依赖关系
+        validateMaterialDependencies(request.getContentData(), oid);
+
+        Program template = null;
+        String contentId = null;
+        
+        try {
+            // 4. 创建模板记录
+            template = buildNewTemplate(request, userId, oid, ugid);
+            template = programRepository.save(template);
+
+            // 5. 保存模板内容到MongoDB
+            contentId = saveContentToMongoDBWithErrorHandling(template, request.getContentData(), request.getVsnData(), userId);
+            template.setProgramContentId(contentId);
+            template = programRepository.save(template);
+
+            // 6. 建立素材引用关系（在事务内处理）
+            createMaterialReferencesWithValidation(template, request.getContentData());
+
+            log.info("Template created successfully: id={}, name={}", template.getId(), template.getName());
+            return programDtoConverter.toProgramDTO(template);
+            
+        } catch (Exception e) {
+            log.error("Failed to create template: name={}, error={}", request.getName(), e.getMessage(), e);
+            // 清理已创建的MongoDB内容（如果存在）
+            if (contentId != null) {
+                cleanupMongoDBContent(contentId);
+            }
+            throw new BaseException(ExceptionEnum.TEMPLATE_BUSINESS_ERROR, "模板创建失败: " + e.getMessage());
+        }
+    }
+
+    @Override
+    @Transactional(rollbackFor = Exception.class)
+    public ProgramDTO updateTemplate(Long templateId, UpdateProgramRequest request, Long userId, Long oid) {
+        log.info("Updating template: templateId={}, userId={}, oid={}", templateId, userId, oid);
+
+        // 1. 参数验证
+
+        // 2. 查找原模板并验证权限
+        Program originalTemplate = findTemplateWithPermission(templateId, oid);
+        String oldContentId = originalTemplate.getProgramContentId();
+
+        // 3. 验证模板名称唯一性（如果名称有变化）
+        if (StringUtils.hasText(request.getName()) && !request.getName().equals(originalTemplate.getName())) {
+            validateProgramNameUnique(oid, originalTemplate.getUgid(), request.getName(), templateId);
+        }
+
+        // 4. 验证素材依赖关系
+        if (request.getContentData() != null) {
+            validateMaterialDependencies(request.getContentData(), oid);
+        }
+
+        String newContentId = null;
+        
+        try {
+            // 5. 更新模板基础信息
+            updateTemplateBasicInfo(originalTemplate, request, userId);
+            originalTemplate = programRepository.save(originalTemplate);
+
+            // 6. 更新模板内容到MongoDB（如果提供了新内容）
+            if (request.getContentData() != null) {
+                newContentId = saveContentToMongoDBWithErrorHandling(originalTemplate, request.getContentData(), request.getVsnData(), userId);
+                originalTemplate.setProgramContentId(newContentId);
+                originalTemplate = programRepository.save(originalTemplate);
+
+                // 7. 更新素材引用关系
+                createMaterialReferencesWithValidation(originalTemplate, request.getContentData());
+            }
+
+            log.info("Template updated successfully: id={}, name={}", originalTemplate.getId(), originalTemplate.getName());
+            return programDtoConverter.toProgramDTO(originalTemplate);
+            
+        } catch (Exception e) {
+            log.error("Failed to update template: templateId={}, error={}", templateId, e.getMessage(), e);
+            // 清理新创建的MongoDB内容（如果存在）
+            if (newContentId != null) {
+                cleanupMongoDBContent(newContentId);
+            }
+            throw new BaseException(ExceptionEnum.TEMPLATE_BUSINESS_ERROR, "模板更新失败: " + e.getMessage());
+        }
+    }
+
+    @Override
+    public PageVO<ProgramDTO> findTemplatesWithInheritance(Long oid, Long ugid, String keyword, int page, int size) {
+        log.debug("Finding templates with inheritance: oid={}, ugid={}, keyword={}, page={}, size={}", 
+                oid, ugid, keyword, page, size);
+        
+        // 查询模板列表（包含继承的模板）
+        PageVO<Program> templatePage = programRepository.findTemplatesWithInheritance(oid, ugid, keyword, page, size);
+        
+        // 转换为DTO
+        List<ProgramDTO> templateDTOs = programDtoConverter.toProgramDTOs(templatePage.getRecords());
+        
+        return templatePage.withRecords(templateDTOs);
+    }
+
+    // ===== 模板管理私有辅助方法 =====
+
+    private Program buildNewTemplate(CreateProgramRequest request, Long userId, Long oid, Long ugid) {
+        Program template = new Program();
+        template.setName(request.getName());
+        template.setDescription(request.getDescription());
+        template.setWidth(request.getWidth());
+        template.setHeight(request.getHeight());
+        template.setDuration(request.getDuration());
+        
+        // 版本控制字段（模板）
+        template.setVersion(1);
+        template.setSourceProgramId(null);
+        template.setIsSourceProgram(true);
+        
+        // 模板状态管理
+        template.setStatus(ProgramStatusEnum.TEMPLATE); // 设置为模板状态
+        template.setApprovalStatus(null); // 模板不需要审核
+        template.setVsnGenerationStatus(null); // 模板不需要生成VSN
+        
+        // 权限字段
+        template.setOid(oid);
+        template.setUgid(ugid);
+        template.setCreatedBy(userId);
+        template.setUpdatedBy(userId);
+        
+        // 初始化使用统计
+        template.setUsageCount(0);
+        
+        return template;
+    }
+
+    private Program findTemplateWithPermission(Long templateId, Long oid) {
+        Optional<Program> templateOpt = programRepository.findByIdAndOid(templateId, oid);
+        if (templateOpt.isEmpty()) {
+            throw new BaseException(ExceptionEnum.TEMPLATE_BUSINESS_ERROR, "模板不存在: " + templateId);
+        }
+        
+        Program template = templateOpt.get();
+        if (template.getStatus() != ProgramStatusEnum.TEMPLATE) {
+            throw new BaseException(ExceptionEnum.TEMPLATE_BUSINESS_ERROR, "指定的节目不是模板: " + templateId);
+        }
+        
+        return template;
+    }
+
+    private void updateTemplateBasicInfo(Program template, UpdateProgramRequest request, Long userId) {
+        if (StringUtils.hasText(request.getName())) {
+            template.setName(request.getName());
+        }
+        if (StringUtils.hasText(request.getDescription())) {
+            template.setDescription(request.getDescription());
+        }
+        if (request.getWidth() != null) {
+            template.setWidth(request.getWidth());
+        }
+        if (request.getHeight() != null) {
+            template.setHeight(request.getHeight());
+        }
+        if (request.getDuration() != null) {
+            template.setDuration(request.getDuration());
+        }
+        
+        template.setUpdatedBy(userId);
+        template.setUpdatedTime(LocalDateTime.now());
+    }
+
+
+    private String saveContentToMongoDBWithErrorHandling(Program program, String contentData, String vsnData, Long userId) {
+        try {
+            return saveContentToMongoDB(program, contentData, vsnData, userId);
+        } catch (Exception e) {
+            log.error("Failed to save content to MongoDB for program: {}, error: {}", program.getId(), e.getMessage(), e);
+            throw new BaseException(ExceptionEnum.TEMPLATE_BUSINESS_ERROR, "保存模板内容失败: " + e.getMessage());
+        }
+    }
+
+    private void createMaterialReferencesWithValidation(Program program, String contentData) {
+        try {
+            boolean success = materialDependencyService.createMaterialDependencies(
+                    program.getId(), contentData, program.getOid());
+            
+            if (!success) {
+                log.warn("Failed to create material references for program: {}", program.getId());
+                throw new BaseException(ExceptionEnum.TEMPLATE_BUSINESS_ERROR, "建立素材引用关系失败");
+            }
+        } catch (Exception e) {
+            log.error("Error creating material references for program: {}, error: {}", program.getId(), e.getMessage(), e);
+            throw new BaseException(ExceptionEnum.TEMPLATE_BUSINESS_ERROR, "建立素材引用关系时发生错误: " + e.getMessage());
+        }
+    }
+
+    private void cleanupMongoDBContent(String contentId) {
+        try {
+            if (StringUtils.hasText(contentId)) {
+                programContentRepository.deleteById(contentId);
+                log.info("Cleaned up MongoDB content: {}", contentId);
+            }
+        } catch (Exception e) {
+            log.warn("Failed to cleanup MongoDB content: {}, error: {}", contentId, e.getMessage(), e);
+            // 清理失败不抛异常，仅记录警告
         }
     }
 }

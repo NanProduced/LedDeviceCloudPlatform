@@ -11,6 +11,7 @@ import org.nan.cloud.core.domain.Program;
 import org.nan.cloud.core.infrastructure.repository.mysql.converter.ProgramDomainConverter;
 import org.nan.cloud.core.infrastructure.repository.mysql.mapper.ProgramMapper;
 import org.nan.cloud.core.repository.ProgramRepository;
+import org.nan.cloud.core.repository.UserGroupRepository;
 import org.nan.cloud.program.entity.ProgramDO;
 import org.nan.cloud.program.enums.ProgramApprovalStatusEnum;
 import org.nan.cloud.program.enums.ProgramStatusEnum;
@@ -32,6 +33,7 @@ public class ProgramRepositoryImpl implements ProgramRepository {
 
     private final ProgramMapper programMapper;
     private final ProgramDomainConverter programDomainConverter;
+    private final UserGroupRepository userGroupRepository;
 
     @Override
     public Optional<Program> findById(Long programId) {
@@ -433,5 +435,82 @@ public class ProgramRepositoryImpl implements ProgramRepository {
                 .set("updated_time", LocalDateTime.now());
         
         return programMapper.update(null, updateWrapper);
+    }
+
+    // ===== 模板管理相关方法实现 =====
+
+    /**
+     * 查询用户组模板列表（支持继承）
+     * 
+     * 性能优化建议：
+     * 1. 建议添加数据库索引：
+     *    - CREATE INDEX idx_program_template_query ON t_program(org_id, program_status, user_group_id, updated_time DESC, deleted);
+     *    - CREATE INDEX idx_program_template_search ON t_program(org_id, program_status, name, description, deleted);
+     * 
+     * 2. 查询优化策略：
+     *    - 使用复合索引覆盖WHERE和ORDER BY条件
+     *    - 考虑分页查询的LIMIT优化
+     *    - 对于大数据集，考虑使用游标分页替代OFFSET分页
+     * 
+     * 3. 用户组继承查询优化：
+     *    - 用户组层级不深时（<5层），当前实现性能良好
+     *    - 如果用户组层级很深，考虑使用递归CTE或层级表设计
+     *    - 可以考虑缓存用户组继承关系以提升查询性能
+     */
+    @Override
+    public PageVO<Program> findTemplatesWithInheritance(Long oid, Long ugid, String keyword, int page, int size) {
+        log.debug("Finding templates with inheritance: oid={}, ugid={}, keyword={}, page={}, size={}", 
+                oid, ugid, keyword, page, size);
+        
+        // 1. 获取用户组及其所有父级用户组的ID列表（支持继承）
+        List<Long> inheritedUgids;
+        try {
+            inheritedUgids = userGroupRepository.getAllUgidsByParent(ugid);
+            log.debug("Found {} inherited user groups for ugid={}: {}", inheritedUgids.size(), ugid, inheritedUgids);
+        } catch (Exception e) {
+            log.warn("Failed to get inherited user groups for ugid={}, fallback to current group only", ugid, e);
+            inheritedUgids = List.of(ugid);
+        }
+        
+        if (inheritedUgids.isEmpty()) {
+            inheritedUgids = List.of(ugid);
+        }
+        
+        Page<ProgramDO> pageParam = new Page<>(page, size);
+        
+        QueryWrapper<ProgramDO> queryWrapper = new QueryWrapper<>();
+        queryWrapper.eq("org_id", oid)
+                   .eq("program_status", ProgramStatusEnum.TEMPLATE)
+                   .eq("deleted", 0);
+        
+        // 2. 用户组继承查询：当前用户组 + 所有父级用户组的模板
+        queryWrapper.in("user_group_id", inheritedUgids);
+        
+        // 3. 关键词搜索（模板名称或描述）
+        if (keyword != null && !keyword.trim().isEmpty()) {
+            queryWrapper.and(wrapper -> wrapper.like("name", keyword.trim())
+                                              .or()
+                                              .like("description", keyword.trim()));
+        }
+        
+        // 4. 按更新时间倒序
+        queryWrapper.orderByDesc("updated_time");
+        
+        IPage<ProgramDO> result = programMapper.selectPage(pageParam, queryWrapper);
+        
+        // 5. 转换为Domain对象
+        List<Program> domainList = programDomainConverter.toDomains(result.getRecords());
+
+        PageVO<Program> pageVO = PageVO.<Program>builder()
+                .records(domainList)
+                .total(result.getTotal())
+                .pageNum((int) result.getCurrent())
+                .pageSize((int) result.getSize())
+                .build();
+        pageVO.calculate();
+        
+        log.info("Found {} templates for oid={}, ugid={} with inheritance from {} user groups", 
+                result.getTotal(), oid, ugid, inheritedUgids.size());
+        return pageVO;
     }
 }
