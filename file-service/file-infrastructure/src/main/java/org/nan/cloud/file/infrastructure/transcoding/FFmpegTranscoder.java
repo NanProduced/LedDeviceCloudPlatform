@@ -33,7 +33,7 @@ import java.util.regex.Pattern;
 @RequiredArgsConstructor
 public class FFmpegTranscoder {
 
-    @Value("${file.transcoding.ffmpeg.path:/usr/local/bin/ffmpeg}")
+    @Value("${file.transcoding.ffmpeg.path:ffmpeg}")
     private String ffmpegPath;
 
     @Value("${file.transcoding.ffmpeg.threads:8}")
@@ -45,7 +45,7 @@ public class FFmpegTranscoder {
     @Value("${file.transcoding.ffmpeg.enable-gpu:true}")
     private boolean enableGpu;
 
-    @Value("${file.transcoding.temp.dir:/tmp/transcoding}")
+    @Value("${file.transcoding.temp.dir:C:/temp/transcoding}")
     private String tempDir;
 
     // 进度解析正则表达式

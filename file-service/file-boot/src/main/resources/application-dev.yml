@@ -162,7 +162,7 @@ file:
   transcoding:
     # FFmpeg配置
     ffmpeg:
-      path: "/usr/local/bin/ffmpeg"
+      path: "ffmpeg"
       threads: 8
       timeout: 3600
       enable-gpu: true

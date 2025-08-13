@@ -122,13 +122,13 @@ file:
   transcoding:
     # FFmpeg路径
     ffmpeg:
-      path: /usr/local/bin/ffmpeg
+      path: ffmpeg
       threads: 8
       timeout: 3600
       enable-gpu: true
     # 临时目录
     temp:
-      dir: /data/transcoding
+      dir: C:\Users\nanpr\javaProject\filePath\temp\transcoding
     # 队列配置
     queue:
       max-concurrent-tasks: 3

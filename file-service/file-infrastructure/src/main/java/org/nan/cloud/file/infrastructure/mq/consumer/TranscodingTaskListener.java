@@ -168,7 +168,7 @@ public class TranscodingTaskListener implements MessageConsumer {
                 }
 
                 // 5) 生成最终存储路径，移动文件
-                String finalStoragePath = String.format("/data/material/%s/transcoded/%s.%s", datePart, outputFileId, fileExtension);
+                String finalStoragePath = String.format("C:/Users/nanpr/javaProject/filePath/material/%s/transcoded/%s.%s", datePart, outputFileId, fileExtension);
                 Path finalPath = Path.of(finalStoragePath);
                 Files.createDirectories(finalPath.getParent());
                 Files.move(Path.of(result.getOutputPath()), finalPath, StandardCopyOption.REPLACE_EXISTING);
@@ -224,7 +224,7 @@ public class TranscodingTaskListener implements MessageConsumer {
                 }
                 
                 // 2. 清理可能已生成的目标文件
-                Path potentialOutput = Path.of("/data/material/" + datePart + "/transcoded/");
+                Path potentialOutput = Path.of("C:/Users/nanpr/javaProject/filePath/material/" + datePart + "/transcoded/");
                 if (Files.exists(potentialOutput)) {
                     Files.list(potentialOutput)
                         .filter(f -> f.getFileName().toString().startsWith(outputFileId))
@@ -275,7 +275,7 @@ public class TranscodingTaskListener implements MessageConsumer {
         try {
             // 缩略图保存路径
             String thumbnailFileName = fileId + "_thumb.jpg";
-            String thumbnailDir = "/data/material/" + datePart + "/thumbnails/";
+            String thumbnailDir = "C:/Users/nanpr/javaProject/filePath/material/" + datePart + "/thumbnails/";
             Path thumbnailDirPath = Path.of(thumbnailDir);
             Files.createDirectories(thumbnailDirPath);
             

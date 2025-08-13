@@ -179,7 +179,7 @@ public class FileStorageProperties {
 
         @Data
         public static class Temp {
-            private String dir = "/data/transcoding";
+            private String dir = "C:/temp/transcoding";
         }
 
         @Data
