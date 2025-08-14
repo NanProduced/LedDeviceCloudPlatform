@@ -19,8 +19,7 @@ import org.springframework.cloud.openfeign.EnableFeignClients;
  * 
  * 服务端口：8084
  * 
- * @author LedDeviceCloudPlatform
- * @since 2025-01-20
+ * @author Nan
  */
 @Slf4j
 @SpringBootApplication

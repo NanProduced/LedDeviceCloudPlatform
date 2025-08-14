@@ -34,7 +34,7 @@ import org.springframework.cloud.client.discovery.EnableDiscoveryClient;
  * TODO: 添加文件存储路径配置
  * TODO: 完善监控和健康检查端点
  * 
- * @author LedDeviceCloudPlatform Team
+ * @author Nan
  * @since 1.0.0
  */
 @Slf4j
