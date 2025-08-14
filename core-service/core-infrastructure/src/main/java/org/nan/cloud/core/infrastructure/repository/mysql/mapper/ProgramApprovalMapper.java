@@ -142,7 +142,7 @@ public interface ProgramApprovalMapper extends BaseMapper<ProgramApprovalDO> {
             "INNER JOIN program p ON pa.program_id = p.id " +
             "WHERE pa.org_id = #{oid} " +
             "AND pa.status = 'PENDING' " +
-            "AND p.ugid IN " +
+            "AND p.user_group_id IN " +
             "<foreach collection='userGroupIds' item='ugid' open='(' separator=',' close=')'>" +
             "#{ugid}" +
             "</foreach> " +
@@ -163,7 +163,7 @@ public interface ProgramApprovalMapper extends BaseMapper<ProgramApprovalDO> {
             "INNER JOIN program p ON pa.program_id = p.id " +
             "WHERE pa.org_id = #{oid} " +
             "AND pa.status = 'PENDING' " +
-            "AND p.ugid IN " +
+            "AND p.user_group_id IN " +
             "<foreach collection='userGroupIds' item='ugid' open='(' separator=',' close=')'>" +
             "#{ugid}" +
             "</foreach>" +
@@ -222,7 +222,7 @@ public interface ProgramApprovalMapper extends BaseMapper<ProgramApprovalDO> {
             "INNER JOIN program p ON pa.program_id = p.id " +
             "WHERE pa.org_id = #{oid} " +
             "<if test='status != null'> AND pa.status = #{status} </if>" +
-            "AND p.ugid IN " +
+            "AND p.user_group_id IN " +
             "<foreach collection='userGroupIds' item='ugid' open='(' separator=',' close=')'>" +
             "#{ugid}" +
             "</foreach> " +
@@ -245,7 +245,7 @@ public interface ProgramApprovalMapper extends BaseMapper<ProgramApprovalDO> {
             "INNER JOIN program p ON pa.program_id = p.id " +
             "WHERE pa.org_id = #{oid} " +
             "<if test='status != null'> AND pa.status = #{status} </if>" +
-            "AND p.ugid IN " +
+            "AND p.user_group_id IN " +
             "<foreach collection='userGroupIds' item='ugid' open='(' separator=',' close=')'>" +
             "#{ugid}" +
             "</foreach>" +
