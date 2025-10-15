@@ -1,0 +1,141 @@
+# 本地环境配置
+spring:
+  # 禁用Nacos配置中心，使用本地配置文件
+  cloud:
+    nacos:
+      config:
+        import-check:
+          enabled: false  # 禁用Nacos配置导入检查
+        enabled: false    # 完全禁用Nacos配置功能
+      discovery:
+        enabled: false    # 本地测试时也禁用服务发现
+  datasource:
+    driver-class-name: com.mysql.cj.jdbc.Driver
+    username: root
+    password: Nan12091209
+    url: jdbc:mysql://192.168.1.185:3306/nan_test?zeroDateTimeBehavior=convertToNull&characterEncoding=utf-8&allowPublicKeyRetrieval=true
+  # MongoDB 本地配置
+  data:
+    mongodb:
+      host: 192.168.1.185
+      port: 27017
+      database: nan_test
+      username: root
+      password: Nan12091209
+      authentication-database: admin
+      auto-index-creation: true
+
+    # Redis 本地配置
+    redis:
+      host: 192.168.1.185
+      port: 6379
+      database: 1
+      password: Nan12091209
+      timeout: 3000
+      lettuce:
+        pool:
+          max-active: 50
+          max-idle: 48
+          min-idle: 0
+          max-wait: 5s
+
+  # RabbitMQ 本地配置
+  rabbitmq:
+    host: 192.168.1.185
+    port: 5672
+    username: admin
+    password: Nan12091209
+    virtual-host: /led-platform-local
+
+  # 本地开发环境禁用部分自动配置
+  autoconfigure:
+    exclude:
+    # - org.springframework.boot.autoconfigure.amqp.RabbitAutoConfiguration  # 启用RabbitMQ测试
+    # - org.springframework.boot.autoconfigure.data.mongo.MongoDataAutoConfiguration  # 启用MongoDB
+
+# WebSocket 本地环境配置
+websocket:
+  endpoint: /ws
+  allowed-origins:
+    - "*"  # 本地开发允许所有源
+  heartbeat-interval: 30000
+  connection-timeout: 60000
+  max-connections: 1000  # 本地环境降低最大连接数
+  message-buffer-size: 8192
+  sockjs-enabled: true
+  sockjs-disconnect-delay: 30000
+  sockjs-heartbeat-time: 25000
+  sockjs-http-message-cache-size: 1000
+
+# 消息本地配置
+message:
+  default-ttl-days: 7  # 本地环境消息保留时间更短
+  batch-size: 50
+  max-retry-count: 1
+  template-cache-ttl: 600  # 本地环境缓存时间更短
+
+  # 消息队列配置
+  queue:
+    dead-letter-suffix: ".dlq"
+    message-ttl: 1800000  # 30分钟（本地环境较短）
+    max-length: 5000  # 本地环境队列长度较小
+
+  # 持久化配置
+  persistence:
+    enabled: true
+    batch-insert-size: 100  # 本地环境批量插入数量较小
+    async: true
+    thread-pool-size: 3  # 本地环境线程池较小
+
+  # 通知配置
+  notification:
+    enabled: true
+    retry-interval: 3000  # 本地环境重试间隔较短
+    default-language: "zh-CN"
+    email-enabled: false  # 本地环境关闭邮件通知
+    sms-enabled: false    # 本地环境关闭短信通知
+
+  # Phase 3.1: STOMP可靠性功能配置（本地环境优化）
+  reliability:
+    # 是否启用可靠性功能
+    enabled: true
+    # 自动清理配置
+    cleanup:
+      enabled: true
+      # 投递记录保留时间（小时）- 本地环境较短
+      delivery-record-retention-hours: 12
+      # 连接状态超时时间（分钟）- 本地环境较短
+      connection-timeout-minutes: 30
+    # 监控统计配置
+    monitoring:
+      enabled: true
+      # 统计输出间隔（分钟）- 本地环境更频繁
+      stats-interval-minutes: 5
+    # 重试配置
+    retry:
+      # 默认最大重试次数 - 本地环境较少
+      default-max-retries: 2
+      # 默认初始延迟（秒）- 本地环境较短
+      default-initial-delay-seconds: 3
+      # 默认最大延迟（秒）- 本地环境较短
+      default-max-delay-seconds: 120
+
+# 日志配置（本地环境调试友好）
+logging:
+  level:
+    # 我们的代码使用详细日志
+    org.nan.cloud.message: TRACE
+
+    # Spring框架组件使用适中日志
+    org.springframework.web.socket: DEBUG
+    org.springframework.amqp: INFO          # RabbitMQ改为INFO，减少日志
+    org.springframework.data.mongodb: INFO  # MongoDB改为INFO，避免过多集群状态日志
+    org.springframework.data.redis: INFO    # Redis改为INFO，减少连接日志
+
+    # MongoDB驱动程序日志控制
+    org.mongodb.driver.cluster: WARN        # 集群状态监控日志改为WARN
+    org.mongodb.driver.connection: WARN     # 连接日志改为WARN
+    org.mongodb.driver.protocol: WARN       # 协议日志改为WARN
+
+    # 根日志级别
+    root: INFO  # 根日志改为INFO，减少整体日志量

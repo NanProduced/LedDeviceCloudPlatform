@@ -1,0 +1,60 @@
+[
+  {
+    "name": "stomp.device.status.queue",
+    "durable": true,
+    "exclusive": false,
+    "autoDelete": false,
+    "ttl": 30000,
+    "deadLetterExchange": "stomp.dlx.topic",
+    "deadLetterRoutingKey": "device.status.dlq",
+    "description": "设备状态队列 - 设备状态变更推送，对应@Bean: deviceStatusQueue()"
+  },
+  {
+    "name": "stomp.command.result.queue",
+    "durable": true,
+    "exclusive": false,
+    "autoDelete": false,
+    "ttl": 300000,
+    "deadLetterExchange": "stomp.dlx.topic",
+    "deadLetterRoutingKey": "command.result.dlq",
+    "description": "指令结果队列 - 指令执行结果推送，对应@Bean: commandResultQueue()"
+  },
+  {
+    "name": "stomp.system.notification.queue",
+    "durable": true,
+    "exclusive": false,
+    "autoDelete": false,
+    "ttl": 1800000,
+    "deadLetterExchange": "stomp.dlx.topic",
+    "deadLetterRoutingKey": "system.notification.dlq",
+    "description": "系统通知队列 - 系统通知推送，对应@Bean: systemNotificationQueue()"
+  },
+  {
+    "name": "stomp.batch.progress.queue",
+    "durable": true,
+    "exclusive": false,
+    "autoDelete": false,
+    "ttl": 180000,
+    "deadLetterExchange": "stomp.dlx.topic",
+    "deadLetterRoutingKey": "batch.progress.dlq",
+    "description": "批量进度队列 - 批量指令进度推送，对应@Bean: batchProgressQueue()"
+  },
+  {
+    "name": "stomp.file.upload.queue",
+    "durable": true,
+    "exclusive": false,
+    "autoDelete": false,
+    "ttl": 300000,
+    "deadLetterExchange": "stomp.dlx.topic",
+    "deadLetterRoutingKey": "file.upload.dlq",
+    "description": "文件上传队列 - 文件上传进度和状态推送，对应@Bean: fileUploadQueue()"
+  },
+  {
+    "name": "stomp.bridge.dlq",
+    "durable": true,
+    "exclusive": false,
+    "autoDelete": false,
+    "ttl": 86400000,
+    "description": "统一死信队列 - 简化的死信处理，对应@Bean: bridgeDlq()"
+  }
+]

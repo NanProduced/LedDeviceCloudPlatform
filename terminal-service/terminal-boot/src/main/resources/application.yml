@@ -1,0 +1,5 @@
+spring:
+  application:
+    name: terminal-service
+  profiles:
+    active: @profileActive@

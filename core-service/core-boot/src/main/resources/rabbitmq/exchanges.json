@@ -1,0 +1,16 @@
+[
+  {
+    "name": "business.topic",
+    "type": "topic",
+    "durable": true,
+    "autoDelete": false,
+    "description": "业务事件交换器 - 路由业务相关消息，如文件上传、任务处理等"
+  },
+  {
+    "name": "business.dlx.topic",
+    "type": "topic",
+    "durable": true,
+    "autoDelete": false,
+    "description": "业务死信交换器 - 处理业务消息失败重试"
+  }
+]

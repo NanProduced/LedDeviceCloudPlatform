@@ -1,0 +1,43 @@
+---
+description: 项目结构说明
+globs:
+alwaysApply: true
+---
+
+## 当前结构分析
+
+该项目采用微服务架构，主要包含以下模块：
+
+### auth-server: 认证服务
+
+- auth-api: 提供认证相关API
+
+- auth-application: 认证业务逻辑实现
+
+- auth-boot: 启动模块和配置
+
+- auth-common: 认证服务通用组件
+
+- auth-infrastructure: 认证服务基础设施层
+
+### core-service: 核心业务服务
+
+- core-api: 核心服务API
+
+- core-application: 核心业务逻辑
+
+- core-boot: 启动模块和配置
+
+- core-infrastructure: 核心服务基础设施层
+
+### gateway: API网关服务
+
+- 负责路由转发、统一认证等功能
+
+### common-basic: 基础通用模块
+
+- 包含异常处理和工具类
+
+### common-web: Web通用模块
+
+- 包含Web相关配置、上下文和拦截器

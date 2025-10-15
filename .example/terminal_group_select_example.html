@@ -1,0 +1,1189 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>树形权限选择器 - 禁止冗余操作</title>
+  <style>
+    :root {
+      --green-solid: #52c41a;
+      --red-solid: #ff4d4f;
+      --green-bg: rgba(230, 247, 230, 0.7);
+      --red-bg: rgba(255, 242, 240, 0.7);
+      --blue: #1890ff;
+      --orange: #fa8c16;
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      font-family: 'Segoe UI', 'Microsoft YaHei', sans-serif;
+      background: linear-gradient(135deg, #f5f7fa 0%, #e4efe9 100%);
+      min-height: 100vh;
+      padding: 20px;
+      color: #333;
+    }
+
+    .container {
+      max-width: 1200px;
+      margin: 0 auto;
+      display: grid;
+      grid-template-columns: 1fr 350px;
+      gap: 20px;
+    }
+
+    header {
+      grid-column: 1 / -1;
+      text-align: center;
+      padding: 20px 0;
+      margin-bottom: 20px;
+      border-bottom: 2px solid var(--green-solid);
+    }
+
+    h1 {
+      color: #2c3e50;
+      margin-bottom: 10px;
+      font-size: 2.5rem;
+    }
+
+    .subtitle {
+      color: #7f8c8d;
+      font-size: 1.2rem;
+      max-width: 800px;
+      margin: 0 auto;
+      line-height: 1.6;
+    }
+
+    .card {
+      background: white;
+      border-radius: 12px;
+      box-shadow: 0 8px 30px rgba(0, 0, 0, 0.08);
+      padding: 25px;
+      transition: transform 0.3s ease, box-shadow 0.3s ease;
+    }
+
+    .card:hover {
+      transform: translateY(-5px);
+      box-shadow: 0 12px 40px rgba(0, 0, 0, 0.12);
+    }
+
+    .card-title {
+      display: flex;
+      align-items: center;
+      margin-bottom: 20px;
+      padding-bottom: 15px;
+      border-bottom: 1px solid #eee;
+      color: #2c3e50;
+      font-size: 1.5rem;
+    }
+
+    .card-title i {
+      margin-right: 10px;
+      font-size: 1.8rem;
+    }
+
+    .tree-container {
+      height: 600px;
+      overflow-y: auto;
+      padding-right: 10px;
+    }
+
+    /* 树形结构样式 */
+    .node {
+      margin: 8px 0;
+      padding: 8px;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      border-radius: 6px;
+      transition: background 0.2s, transform 0.2s;
+    }
+
+    .node:hover {
+      background: rgba(245, 245, 245, 0.8);
+      transform: translateX(3px);
+    }
+
+    .node.inherited-green {
+      background: var(--green-bg);
+    }
+
+    .node.inherited-red {
+      background: var(--red-bg);
+    }
+
+    .toggle {
+      margin-right: 8px;
+      cursor: pointer;
+      width: 24px;
+      height: 24px;
+      text-align: center;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      border-radius: 4px;
+      background: #f0f2f5;
+      font-weight: bold;
+    }
+
+    .selector {
+      width: 28px;
+      height: 28px;
+      border-radius: 5px;
+      margin-right: 12px;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 18px;
+      box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+      transition: all 0.2s ease;
+    }
+
+    .selector:hover {
+      transform: scale(1.1);
+    }
+
+    .selector.green-solid {
+      border: 2px solid var(--green-solid);
+      background: var(--green-bg);
+    }
+
+    .selector.green-hollow {
+      border: 1px dashed var(--green-solid);
+      background: white;
+    }
+
+    .selector.red-solid {
+      border: 2px solid var(--red-solid);
+      background: var(--red-bg);
+    }
+
+    .selector.red-hollow {
+      border: 1px dashed var(--red-solid);
+      background: white;
+    }
+
+    .children {
+      margin-left: 36px;
+      display: none;
+    }
+
+    .expanded > .children {
+      display: block;
+    }
+
+    .node-label {
+      display: flex;
+      align-items: center;
+      font-size: 1.1rem;
+      font-weight: 500;
+    }
+
+    .status-indicator {
+      margin-left: 12px;
+      font-size: 0.85rem;
+      padding: 3px 8px;
+      border-radius: 4px;
+    }
+
+    .status-inherited {
+      background: rgba(24, 144, 255, 0.15);
+      color: var(--blue);
+    }
+
+    .status-explicit {
+      background: rgba(250, 140, 22, 0.15);
+      color: var(--orange);
+    }
+
+    /* 操作面板样式 */
+    .controls {
+      display: flex;
+      flex-direction: column;
+      gap: 25px;
+    }
+
+    .legend {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 15px;
+    }
+
+    .legend-item {
+      display: flex;
+      align-items: center;
+    }
+
+    .legend-box {
+      width: 24px;
+      height: 24px;
+      margin-right: 10px;
+      border-radius: 4px;
+      flex-shrink: 0;
+    }
+
+    .legend-box.green-solid {
+      border: 2px solid var(--green-solid);
+      background: var(--green-bg);
+    }
+
+    .legend-box.green-hollow {
+      border: 1px dashed var(--green-solid);
+      background: white;
+    }
+
+    .legend-box.red-solid {
+      border: 2px solid var(--red-solid);
+      background: var(--red-bg);
+    }
+
+    .legend-box.red-hollow {
+      border: 1px dashed var(--red-solid);
+      background: white;
+    }
+
+    .legend-box.inherited-green {
+      border: 2px solid var(--green-solid);
+      background: var(--green-bg);
+    }
+
+    .legend-box.inherited-red {
+      border: 2px solid var(--red-solid);
+      background: var(--red-bg);
+    }
+
+    .actions {
+      display: flex;
+      flex-direction: column;
+      gap: 15px;
+    }
+
+    button {
+      padding: 14px 20px;
+      border: none;
+      border-radius: 8px;
+      cursor: pointer;
+      font-weight: 600;
+      font-size: 1.1rem;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 10px;
+      transition: all 0.3s ease;
+    }
+
+    .btn-save {
+      background: var(--green-solid);
+      color: white;
+    }
+
+    .btn-save:hover {
+      background: #3daa2b;
+      box-shadow: 0 4px 15px rgba(82, 196, 26, 0.3);
+    }
+
+    .btn-reset {
+      background: #f5f5f5;
+      color: #666;
+      border: 1px solid #ddd;
+    }
+
+    .btn-reset:hover {
+      background: #e9ecef;
+      box-shadow: 0 4px 10px rgba(0, 0, 0, 0.08);
+    }
+
+    .btn-export {
+      background: var(--blue);
+      color: white;
+    }
+
+    .btn-export:hover {
+      background: #0c7bda;
+      box-shadow: 0 4px 15px rgba(24, 144, 255, 0.3);
+    }
+
+    .output {
+      height: 300px;
+      padding: 15px;
+      background: #f9f9f9;
+      border-radius: 8px;
+      font-family: 'Fira Code', 'Courier New', monospace;
+      white-space: pre-wrap;
+      overflow: auto;
+      border: 1px solid #eee;
+      font-size: 0.9rem;
+      line-height: 1.5;
+    }
+
+    .rules {
+      background: #f8f9fa;
+      padding: 20px;
+      border-radius: 8px;
+      border-left: 4px solid var(--blue);
+    }
+
+    .rules h3 {
+      margin-bottom: 15px;
+      color: #2c3e50;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .rules ul {
+      padding-left: 20px;
+    }
+
+    .rules li {
+      margin-bottom: 10px;
+      line-height: 1.6;
+    }
+
+    .feedback {
+      position: fixed;
+      bottom: 20px;
+      right: 20px;
+      padding: 15px 25px;
+      background: white;
+      border-radius: 8px;
+      box-shadow: 0 5px 20px rgba(0, 0, 0, 0.15);
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      transform: translateY(100px);
+      opacity: 0;
+      transition: all 0.4s ease;
+      z-index: 1000;
+    }
+
+    .feedback.show {
+      transform: translateY(0);
+      opacity: 1;
+    }
+
+    .feedback.success {
+      border-left: 4px solid var(--green-solid);
+    }
+
+    .feedback.error {
+      border-left: 4px solid var(--red-solid);
+    }
+
+    @media (max-width: 900px) {
+      .container {
+        grid-template-columns: 1fr;
+      }
+    }
+  </style>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+</head>
+<body>
+<div class="container">
+  <header>
+    <h1><i class="fas fa-sitemap"></i> 树形权限选择器 - 禁止冗余操作</h1>
+    <p class="subtitle">禁止在实心勾选的组下进行同颜色空心勾选操作，避免冗余操作</p>
+  </header>
+
+  <main class="card">
+    <div class="card-title">
+      <i class="fas fa-tree"></i>
+      <h2>终端组权限设置</h2>
+    </div>
+    <div class="tree-container" id="tree-root"></div>
+  </main>
+
+  <aside class="controls">
+    <div class="card">
+      <div class="card-title">
+        <i class="fas fa-palette"></i>
+        <h2>图例说明</h2>
+      </div>
+      <div class="legend">
+        <div class="legend-item">
+          <div class="legend-box green-solid"></div>
+          <span>包含本组及所有子组</span>
+        </div>
+        <div class="legend-item">
+          <div class="legend-box green-hollow"></div>
+          <span>仅包含本组</span>
+        </div>
+        <div class="legend-item">
+          <div class="legend-box red-solid"></div>
+          <span>排除本组及所有子组</span>
+        </div>
+        <div class="legend-item">
+          <div class="legend-box red-hollow"></div>
+          <span>仅排除本组</span>
+        </div>
+        <div class="legend-item">
+          <div class="legend-box inherited-green"></div>
+          <span>继承包含状态</span>
+        </div>
+        <div class="legend-item">
+          <div class="legend-box inherited-red"></div>
+          <span>继承排除状态</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-title">
+        <i class="fas fa-lightbulb"></i>
+        <h2>操作规则</h2>
+      </div>
+      <div class="rules">
+        <ul>
+          <li>禁止在实心勾选的组下进行同颜色空心勾选</li>
+          <li>继承状态下禁止重复相同类型的全局操作</li>
+          <li>排除操作必须位于包含操作的子树下方</li>
+          <li>实心节点自动清除子树中的同类型记录</li>
+          <li>显式设置优先于继承状态</li>
+          <li>所有操作均不会拒绝，但会智能优化存储</li>
+          <li>根节点(root)不允许设置排除状态</li>
+        </ul>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-title">
+        <i class="fas fa-cogs"></i>
+        <h2>操作面板</h2>
+      </div>
+      <div class="actions">
+        <button class="btn-save" id="saveBtn">
+          <i class="fas fa-save"></i>
+          保存配置
+        </button>
+        <button class="btn-reset" id="resetBtn">
+          <i class="fas fa-undo"></i>
+          重置设置
+        </button>
+        <button class="btn-export" id="exportBtn">
+          <i class="fas fa-download"></i>
+          导出配置
+        </button>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-title">
+        <i class="fas fa-code"></i>
+        <h2>绑定配置输出</h2>
+      </div>
+      <div class="output" id="output">配置将在此处显示...</div>
+    </div>
+  </aside>
+</div>
+
+<div class="feedback" id="feedback">
+  <i class="fas fa-check-circle"></i>
+  <span id="feedback-message">操作成功完成</span>
+</div>
+
+<script>
+  // 树形结构数据
+  const treeData = {
+    id: 'root',
+    name: '总部',
+    children: [
+      {
+        id: 'dev',
+        name: '研发中心',
+        children: [
+          {
+            id: 'dev1',
+            name: '研发一部',
+            children: [
+              { id: 'dev1-1', name: '前端组' },
+              { id: 'dev1-2', name: '后端组' }
+            ]
+          },
+          {
+            id: 'dev2',
+            name: '研发二部',
+            children: [
+              { id: 'dev2-1', name: '算法组' },
+              { id: 'dev2-2', name: '测试组' }
+            ]
+          }
+        ]
+      },
+      {
+        id: 'market',
+        name: '营销中心',
+        children: [
+          {
+            id: 'market1',
+            name: '市场一部',
+            children: [
+              { id: 'market1-1', name: '推广组' },
+              { id: 'market1-2', name: '策划组' }
+            ]
+          },
+          {
+            id: 'market2',
+            name: '市场二部',
+            children: [
+              { id: 'market2-1', name: '渠道组' },
+              { id: 'market2-2', name: '品牌组' }
+            ]
+          }
+        ]
+      },
+      {
+        id: 'finance',
+        name: '财务中心',
+        children: [
+          {
+            id: 'finance1',
+            name: '财务一部',
+            children: [
+              { id: 'finance1-1', name: '核算组' },
+              { id: 'finance1-2', name: '审计组' }
+            ]
+          },
+          {
+            id: 'finance2',
+            name: '财务二部',
+            children: [
+              { id: 'finance2-1', name: '税务组' },
+              { id: 'finance2-2', name: '预算组' }
+            ]
+          }
+        ]
+      }
+    ]
+  };
+
+  // 存储节点状态
+  const nodeStates = {};
+  let contextMenu = null;
+
+  // 初始化默认状态
+  function initializeStates(node) {
+    nodeStates[node.id] = {
+      explicit: null, // 显式设置的状态
+      inherited: null // 继承的状态
+    };
+
+    if (node.children) {
+      node.children.forEach(child => initializeStates(child));
+    }
+  }
+
+  // 计算继承状态
+  function computeInheritedState(nodeId) {
+    const ancestors = getAncestors(nodeId);
+    for (const ancestorId of ancestors) {
+      const state = nodeStates[ancestorId];
+      if (state && state.explicit) {
+        // 只有实心设置才会被继承
+        if (state.explicit.includeChildren) {
+          return {
+            type: state.explicit.type,
+            includeChildren: true, // 继承状态总是实心
+            inheritedFrom: ancestorId
+          };
+        }
+      }
+    }
+    return null;
+  }
+
+  // 获取所有祖先（简化实现）
+  function getAncestors(nodeId) {
+    const map = {
+      'dev1-1': ['dev1', 'dev', 'root'],
+      'dev1-2': ['dev1', 'dev', 'root'],
+      'dev2-1': ['dev2', 'dev', 'root'],
+      'dev2-2': ['dev2', 'dev', 'root'],
+      'market1-1': ['market1', 'market', 'root'],
+      'market1-2': ['market1', 'market', 'root'],
+      'market2-1': ['market2', 'market', 'root'],
+      'market2-2': ['market2', 'market', 'root'],
+      'finance1-1': ['finance1', 'finance', 'root'],
+      'finance1-2': ['finance1', 'finance', 'root'],
+      'finance2-1': ['finance2', 'finance', 'root'],
+      'finance2-2': ['finance2', 'finance', 'root'],
+      'dev1': ['dev', 'root'],
+      'dev2': ['dev', 'root'],
+      'market1': ['market', 'root'],
+      'market2': ['market', 'root'],
+      'finance1': ['finance', 'root'],
+      'finance2': ['finance', 'root'],
+      'dev': ['root'],
+      'market': ['root'],
+      'finance': ['root']
+    };
+    return map[nodeId] || [];
+  }
+
+  // 渲染树形结构
+  function renderTree(node, parentElement) {
+    const nodeElement = document.createElement('div');
+    nodeElement.className = 'node';
+    nodeElement.dataset.id = node.id;
+
+    const nodeContent = document.createElement('div');
+    nodeContent.className = 'node-content';
+    nodeContent.style.display = 'flex';
+    nodeContent.style.alignItems = 'center';
+    nodeContent.style.width = '100%';
+
+    const toggle = document.createElement('div');
+    toggle.className = 'toggle';
+    if (node.children && node.children.length > 0) {
+      toggle.textContent = '▶';
+      toggle.addEventListener('click', (e) => {
+        e.stopPropagation();
+        toggleChildren(nodeElement);
+      });
+    } else {
+      toggle.textContent = '•';
+      toggle.style.color = '#aaa';
+      toggle.style.fontSize = '1.5rem';
+      toggle.style.lineHeight = '1';
+    }
+
+    const selector = document.createElement('div');
+    selector.className = 'selector';
+    selector.dataset.id = node.id;
+
+    const label = document.createElement('div');
+    label.className = 'node-label';
+    label.textContent = node.name;
+
+    // 状态指示器
+    const statusIndicator = document.createElement('span');
+    statusIndicator.className = 'status-indicator';
+
+    nodeContent.appendChild(toggle);
+    nodeContent.appendChild(selector);
+    nodeContent.appendChild(label);
+    nodeContent.appendChild(statusIndicator);
+
+    nodeElement.appendChild(nodeContent);
+    parentElement.appendChild(nodeElement);
+
+    // 初始化状态
+    if (!nodeStates[node.id]) {
+      nodeStates[node.id] = {
+        explicit: null,
+        inherited: null
+      };
+    }
+
+    // 计算继承状态
+    nodeStates[node.id].inherited = computeInheritedState(node.id);
+
+    // 更新选择器状态
+    updateNodeAppearance(node.id);
+
+    // 添加事件监听
+    selector.addEventListener('click', (e) => {
+      e.stopPropagation();
+      showSelectorMenu(node.id, e.clientX, e.clientY);
+    });
+
+    if (node.children) {
+      const childrenContainer = document.createElement('div');
+      childrenContainer.className = 'children';
+      nodeElement.appendChild(childrenContainer);
+
+      node.children.forEach(child => {
+        renderTree(child, childrenContainer);
+      });
+    }
+  }
+
+  // 更新节点外观 - 修正继承状态显示为实心
+  function updateNodeAppearance(nodeId) {
+    const state = nodeStates[nodeId];
+    const selector = document.querySelector(`.selector[data-id="${nodeId}"]`);
+    const nodeElement = document.querySelector(`.node[data-id="${nodeId}"]`);
+    const statusIndicator = nodeElement.querySelector('.status-indicator');
+
+    // 清除所有样式
+    selector.className = 'selector';
+    nodeElement.classList.remove('inherited-green', 'inherited-red');
+    statusIndicator.textContent = '';
+    statusIndicator.className = 'status-indicator';
+
+    // 显式状态优先级最高
+    if (state.explicit) {
+      if (state.explicit.type === 'INCLUDE') {
+        selector.classList.add(state.explicit.includeChildren ? 'green-solid' : 'green-hollow');
+        statusIndicator.textContent = '显式设置';
+        statusIndicator.classList.add('status-explicit');
+      } else {
+        selector.classList.add(state.explicit.includeChildren ? 'red-solid' : 'red-hollow');
+        statusIndicator.textContent = '显式设置';
+        statusIndicator.classList.add('status-explicit');
+      }
+    }
+    // 其次显示继承状态 - 这里改为实心显示
+    else if (state.inherited) {
+      if (state.inherited.type === 'INCLUDE') {
+        // 继承状态总是显示为实心
+        selector.classList.add('green-solid');
+        selector.style.opacity = '0.9';
+        nodeElement.classList.add('inherited-green');
+        statusIndicator.textContent = `继承自 ${state.inherited.inheritedFrom}`;
+        statusIndicator.classList.add('status-inherited');
+      } else {
+        selector.classList.add('red-solid');
+        selector.style.opacity = '0.9';
+        nodeElement.classList.add('inherited-red');
+        statusIndicator.textContent = `继承自 ${state.inherited.inheritedFrom}`;
+        statusIndicator.classList.add('status-inherited');
+      }
+    } else {
+      // 默认状态
+      selector.style.border = '1px solid #ddd';
+      selector.style.background = '#f9f9f9';
+    }
+  }
+
+  // 切换子节点显示
+  function toggleChildren(nodeElement) {
+    const children = nodeElement.querySelector('.children');
+    if (children) {
+      nodeElement.classList.toggle('expanded');
+      const toggle = nodeElement.querySelector('.toggle');
+      toggle.textContent = nodeElement.classList.contains('expanded') ? '▼' : '▶';
+    }
+  }
+
+  // 检查是否在实心组下进行同颜色空心操作
+  function isRedundantHollowOperation(nodeId, action) {
+    // 只检查空心操作
+    if (action !== 'include-self' && action !== 'exclude-self') {
+      return false;
+    }
+
+    // 获取操作类型
+    const operationType = action === 'include-self' ? 'INCLUDE' : 'EXCLUDE';
+
+    // 检查所有祖先
+    const ancestors = getAncestors(nodeId);
+    for (const ancestorId of ancestors) {
+      const state = nodeStates[ancestorId];
+
+      // 如果祖先有同类型的实心显式设置
+      if (state && state.explicit &&
+              state.explicit.type === operationType &&
+              state.explicit.includeChildren) {
+        return true;
+      }
+    }
+
+    return false;
+  }
+
+  // 检查是否允许排除操作
+  function isExcludeAllowed(nodeId) {
+    // 根节点不允许排除操作
+    if (nodeId === 'root') {
+      return false;
+    }
+
+    // 检查是否有包含操作的祖先
+    const ancestors = getAncestors(nodeId);
+    for (const ancestorId of ancestors) {
+      const state = nodeStates[ancestorId];
+      if (state && state.explicit && state.explicit.type === 'INCLUDE') {
+        return true;
+      }
+    }
+
+    return false;
+  }
+
+  // 显示选择菜单
+  function showSelectorMenu(nodeId, x, y) {
+    // 移除现有的菜单
+    if (contextMenu) {
+      document.body.removeChild(contextMenu);
+    }
+
+    // 获取当前有效状态
+    const effectiveState = getEffectiveState(nodeId);
+
+    // 创建菜单元素
+    contextMenu = document.createElement('div');
+    contextMenu.className = 'selector-menu';
+    contextMenu.style.position = 'fixed';
+    contextMenu.style.left = `${x}px`;
+    contextMenu.style.top = `${y}px`;
+    contextMenu.style.background = 'white';
+    contextMenu.style.border = '1px solid #ddd';
+    contextMenu.style.borderRadius = '8px';
+    contextMenu.style.boxShadow = '0 5px 20px rgba(0,0,0,0.15)';
+    contextMenu.style.zIndex = '1000';
+    contextMenu.style.padding = '10px 0';
+    contextMenu.style.minWidth = '280px';
+
+    // 菜单标题
+    const title = document.createElement('div');
+    title.textContent = '选择操作类型';
+    title.style.padding = '10px 15px';
+    title.style.fontWeight = '600';
+    title.style.borderBottom = '1px solid #eee';
+    contextMenu.appendChild(title);
+
+    // 菜单选项
+    const options = [
+      { text: '包含本组及所有子组', action: 'include-all', color: 'green', style: 'solid' },
+      { text: '仅包含本组', action: 'include-self', color: 'green', style: 'hollow' },
+      { text: '排除本组及所有子组', action: 'exclude-all', color: 'red', style: 'solid' },
+      { text: '仅排除本组', action: 'exclude-self', color: 'red', style: 'hollow' },
+      { text: '清除设置', action: 'clear' }
+    ];
+
+    // 添加分隔线
+    const divider = document.createElement('div');
+    divider.style.height = '1px';
+    divider.style.background = '#eee';
+    divider.style.margin = '5px 0';
+
+    options.forEach((opt, index) => {
+      if (index === 2) {
+        contextMenu.appendChild(divider.cloneNode(true));
+      }
+
+      const option = document.createElement('div');
+      option.className = 'menu-option';
+      option.style.padding = '12px 15px';
+      option.style.cursor = 'pointer';
+      option.style.display = 'flex';
+      option.style.alignItems = 'center';
+      option.style.transition = 'background 0.2s';
+
+      // 检查是否禁用该操作
+      let disabled = false;
+      let reason = '';
+
+      // 规则1: 检查是否在实心组下进行同颜色空心操作
+      if (isRedundantHollowOperation(nodeId, opt.action)) {
+        disabled = true;
+        reason = '父组已设置全局操作，此操作冗余';
+      }
+      // 规则2: 检查继承状态下的冗余全局操作
+      else if (effectiveState.source === 'inherited') {
+        if (effectiveState.type === 'INCLUDE' && opt.action === 'include-all') {
+          disabled = true;
+          reason = '已继承包含状态，无需重复操作';
+        }
+        if (effectiveState.type === 'EXCLUDE' && opt.action === 'exclude-all') {
+          disabled = true;
+          reason = '已继承排除状态，无需重复操作';
+        }
+      }
+
+      // 规则3: 排除操作必须位于包含操作的子树下方
+      if (opt.action === 'exclude-all' || opt.action === 'exclude-self') {
+        if (!isExcludeAllowed(nodeId)) {
+          disabled = true;
+          reason = '排除操作必须位于包含操作的子树下方';
+        }
+      }
+
+      // 规则4: 根节点(root)不允许设置排除状态
+      if (nodeId === 'root' && (opt.action === 'exclude-all' || opt.action === 'exclude-self')) {
+        disabled = true;
+        reason = '根节点不允许设置排除状态';
+      }
+
+      if (opt.color) {
+        const colorBox = document.createElement('div');
+        colorBox.style.width = '18px';
+        colorBox.style.height = '18px';
+        colorBox.style.marginRight = '12px';
+        colorBox.style.borderRadius = '4px';
+
+        if (opt.color === 'green') {
+          colorBox.style.border = opt.style === 'solid'
+                  ? '2px solid var(--green-solid)'
+                  : '1px dashed var(--green-solid)';
+          colorBox.style.background = opt.style === 'solid'
+                  ? 'var(--green-bg)'
+                  : 'white';
+        } else {
+          colorBox.style.border = opt.style === 'solid'
+                  ? '2px solid var(--red-solid)'
+                  : '1px dashed var(--red-solid)';
+          colorBox.style.background = opt.style === 'solid'
+                  ? 'var(--red-bg)'
+                  : 'white';
+        }
+
+        option.appendChild(colorBox);
+      }
+
+      const text = document.createElement('span');
+      text.textContent = opt.text;
+      text.style.flex = '1';
+      option.appendChild(text);
+
+      if (disabled) {
+        option.classList.add('disabled');
+        option.style.opacity = '0.5';
+        option.style.cursor = 'not-allowed';
+
+        const tooltip = document.createElement('div');
+        tooltip.textContent = '🚫 ' + reason;
+        tooltip.style.fontSize = '0.8rem';
+        tooltip.style.color = '#ff4d4f';
+        tooltip.style.marginLeft = '10px';
+        option.appendChild(tooltip);
+      } else {
+        option.addEventListener('mouseenter', () => {
+          option.style.background = '#f8f9fa';
+        });
+        option.addEventListener('mouseleave', () => {
+          option.style.background = 'transparent';
+        });
+        option.addEventListener('click', () => {
+          handleSelection(nodeId, opt.action);
+          document.body.removeChild(contextMenu);
+          contextMenu = null;
+        });
+      }
+
+      contextMenu.appendChild(option);
+    });
+
+    document.body.appendChild(contextMenu);
+
+    // 点击其他地方关闭菜单
+    const closeMenu = (e) => {
+      if (contextMenu && !contextMenu.contains(e.target)) {
+        document.body.removeChild(contextMenu);
+        contextMenu = null;
+        document.removeEventListener('click', closeMenu);
+      }
+    };
+
+    setTimeout(() => {
+      document.addEventListener('click', closeMenu);
+    }, 100);
+  }
+
+  // 获取当前有效状态
+  function getEffectiveState(nodeId) {
+    const state = nodeStates[nodeId];
+
+    if (state.explicit) {
+      return {
+        type: state.explicit.type,
+        includeChildren: state.explicit.includeChildren,
+        source: 'explicit'
+      };
+    }
+
+    if (state.inherited) {
+      return {
+        type: state.inherited.type,
+        includeChildren: true, // 继承状态总是实心
+        source: 'inherited'
+      };
+    }
+
+    return {
+      type: 'EXCLUDE',
+      includeChildren: false,
+      source: 'default'
+    };
+  }
+
+  // 处理选择
+  function handleSelection(nodeId, action) {
+    const state = nodeStates[nodeId];
+
+    switch (action) {
+      case 'include-all':
+        state.explicit = { type: 'INCLUDE', includeChildren: true };
+        showFeedback('包含本组及所有子组操作已应用', 'success');
+        break;
+      case 'include-self':
+        state.explicit = { type: 'INCLUDE', includeChildren: false };
+        showFeedback('仅包含本组操作已应用', 'success');
+        break;
+      case 'exclude-all':
+        state.explicit = { type: 'EXCLUDE', includeChildren: true };
+        showFeedback('排除本组及所有子组操作已应用', 'success');
+        break;
+      case 'exclude-self':
+        state.explicit = { type: 'EXCLUDE', includeChildren: false };
+        showFeedback('仅排除本组操作已应用', 'success');
+        break;
+      case 'clear':
+        state.explicit = null;
+        showFeedback('设置已清除', 'success');
+        break;
+    }
+
+    // 更新当前节点
+    updateNodeAppearance(nodeId);
+
+    // 更新所有后代节点的继承状态
+    updateDescendants(nodeId);
+  }
+
+  // 更新所有后代节点
+  function updateDescendants(nodeId) {
+    const descendants = getAllDescendants(nodeId);
+    descendants.forEach(descId => {
+      nodeStates[descId].inherited = computeInheritedState(descId);
+      updateNodeAppearance(descId);
+    });
+  }
+
+  // 获取所有后代
+  function getAllDescendants(nodeId) {
+    const map = {
+      'root': ['dev', 'market', 'finance', 'dev1', 'dev2', 'market1', 'market2', 'finance1', 'finance2',
+        'dev1-1', 'dev1-2', 'dev2-1', 'dev2-2', 'market1-1', 'market1-2', 'market2-1', 'market2-2',
+        'finance1-1', 'finance1-2', 'finance2-1', 'finance2-2'],
+      'dev': ['dev1', 'dev2', 'dev1-1', 'dev1-2', 'dev2-1', 'dev2-2'],
+      'market': ['market1', 'market2', 'market1-1', 'market1-2', 'market2-1', 'market2-2'],
+      'finance': ['finance1', 'finance2', 'finance1-1', 'finance1-2', 'finance2-1', 'finance2-2'],
+      'dev1': ['dev1-1', 'dev1-2'],
+      'dev2': ['dev2-1', 'dev2-2'],
+      'market1': ['market1-1', 'market1-2'],
+      'market2': ['market2-1', 'market2-2'],
+      'finance1': ['finance1-1', 'finance1-2'],
+      'finance2': ['finance2-1', 'finance2-2']
+    };
+    return map[nodeId] || [];
+  }
+
+  // 获取最终绑定配置（清理冗余）
+  function getFinalBindings() {
+    const bindings = [];
+
+    for (const nodeId in nodeStates) {
+      const state = nodeStates[nodeId];
+      if (state.explicit) {
+        // 检查是否被祖先覆盖
+        const ancestors = getAncestors(nodeId);
+        let isRedundant = false;
+
+        for (const ancestorId of ancestors) {
+          const ancestorState = nodeStates[ancestorId];
+          if (ancestorState && ancestorState.explicit &&
+                  ancestorState.explicit.includeChildren &&
+                  ancestorState.explicit.type === state.explicit.type) {
+            isRedundant = true;
+            break;
+          }
+        }
+
+        if (!isRedundant) {
+          bindings.push({
+            terminal_group_id: nodeId,
+            type: state.explicit.type,
+            include_children: state.explicit.includeChildren
+          });
+        }
+      }
+    }
+
+    return bindings;
+  }
+
+  // 显示反馈消息
+  function showFeedback(message, type) {
+    const feedback = document.getElementById('feedback');
+    const messageEl = document.getElementById('feedback-message');
+
+    messageEl.textContent = message;
+    feedback.className = 'feedback ' + type;
+    feedback.classList.add('show');
+
+    setTimeout(() => {
+      feedback.classList.remove('show');
+    }, 3000);
+  }
+
+  // 初始化树
+  document.addEventListener('DOMContentLoaded', () => {
+    const treeRoot = document.getElementById('tree-root');
+
+    // 初始化状态
+    initializeStates(treeData);
+
+    // 设置根节点默认状态
+    nodeStates['root'].explicit = { type: 'INCLUDE', includeChildren: true };
+
+    // 设置几个示例节点状态
+    nodeStates['dev'].explicit = { type: 'INCLUDE', includeChildren: true };
+    nodeStates['market'].explicit = { type: 'EXCLUDE', includeChildren: true };
+    nodeStates['finance2'].explicit = { type: 'EXCLUDE', includeChildren: true };
+
+    // 渲染树
+    renderTree(treeData, treeRoot);
+
+    // 更新所有节点的继承状态
+    for (const nodeId in nodeStates) {
+      nodeStates[nodeId].inherited = computeInheritedState(nodeId);
+      updateNodeAppearance(nodeId);
+    }
+
+    // 展开根节点
+    document.querySelector(`.node[data-id="root"]`).classList.add('expanded');
+
+    // 保存按钮事件
+    document.getElementById('saveBtn').addEventListener('click', () => {
+      const bindings = getFinalBindings();
+      document.getElementById('output').textContent =
+              '最终绑定配置（已清理冗余）:\n' + JSON.stringify(bindings, null, 2);
+      showFeedback('配置已保存并清理冗余', 'success');
+    });
+
+    // 重置按钮事件
+    document.getElementById('resetBtn').addEventListener('click', () => {
+      for (const nodeId in nodeStates) {
+        if (nodeId !== 'root') {
+          nodeStates[nodeId].explicit = null;
+        }
+      }
+
+      // 确保根节点恢复包含状态
+      nodeStates['root'].explicit = { type: 'INCLUDE', includeChildren: true };
+
+      // 更新所有节点
+      for (const nodeId in nodeStates) {
+        nodeStates[nodeId].inherited = computeInheritedState(nodeId);
+        updateNodeAppearance(nodeId);
+      }
+
+      document.getElementById('output').textContent = '配置已重置';
+      showFeedback('所有设置已重置', 'success');
+    });
+
+    // 导出按钮事件
+    document.getElementById('exportBtn').addEventListener('click', () => {
+      const bindings = getFinalBindings();
+      const dataStr = JSON.stringify(bindings, null, 2);
+      const dataUri = 'data:application/json;charset=utf-8,'+ encodeURIComponent(dataStr);
+
+      const exportFileDefaultName = '绑定配置.json';
+
+      const linkElement = document.createElement('a');
+      linkElement.setAttribute('href', dataUri);
+      linkElement.setAttribute('download', exportFileDefaultName);
+      linkElement.click();
+
+      showFeedback('配置已导出', 'success');
+    });
+  });
+</script>
+</body>
+</html>

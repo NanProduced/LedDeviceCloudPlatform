@@ -1,0 +1,66 @@
+server:
+  port: 8085
+
+# WebSocket专用端口配置
+terminal:
+  websocket:
+    port: 8843
+spring:
+  application:
+    name: terminal-service
+
+  config:
+    import:
+      - nacos:terminal-service-dev.yml?group=DEFAULT_GROUP&fresh=true
+
+
+  cloud:
+    nacos:
+      discovery:
+        server-addr: 192.168.1.185:8848
+        namespace: 1e90921e-70cf-4745-87ed-dd165319ff3a
+        group: DEFAULT_GROUP
+        username: Nan
+        password: Nan12091209
+        access-key: nan_nacos
+        secret-key: nanproduced
+        fail-fast: false
+      config:
+        server-addr: 192.168.1.185:8848
+        namespace: 1e90921e-70cf-4745-87ed-dd165319ff3a
+        group: DEFAULT_GROUP
+        username: Nan
+        password: Nan12091209
+        access-key: nan_nacos
+        secret-key: nanproduced
+        timeout: 5000
+        config-long-poll-timeout: 1000
+        config-retry-time: 100000
+        max-retry: 3
+        refresh-enabled: true
+        file-extension: yml
+
+  # RabbitMQ配置
+  rabbitmq:
+    host: 192.168.1.185
+    port: 5672
+    username: nan
+    password: nan
+    virtual-host: /
+
+# 消息队列配置
+nan:
+  mq:
+    enabled: true
+    application-name: ${spring.application.name}
+    default-exchange:
+      name: stomp.push.topic
+      type: topic
+      durable: true
+    producer:
+      confirm-enabled: true
+      returns-enabled: true
+      retry-enabled: true
+      max-retry-attempts: 3
+      retry-interval: 1000ms
+      send-timeout: 5000ms

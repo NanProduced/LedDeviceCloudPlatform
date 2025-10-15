@@ -1,0 +1,23 @@
+[
+  {
+    "name": "stomp.push.topic",
+    "type": "topic",
+    "durable": true,
+    "autoDelete": false,
+    "description": "STOMP实时推送交换器 - 主要的消息推送交换器，对应@Bean: stompPushExchange()"
+  },
+  {
+    "name": "stomp.bridge.topic",
+    "type": "topic",
+    "durable": true,
+    "autoDelete": false,
+    "description": "STOMP桥接处理交换器 - 用于内部桥接逻辑，对应@Bean: stompBridgeExchange()"
+  },
+  {
+    "name": "stomp.dlx.topic",
+    "type": "direct",
+    "durable": true,
+    "autoDelete": false,
+    "description": "STOMP死信交换器 - 统一死信处理，对应@Bean: stompDlxExchange()"
+  }
+]

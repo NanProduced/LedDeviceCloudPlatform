@@ -1,0 +1,40 @@
+server:
+  port: 8082
+spring:
+  application:
+    name: gateway-server
+
+  config:
+    import:
+      - nacos:gateway-server-dev.yml?group=DEFAULT_GROUP&refresh=true
+      - nacos:gateway-routes.yml?group=DEFAULT_GROUP&refresh=true
+      - nacos:gateway-whitelist.yml?group=DEFAULT_GROUP&refresh=true
+      - nacos:gateway-common-api.yml?group=DEFAULT_GROUP&refresh=true
+
+
+  cloud:
+    nacos:
+      discovery:
+        server-addr: 192.168.1.185:8848
+        namespace: 1e90921e-70cf-4745-87ed-dd165319ff3a
+        group: DEFAULT_GROUP
+        username: Nan
+        password: Nan12091209
+        access-key: nan_nacos
+        secret-key: nanproduced
+        fail-fast: false
+      config:
+        server-addr: 192.168.1.185:8848
+        namespace: 1e90921e-70cf-4745-87ed-dd165319ff3a
+        group: DEFAULT_GROUP
+        username: Nan
+        password: Nan12091209
+        access-key: nan_nacos
+        secret-key: nanproduced
+        timeout: 5000
+        config-long-poll-timeout: 1000
+        config-retry-time: 100000
+        max-retry: 3
+        refresh-enabled: true
+        file-extension: yml
+

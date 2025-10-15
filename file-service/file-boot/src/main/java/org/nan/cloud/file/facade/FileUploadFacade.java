@@ -1,0 +1,87 @@
+package org.nan.cloud.file.facade;
+
+import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
+import org.nan.cloud.common.web.context.InvocationContextHolder;
+import org.nan.cloud.common.web.context.RequestUserInfo;
+import org.nan.cloud.file.api.dto.FileUploadRequest;
+import org.nan.cloud.file.api.dto.TaskInitResponse;
+import org.nan.cloud.file.application.service.FileUploadService;
+import org.nan.cloud.file.application.repository.OrgQuotaRepository;
+import org.springframework.stereotype.Service;
+import org.springframework.web.multipart.MultipartFile;
+
+import java.util.Objects;
+
+/**
+ * 文件上传门面服务
+ * 
+ * 职责：
+ * 1. 作为Controller和Application层之间的中间层
+ * 2. 处理跨模块依赖和复杂业务编排
+ * 3. 填充请求上下文信息（如组织ID）
+ * 4. 统一异常处理和日志记录
+ * 
+ * @author LedDeviceCloudPlatform Team
+ * @since 1.0.0
+ */
+@Slf4j
+@Service
+@RequiredArgsConstructor
+public class FileUploadFacade {
+
+    private final FileUploadService fileUploadService;
+    private final OrgQuotaRepository orgQuotaRepository;
+
+    /**
+     * 填充上传请求的上下文信息
+     * 
+     * @param uploadRequest 上传请求
+     */
+    private void enrichUploadRequest(FileUploadRequest uploadRequest) {
+        // 从用户上下文获取组织ID
+        RequestUserInfo requestUser = InvocationContextHolder.getContext().getRequestUser();
+        uploadRequest.setOid(requestUser.getOid());
+        uploadRequest.setUid(requestUser.getUid());
+        if (Objects.isNull(uploadRequest.getUgid())) {
+            uploadRequest.setUgid(requestUser.getUgid());
+        }
+        
+        log.debug("填充上传请求上下文 - 组织ID: {} , 用户ID: {}", requestUser.getOid(), requestUser.getUid());
+    }
+
+    /**
+     * 异步单文件上传门面方法
+     * 
+     * @param file 上传的文件
+     * @param uploadRequest 上传请求参数
+     * @return 任务初始化响应
+     */
+    public TaskInitResponse uploadSingleAsync(MultipartFile file, FileUploadRequest uploadRequest) {
+        log.info("门面层处理异步单文件上传 - 文件名: {}, 大小: {}", 
+                file.getOriginalFilename(), file.getSize());
+
+        try {
+            // 1. 填充上下文信息
+            enrichUploadRequest(uploadRequest);
+
+            // 1.1 组织配额检查（直接通过本地仓储查询MySQL配额，不走Feign）
+            boolean allowed = orgQuotaRepository.hasEnoughSpace(uploadRequest.getOid(), file.getSize(), 1L);
+            if (!allowed) {
+                throw new IllegalArgumentException("组织配额不足，无法上传");
+            }
+            
+            // 2. 调用应用服务执行异步上传
+            TaskInitResponse response = fileUploadService.uploadSingleAsync(file, uploadRequest);
+            
+            log.debug("门面层异步上传任务创建完成 - 任务ID: {}", response.getTaskId());
+            
+            return response;
+            
+        } catch (Exception e) {
+            log.error("门面层异步单文件上传失败 - 文件名: {}, 错误: {}", 
+                    file.getOriginalFilename(), e.getMessage(), e);
+            throw e;
+        }
+    }
+}

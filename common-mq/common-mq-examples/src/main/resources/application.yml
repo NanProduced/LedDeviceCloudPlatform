@@ -1,0 +1,118 @@
+server:
+  port: 8090
+
+spring:
+  application:
+    name: mq-examples
+  
+  rabbitmq:
+    host: localhost
+    port: 5672
+    username: guest
+    password: guest
+    virtual-host: /
+    
+    # 生产者配置
+    publisher:
+      confirm-type: correlated  # 发布确认
+      returns: true             # 返回确认
+      
+    # 监听器配置  
+    listener:
+      simple:
+        acknowledge-mode: manual  # 手动确认
+        prefetch: 5              # 预取数量
+        concurrency: 1           # 最小并发数
+        max-concurrency: 3       # 最大并发数
+        retry:
+          enabled: true          # 启用重试
+          max-attempts: 3        # 最大重试次数
+          initial-interval: 1000 # 初始重试间隔
+
+# MQ客户端配置
+nan:
+  mq:
+    enabled: true
+    application-name: mq-examples
+    
+    # 默认交换机配置
+    default-exchange:
+      name: example.exchange
+      type: topic
+      durable: true
+      
+    # 生产者配置
+    producer:
+      confirm-enabled: true
+      returns-enabled: true
+      send-timeout: 30s
+      retry-enabled: true
+      max-retry-attempts: 3
+      retry-interval: 1s
+      batch-size: 100
+      batch-timeout: 5s
+      
+    # 消费者配置
+    consumer:
+      concurrency: 1
+      max-concurrency: 3
+      prefetch-count: 5
+      acknowledge-mode: manual
+      receive-timeout: 60s
+      idle-event-interval: 30s
+      default-requeue-rejected: false
+      missing-queues-fatal: false
+      recovery-interval: 5s
+      consecutive-active-trigger: 10
+      consecutive-idle-trigger: 5
+      
+    # 死信队列配置
+    dead-letter:
+      enabled: true
+      exchange-name: example.dlx.exchange
+      routing-key-prefix: dlq
+      message-ttl: 86400000  # 24小时
+      max-length: 10000
+      
+    # 监控配置
+    monitor:
+      enabled: true
+      metrics-enabled: true
+      health-check-enabled: true
+      statistics-interval: 1m
+      slow-message-logging-enabled: true
+      slow-message-threshold: 5s
+      
+    # 序列化配置
+    serialization:
+      type: json
+      compression-enabled: false
+      compression-threshold: 1024
+      compression-algorithm: gzip
+      
+    # 队列配置
+    queues:
+      notification: example.notification.queue
+      system: example.system.queue
+      user: example.user.queue
+
+# Actuator配置
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,metrics,prometheus
+  endpoint:
+    health:
+      show-details: always
+  metrics:
+    export:
+      prometheus:
+        enabled: true
+
+# 日志配置
+logging:
+  level:
+    org.nan.cloud.common.mq: DEBUG
+    org.springframework.amqp: INFO
+    org.springframework.rabbit: INFO

@@ -1,0 +1,44 @@
+[
+  {
+    "source": "stomp.push.topic",
+    "destination": "stomp.device.status.queue",
+    "destinationType": "queue",
+    "routingKey": "stomp.device.status.*.*",
+    "description": "设备状态队列绑定 - 路由键: stomp.device.status.{orgId}.{deviceId}，对应@Bean: deviceStatusBinding()"
+  },
+  {
+    "source": "stomp.push.topic",
+    "destination": "stomp.command.result.queue",
+    "destinationType": "queue",
+    "routingKey": "stomp.command.result.*.*",
+    "description": "指令结果队列绑定 - 路由键: stomp.command.result.{orgId}.{userId}，对应@Bean: commandResultBinding()"
+  },
+  {
+    "source": "stomp.push.topic",
+    "destination": "stomp.system.notification.queue",
+    "destinationType": "queue",
+    "routingKey": "stomp.system.notification.*.*",
+    "description": "系统通知队列绑定 - 路由键: stomp.system.notification.{type}.{orgId}，对应@Bean: systemNotificationBinding()"
+  },
+  {
+    "source": "stomp.push.topic",
+    "destination": "stomp.batch.progress.queue",
+    "destinationType": "queue",
+    "routingKey": "stomp.batch.progress.*.*",
+    "description": "批量进度队列绑定 - 路由键: stomp.batch.progress.{userId}.{batchId}，对应@Bean: batchProgressBinding()"
+  },
+  {
+    "source": "stomp.push.topic",
+    "destination": "stomp.file.upload.queue",
+    "destinationType": "queue",
+    "routingKey": "stomp.file.upload.*.*",
+    "description": "文件上传队列绑定 - 路由键: stomp.file.upload.{orgId}.{userId}，对应@Bean: fileUploadBinding()"
+  },
+  {
+    "source": "stomp.dlx.topic",
+    "destination": "stomp.bridge.dlq",
+    "destinationType": "queue",
+    "routingKey": "*.dlq",
+    "description": "死信队列绑定 - 统一处理所有死信消息，对应@Bean: bridgeDlqBinding()"
+  }
+]

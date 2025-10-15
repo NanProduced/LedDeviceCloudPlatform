@@ -1,0 +1,37 @@
+[
+  {
+    "source": "business.topic",
+    "destination": "business.core.queue",
+    "destinationType": "queue",
+    "routingKey": "file.upload.*.*.*",
+    "description": "文件上传事件绑定 - 路由键: file.upload.{eventType}.{orgId}.{fileId}，对应@Bean: fileUploadBinding()"
+  },
+  {
+    "source": "business.topic",
+    "destination": "business.core.queue",
+    "destinationType": "queue",
+    "routingKey": "file.transcoding.*.*.*",
+    "description": "文件转码事件绑定 - 路由键: file.transcoding.{eventType}.{orgId}.{refId}，对应@Bean: transcodingBusinessBinding()"
+  },
+  {
+    "source": "business.topic",
+    "destination": "business.task.progress.queue",
+    "destinationType": "queue",
+    "routingKey": "task.progress.*.*",
+    "description": "任务进度事件绑定 - 路由键: task.progress.{orgId}.{taskId}，对应@Bean: taskProgressBinding()"
+  },
+  {
+    "source": "business.topic",
+    "destination": "business.core.queue",
+    "destinationType": "queue",
+    "routingKey": "program.vsn.result.*.*",
+    "description": "VSN生成结果绑定 - 路由键: program.vsn.result.{orgId}.{programId}"
+  },
+  {
+    "source": "business.dlx.topic",
+    "destination": "business.core.dlq",
+    "destinationType": "queue",
+    "routingKey": "*.dlq",
+    "description": "死信队列绑定 - 处理所有业务死信消息，对应@Bean: businessDlqBinding()"
+  }
+]

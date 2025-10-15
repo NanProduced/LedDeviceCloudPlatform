@@ -1,0 +1,560 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8" />
+    <title th:text="${uid} ? '用户首页' : '欢迎页'"></title>
+    <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
+    <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;500;700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Roboto+Mono&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'><rect x='0' y='0' width='16' height='16' fill='%233498db'/><text x='50%' y='60%' dominant-baseline='middle' text-anchor='middle' font-family='Arial, sans-serif' font-size='12' fill='white'>A</text></svg>" type="image/svg+xml">
+    <link rel="icon" type="image/png" href="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAYAAAAf8/9hAAAAAXNSR0IArs4c6QAAAXRJREFUOE+dkzFpQUEQRb+3q91N7yUfUa8+A+i1W2021W2o9lZ702uTTe8m1d1r+eD93r/3Z+9JvP1n/tJv/99n/7X3/t/+/v8B9Q/Q/z70JgH4fQn4fgn4fwn8vgn8PgkMBejE+r6X2b6XzF/0D4m+o9E3NP1/E4gX5+U2v4M+u3sO+g/y/0KAAngT+P0B/R/A/wH+P4B/gYAB+E8C+H8C/h+B/wH+BwAE4D8M/H8B/w/g/wDAAPx/AfgPgP8H8P8AgAD8jwD8PwH/D+B/AAAB+A/D/x/4fwDAAPx/AfgPgP8H8P8AgAD8jwD8P4D/B/B/AIAAfhPgn8/T6w+D//8N/F9BbwLwM/L8H/h/Bvj/AwCCB2tO8D+3e4/mF/pPjR+rM37X3vP/r/8BAP/4+e1qH/V/z71H/Q/6/+7X/78w/wAAAABJRU5ErkJggg==">
+    <style>
+        :root {
+            --primary-color: #4A90E2;
+            --secondary-color: #5C7DAF;
+            --background-color: #EBF2F7;
+            --card-background: #FFFFFF;
+            --text-color-dark: #333333;
+            --text-color-light: #666666;
+            --border-color: #DDDDDD;
+            --accent-color: #007bff;
+            --hover-color: #0056b3;
+            --logout-color: #e53935; /* Red for logout button */
+            --logout-hover: #c62828;
+            --copy-button-bg: #6c757d;
+            --copy-button-hover: #5a6268;
+            --success-color: #28a745;
+            --user-card-bg: #f8f9fa;
+            --transition-speed: 0.3s;
+        }
+
+        body {
+            font-family: 'Roboto', sans-serif;
+            margin: 0;
+            padding: 0;
+            background: linear-gradient(135deg, var(--background-color) 0%, #DCE8F3 100%);
+            color: var(--text-color-dark);
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            box-sizing: border-box;
+        }
+
+        .header {
+            width: 100%;
+            background: linear-gradient(90deg, var(--primary-color) 0%, #3a78d0 100%);
+            color: white;
+            padding: 15px 0;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+            position: sticky;
+            top: 0;
+            z-index: 100;
+        }
+
+        .header-content {
+            max-width: 1200px;
+            margin: 0 auto;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 0 20px;
+        }
+
+        .logo {
+            font-size: 1.8rem;
+            font-weight: 700;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .logo i {
+            font-size: 1.5em;
+        }
+
+        .user-info {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+        }
+
+        .user-avatar {
+            width: 45px;
+            height: 45px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, #64B5F6, #1976D2);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-weight: bold;
+            font-size: 1.2rem;
+        }
+
+        .username {
+            font-weight: 500;
+            font-size: 1.1rem;
+        }
+
+        .logout-btn {
+            background-color: var(--logout-color);
+            color: white;
+            border: none;
+            border-radius: 6px;
+            padding: 8px 20px;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all var(--transition-speed) ease;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+        }
+
+        .logout-btn:hover {
+            background-color: var(--logout-hover);
+            transform: translateY(-2px);
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.15);
+        }
+
+        .container {
+            width: 100%;
+            max-width: 900px;
+            background-color: var(--card-background);
+            border-radius: 15px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
+            padding: 40px;
+            text-align: center;
+            animation: fadeIn 0.8s ease-out;
+            margin: 30px 0;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .container::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 6px;
+            background: linear-gradient(90deg, var(--primary-color), #3a78d0);
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(-20px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        h1 {
+            font-size: 2.5em;
+            color: var(--primary-color);
+            margin-bottom: 10px;
+            font-weight: 700;
+            letter-spacing: 0.5px;
+        }
+
+        .welcome-message {
+            font-size: 1.2rem;
+            color: var(--text-color-light);
+            margin-bottom: 30px;
+            max-width: 700px;
+            margin-left: auto;
+            margin-right: auto;
+        }
+
+        .user-card {
+            background-color: var(--user-card-bg);
+            border-radius: 12px;
+            padding: 25px;
+            text-align: left;
+            margin: 30px 0;
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.05);
+            border: 1px solid rgba(0, 0, 0, 0.05);
+        }
+
+        .user-card h2 {
+            color: var(--primary-color);
+            margin-bottom: 25px;
+            padding-bottom: 10px;
+            border-bottom: 2px solid rgba(74, 144, 226, 0.2);
+            font-size: 1.5rem;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .info-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 25px;
+        }
+
+        .info-item {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+
+        .info-label {
+            font-weight: 600;
+            color: var(--primary-color);
+            font-size: 1rem;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .info-value {
+            background-color: white;
+            border-radius: 8px;
+            padding: 12px 15px;
+            font-family: 'Roboto Mono', monospace;
+            color: var(--text-color-dark);
+            box-shadow: inset 0 1px 3px rgba(0,0,0,0.05);
+            word-break: break-all;
+            font-size: 0.95rem;
+            min-height: 45px;
+            display: flex;
+            align-items: center;
+            border: 1px solid rgba(0, 0, 0, 0.08);
+        }
+
+        .token-section {
+            background-color: white;
+            border-radius: 12px;
+            padding: 25px;
+            margin-top: 30px;
+            text-align: left;
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.05);
+            border: 1px solid rgba(0, 0, 0, 0.05);
+        }
+
+        .token-section h2 {
+            color: var(--primary-color);
+            margin-bottom: 20px;
+            padding-bottom: 10px;
+            border-bottom: 2px solid rgba(74, 144, 226, 0.2);
+            font-size: 1.5rem;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .token-item {
+            margin-bottom: 20px;
+        }
+
+        .token-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 10px;
+        }
+
+        .token-label {
+            font-weight: 600;
+            color: var(--primary-color);
+            font-size: 1.1rem;
+        }
+
+        .token-value {
+            background-color: #f8f9fa;
+            border-radius: 8px;
+            padding: 15px;
+            font-family: 'Roboto Mono', monospace;
+            color: var(--text-color-dark);
+            word-break: break-all;
+            font-size: 0.9rem;
+            max-height: 150px;
+            overflow-y: auto;
+            resize: vertical;
+            border: 1px solid rgba(0, 0, 0, 0.08);
+            box-shadow: inset 0 1px 3px rgba(0,0,0,0.05);
+        }
+
+        .copy-button {
+            padding: 8px 15px;
+            background-color: var(--copy-button-bg);
+            color: white;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 0.9rem;
+            font-weight: 500;
+            transition: all var(--transition-speed) ease;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+        }
+
+        .copy-button:hover {
+            background-color: var(--copy-button-hover);
+            transform: translateY(-2px);
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.15);
+        }
+
+        .copy-button:active {
+            transform: translateY(0);
+        }
+
+        .copy-button.copied {
+            background-color: var(--success-color);
+            cursor: default;
+        }
+
+        .login-prompt {
+            margin-top: 30px;
+            padding: 30px;
+            background-color: var(--user-card-bg);
+            border-radius: 12px;
+            text-align: center;
+        }
+
+        .login-prompt p {
+            font-size: 1.1rem;
+            color: var(--text-color-light);
+            margin-bottom: 25px;
+        }
+
+        .login-btn {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            padding: 12px 30px;
+            background: var(--accent-color);
+            color: white;
+            text-decoration: none;
+            border-radius: 8px;
+            font-weight: 500;
+            font-size: 1.05rem;
+            transition: all var(--transition-speed) ease;
+            box-shadow: 0 4px 10px rgba(0, 123, 255, 0.2);
+        }
+
+        .login-btn:hover {
+            background: var(--hover-color);
+            transform: translateY(-3px);
+            box-shadow: 0 6px 15px rgba(0, 123, 255, 0.3);
+        }
+
+        .login-btn:active {
+            transform: translateY(0);
+            box-shadow: 0 2px 5px rgba(0, 123, 255, 0.1);
+        }
+
+        .footer {
+            width: 100%;
+            text-align: center;
+            padding: 20px;
+            color: var(--text-color-light);
+            font-size: 0.9rem;
+            border-top: 1px solid rgba(0, 0, 0, 0.08);
+            margin-top: auto;
+        }
+
+        @media (max-width: 768px) {
+            .header-content {
+                flex-direction: column;
+                gap: 15px;
+                padding: 15px 20px;
+            }
+
+            .user-info {
+                width: 100%;
+                justify-content: space-between;
+            }
+
+            .container {
+                padding: 25px 20px;
+                margin: 15px;
+            }
+
+            h1 {
+                font-size: 2rem;
+            }
+
+            .info-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+</head>
+<body>
+<div class="header">
+    <div class="header-content">
+        <div class="logo">
+            <i class="fas fa-user-shield"></i>
+            <span>用户认证中心</span>
+        </div>
+        <div class="user-info" th:if="${uid}">
+            <div class="user-avatar" th:text="${#strings.substring(username, 0, 1)}">
+                U
+            </div>
+            <div class="username" th:text="${username}">
+                用户名
+            </div>
+            <a th:href="@{/logout}">
+                <button class="logout-btn">
+                    <i class="fas fa-sign-out-alt"></i>
+                    登出
+                </button>
+            </a>
+        </div>
+    </div>
+</div>
+
+<div class="container">
+    <h1 th:text="${uid} ? '欢迎回来，' + ${username} : '欢迎访问'"></h1>
+
+    <div class="welcome-message">
+        <p th:if="${uid}">您已成功登录系统，以下是您的账户信息和认证令牌</p>
+        <p th:unless="${uid}">请登录以访问您的账户信息和管理功能</p>
+    </div>
+
+    <div th:if="${uid}">
+        <div class="user-card">
+            <h2><i class="fas fa-user-circle"></i> 用户信息</h2>
+            <div class="info-grid">
+                <div class="info-item">
+                    <div class="info-label">
+                        <i class="fas fa-id-card"></i>
+                        <span>用户名</span>
+                    </div>
+                    <div class="info-value" th:text="${username}">
+                        用户名
+                    </div>
+                </div>
+
+                <div class="info-item">
+                    <div class="info-label">
+                        <i class="fas fa-user"></i>
+                        <span>用户 ID (UID)</span>
+                    </div>
+                    <div class="info-value" th:text="${uid}">
+                        [uid]
+                    </div>
+                </div>
+
+                <div class="info-item">
+                    <div class="info-label">
+                        <i class="fas fa-building"></i>
+                        <span>组织 ID (OID)</span>
+                    </div>
+                    <div class="info-value" th:text="${oid}">
+                        [oid]
+                    </div>
+                </div>
+
+                <div class="info-item">
+                    <div class="info-label">
+                        <i class="fas fa-users"></i>
+                        <span>用户组 ID (UGID)</span>
+                    </div>
+                    <div class="info-value" th:text="${ugid}">
+                        [ugid]
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="token-section">
+            <h2><i class="fas fa-key"></i> 认证令牌</h2>
+
+            <div class="token-item">
+                <div class="token-header">
+                    <div class="token-label">ID Token</div>
+                    <button class="copy-button" data-target="idToken">
+                        <i class="fas fa-copy"></i>
+                        复制
+                    </button>
+                </div>
+                <div class="token-value" data-token-type="idToken" th:text="${idToken}">
+                    [id_token]
+                </div>
+            </div>
+
+            <div class="token-item">
+                <div class="token-header">
+                    <div class="token-label">Access Token</div>
+                    <button class="copy-button" data-target="accessToken">
+                        <i class="fas fa-copy"></i>
+                        复制
+                    </button>
+                </div>
+                <div class="token-value" data-token-type="accessToken" th:text="${accessToken}">
+                    [access_token]
+                </div>
+            </div>
+
+            <div class="token-item">
+                <div class="token-header">
+                    <div class="token-label">Refresh Token</div>
+                    <button class="copy-button" data-target="refreshToken">
+                        <i class="fas fa-copy"></i>
+                        复制
+                    </button>
+                </div>
+                <div class="token-value" data-token-type="refreshToken" th:text="${refreshToken}">
+                    [refresh_token]
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="login-prompt" th:unless="${uid}">
+        <p>您尚未登录，请登录以访问您的账户</p>
+        <a class="login-btn" th:href="@{/login}">
+            <i class="fas fa-sign-in-alt"></i>
+            立即登录
+        </a>
+    </div>
+</div>
+
+<div class="footer">
+    <p>© 2023 用户认证中心 | 安全管理系统</p>
+</div>
+
+<script>
+    document.addEventListener('DOMContentLoaded', () => {
+        const copyButtons = document.querySelectorAll('.copy-button');
+
+        copyButtons.forEach(button => {
+            button.addEventListener('click', async (event) => {
+                const targetType = event.target.closest('.copy-button').dataset.target;
+                const tokenElement = document.querySelector(`.token-value[data-token-type="${targetType}"]`);
+                const tokenValue = tokenElement ? tokenElement.textContent : '';
+
+                if (tokenValue) {
+                    try {
+                        await navigator.clipboard.writeText(tokenValue);
+
+                        // Visual feedback
+                        const originalText = button.innerHTML;
+                        button.innerHTML = '<i class="fas fa-check"></i> 已复制';
+                        button.classList.add('copied');
+
+                        setTimeout(() => {
+                            button.innerHTML = originalText;
+                            button.classList.remove('copied');
+                        }, 2000);
+
+                    } catch (err) {
+                        console.error('复制失败:', err);
+                        const originalText = button.innerHTML;
+                        button.innerHTML = '<i class="fas fa-times"></i> 失败';
+
+                        setTimeout(() => {
+                            button.innerHTML = originalText;
+                        }, 2000);
+                    }
+                }
+            });
+        });
+    });
+</script>
+</body>
+</html>

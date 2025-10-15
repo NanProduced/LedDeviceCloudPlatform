@@ -1,0 +1,62 @@
+server:
+  port: 8084
+spring:
+  application:
+    name: message-service
+
+  config:
+    import:
+      - optional:nacos:message-service-dev.yml?group=DEFAULT_GROUP&refresh=true
+
+  cloud:
+    nacos:
+      discovery:
+        server-addr: 192.168.1.185:8848
+        namespace: 1e90921e-70cf-4745-87ed-dd165319ff3a
+        group: DEFAULT_GROUP
+        username: Nan
+        password: Nan12091209
+        access-key: nan_nacos
+        secret-key: nanproduced
+        fail-fast: false
+      config:
+        server-addr: 192.168.1.185:8848
+        namespace: 1e90921e-70cf-4745-87ed-dd165319ff3a
+        group: DEFAULT_GROUP
+        username: Nan
+        password: Nan12091209
+        access-key: nan_nacos
+        secret-key: nanproduced
+        timeout: 5000
+        config-long-poll-timeout: 1000
+        config-retry-time: 100000
+        max-retry: 3
+        refresh-enabled: true
+        file-extension: yml
+
+# 消息服务配置
+message:
+  # Phase 3.1: STOMP可靠性功能配置
+  reliability:
+    # 是否启用可靠性功能
+    enabled: true
+    # 自动清理配置
+    cleanup:
+      enabled: true
+      # 投递记录保留时间（小时）
+      delivery-record-retention-hours: 24
+      # 连接状态超时时间（分钟）
+      connection-timeout-minutes: 60
+    # 监控统计配置
+    monitoring:
+      enabled: true
+      # 统计输出间隔（分钟）
+      stats-interval-minutes: 10
+    # 重试配置
+    retry:
+      # 默认最大重试次数
+      default-max-retries: 3
+      # 默认初始延迟（秒）
+      default-initial-delay-seconds: 5
+      # 默认最大延迟（秒）
+      default-max-delay-seconds: 300
